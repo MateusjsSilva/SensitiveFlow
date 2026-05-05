@@ -1,10 +1,10 @@
 # Attributes
 
-SensitiveFlow provides attributes to annotate your model classes with LGPD metadata. These attributes are the declarative foundation of the library.
+SensitiveFlow provides attributes to annotate your model classes with privacy metadata. These attributes are the declarative foundation of the library.
 
 ## PersonalDataAttribute
 
-Marks a property or field as personal data under Art. 5, I of the LGPD.
+Marks a property or field as personal data.
 
 ```csharp
 [PersonalData(Category = DataCategory.Identification,
@@ -21,7 +21,7 @@ public string Name { get; set; }
 
 ## SensitiveDataAttribute
 
-Marks a property or field as sensitive personal data under Art. 5, II and Art. 11 of the LGPD. Implies additional obligations and restricted legal bases.
+Marks a property or field as sensitive personal data. Implies additional obligations and restricted legal bases.
 
 ```csharp
 [SensitiveData(Category = DataCategory.Financial,
@@ -38,7 +38,7 @@ public string TaxId { get; set; }
 
 ## EraseDataAttribute
 
-Marks a property for automatic deletion when the data subject exercises the right to erasure (Art. 18, IV).
+Marks a property for automatic deletion when the data subject exercises the right to erasure.
 
 ```csharp
 [EraseData(AnonymizeInsteadOfDelete = true)]
@@ -51,7 +51,7 @@ public string TemporaryData { get; set; }
 
 ## RetentionDataAttribute
 
-Defines the retention period and the action on expiration under Art. 15 and 16 of the LGPD.
+Defines the retention period and the action on expiration.
 
 ```csharp
 [RetentionData(Years = 5, Months = 0, Policy = RetentionPolicy.AnonymizeOnExpiration)]
@@ -67,7 +67,7 @@ public string ContractData { get; set; }
 
 ## InternationalTransferAttribute
 
-Marks a property whose data can be transferred internationally under Art. 33-36 of the LGPD. Supports multiple transfers per field.
+Marks a property whose data can be transferred internationally under applicable international transfer rules. Supports multiple transfers per field.
 
 ```csharp
 [InternationalTransfer(Country = TransferCountry.UnitedStates,
@@ -81,3 +81,4 @@ public string Email { get; set; }
 | `Country` | `TransferCountry` | `Other` | Destination country |
 | `Mechanism` | `SafeguardMechanism` | `ContractualClauses` | Safeguard mechanism |
 | `Recipient` | `string?` | `null` | Recipient name (company or service) |
+

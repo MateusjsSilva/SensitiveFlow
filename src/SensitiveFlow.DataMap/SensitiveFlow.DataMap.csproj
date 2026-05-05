@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Inventario das operacoes de tratamento de dados conforme Art. 37 da LGPD.</PackageDescription>
+    <PackageDescription>Inventario das operacoes de tratamento de dados conforme requisitos de inventario de tratamento.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,4 +9,5 @@
   </ItemGroup>
 
 </Project>
+
 

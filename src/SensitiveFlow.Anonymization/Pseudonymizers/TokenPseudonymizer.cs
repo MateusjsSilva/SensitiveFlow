@@ -6,7 +6,7 @@ namespace SensitiveFlow.Anonymization.Pseudonymizers;
 /// Reversible pseudonymization backed by a persistent <see cref="ITokenStore"/>.
 /// Each unique value receives a stable token; the mapping survives restarts as long as
 /// the store implementation is durable (database, Redis, etc.).
-/// The data remains personal and all LGPD obligations apply (Art. 12, §3).
+/// The data remains personal and all privacy obligations apply.
 /// </summary>
 /// <remarks>
 /// For tests and batch processing within a single session, use
@@ -65,4 +65,5 @@ public sealed class TokenPseudonymizer : IPseudonymizer
         return _store.ResolveTokenAsync(token, cancellationToken);
     }
 }
+
 

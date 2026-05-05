@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Politicas automaticas de ciclo de vida e encerramento do tratamento conforme Art. 15 e 16 da LGPD.</PackageDescription>
+    <PackageDescription>Politicas automaticas de ciclo de vida e encerramento do tratamento conforme requisitos de retencao e ciclo de vida.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,4 +11,5 @@
   </ItemGroup>
 
 </Project>
+
 

@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Processing principles listed in Art. 6 of the LGPD.
+/// Core processing principles used in privacy governance.
 /// </summary>
 public enum ProcessingPrinciple
 {
@@ -35,4 +35,5 @@ public enum ProcessingPrinciple
     /// <summary>Demonstration of effective compliance measures.</summary>
     Accountability
 }
+
 

@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Countries for international data transfers (Art. 33-36 of the LGPD).
+/// Countries for international data transfers.
 /// </summary>
 public enum TransferCountry
 {
@@ -110,4 +110,5 @@ public enum TransferCountry
     /// <summary>Uruguay.</summary>
     Uruguay
 }
+
 

@@ -3,7 +3,7 @@ using SensitiveFlow.Core.Enums;
 namespace SensitiveFlow.Core.Attributes;
 
 /// <summary>
-/// Marks a property or field as personal data under Art. 5, I of the LGPD.
+/// Marks a property or field as personal data.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
 public sealed class PersonalDataAttribute : Attribute
@@ -17,4 +17,5 @@ public sealed class PersonalDataAttribute : Attribute
     /// <summary>Purpose for which the data is processed.</summary>
     public ProcessingPurpose Purpose { get; set; } = ProcessingPurpose.ServiceProvision;
 }
+
 

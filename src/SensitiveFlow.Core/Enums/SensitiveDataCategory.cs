@@ -1,8 +1,8 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Categories of sensitive personal data under Art. 5, II of the LGPD.
-/// These categories carry additional processing obligations and restricted legal bases (Art. 11).
+/// Categories of sensitive personal data.
+/// These categories carry additional processing obligations and restricted legal bases.
 /// Use <c>SensitiveDataAttribute</c> — not <c>PersonalDataAttribute</c> — to annotate
 /// properties that fall into these categories.
 /// </summary>
@@ -11,28 +11,29 @@ public enum SensitiveDataCategory
     /// <summary>Unspecified or custom sensitive data category.</summary>
     Other = 0,
 
-    /// <summary>Health or medical data (Art. 5, II).</summary>
+    /// <summary>Health or medical data </summary>
     Health,
 
-    /// <summary>Biometric data used for identification (Art. 5, II).</summary>
+    /// <summary>Biometric data used for identification </summary>
     Biometric,
 
-    /// <summary>Genetic data (Art. 5, II).</summary>
+    /// <summary>Genetic data </summary>
     Genetic,
 
-    /// <summary>Racial or ethnic origin (Art. 5, II).</summary>
+    /// <summary>Racial or ethnic origin </summary>
     Ethnicity,
 
-    /// <summary>Political opinion (Art. 5, II).</summary>
+    /// <summary>Political opinion </summary>
     PoliticalOpinion,
 
-    /// <summary>Religious or philosophical belief (Art. 5, II).</summary>
+    /// <summary>Religious or philosophical belief </summary>
     ReligiousBelief,
 
-    /// <summary>Sexual orientation (Art. 5, II).</summary>
+    /// <summary>Sexual orientation </summary>
     SexualOrientation,
 
-    /// <summary>Trade union membership (Art. 5, II).</summary>
+    /// <summary>Trade union membership </summary>
     TradeUnionMembership,
 }
+
 

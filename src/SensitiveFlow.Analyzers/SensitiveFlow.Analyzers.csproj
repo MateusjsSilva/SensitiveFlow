@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks></TargetFrameworks>
@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsRoslynComponent>true</IsRoslynComponent>
-    <PackageDescription>Analisadores Roslyn que detectam violacoes da LGPD em tempo de compilacao.</PackageDescription>
+    <PackageDescription>Analisadores Roslyn que detectam violacoes de politicas de privacidade em tempo de compilacao.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,3 +21,4 @@
   </ItemGroup>
 
 </Project>
+

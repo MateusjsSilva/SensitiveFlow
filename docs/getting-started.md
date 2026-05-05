@@ -1,6 +1,6 @@
 # Getting Started with SensitiveFlow
 
-SensitiveFlow is a modular, MIT-licensed library that helps .NET developers implement LGPD (Brazilian General Data Protection Law - Law 13.709/2018) compliance in a declarative, testable way.
+SensitiveFlow is a modular, MIT-licensed library that helps .NET developers implement privacy and data-protection compliance in a declarative, testable way.
 
 ## Installation
 
@@ -41,3 +41,4 @@ public class Customer
 - Read the [Attributes](attributes.md) documentation
 - Learn about [Legal Bases](legal-bases.md)
 - Anonymize and pseudonymize data with [SensitiveFlow.Anonymization](anonymization.md)
+

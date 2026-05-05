@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Gerenciamento do ciclo de vida do consentimento conforme Art. 7, I e Art. 8 da LGPD.</PackageDescription>
+    <PackageDescription>Gerenciamento do ciclo de vida do consentimento conforme requisitos de consentimento aplicaveis.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,4 +10,5 @@
   </ItemGroup>
 
 </Project>
+
 

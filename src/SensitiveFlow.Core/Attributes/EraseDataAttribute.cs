@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Attributes;
 
 /// <summary>
-/// Marks a property for automatic deletion when the data subject exercises the right to erasure (Art. 18, IV).
+/// Marks a property for automatic deletion when the data subject exercises the right to erasure.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
 public sealed class EraseDataAttribute : Attribute
@@ -11,4 +11,5 @@ public sealed class EraseDataAttribute : Attribute
     /// </summary>
     public bool AnonymizeInsteadOfDelete { get; set; }
 }
+
 

@@ -1,23 +1,24 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Safeguards for international data transfers under Art. 33 of the LGPD.
+/// Safeguards for international data transfers under applicable regulations.
 /// </summary>
 public enum SafeguardMechanism
 {
-    /// <summary>Country with an adequate level of protection recognized by the ANPD (Art. 33, I).</summary>
+    /// <summary>Country with an adequate level of protection recognized by a competent authority.</summary>
     AdequacyDecision,
 
-    /// <summary>Contractual clauses or equivalent contractual safeguards (Art. 33, II).</summary>
+    /// <summary>Contractual clauses or equivalent contractual safeguards .</summary>
     ContractualClauses,
 
-    /// <summary>Binding corporate rules (Art. 33, III).</summary>
+    /// <summary>Binding corporate rules .</summary>
     BindingCorporateRules,
 
-    /// <summary>Seals, certifications, and codes of conduct (Art. 33, IV).</summary>
+    /// <summary>Seals, certifications, and codes of conduct .</summary>
     SealsAndCertifications,
 
-    /// <summary>Specific consent from the data subject (Art. 33, VIII).</summary>
+    /// <summary>Specific consent from the data subject .</summary>
     Consent
 }
+
 

@@ -27,7 +27,7 @@ public interface IConsentStore
     Task<ConsentRecord?> GetAsync(string dataSubjectId, ProcessingPurpose purpose, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Revokes the active consent for a data subject and purpose (Art. 8, §5 of the LGPD).
+    /// Revokes the active consent for a data subject and purpose.
     /// </summary>
     /// <param name="dataSubjectId">Data subject identifier.</param>
     /// <param name="purpose">Processing purpose.</param>

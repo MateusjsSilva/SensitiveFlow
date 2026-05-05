@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Roles of processing agents and governance actors under the LGPD.
+/// Roles of processing agents and governance actors under applicable privacy regulations.
 /// </summary>
 public enum ProcessingAgentRole
 {
@@ -20,4 +20,5 @@ public enum ProcessingAgentRole
     /// <summary>Data protection officer or person in charge.</summary>
     Dpo
 }
+
 

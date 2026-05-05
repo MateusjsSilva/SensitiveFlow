@@ -3,7 +3,7 @@ using SensitiveFlow.Core.Enums;
 namespace SensitiveFlow.Core.Attributes;
 
 /// <summary>
-/// Defines the retention period and the action on expiration under Art. 15 and 16 of the LGPD.
+/// Defines the retention period and the action on expiration.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public sealed class RetentionDataAttribute : Attribute
@@ -31,4 +31,5 @@ public sealed class RetentionDataAttribute : Attribute
     public DateTimeOffset GetExpirationDate(DateTimeOffset from) =>
         from.AddYears(Years).AddMonths(Months);
 }
+
 

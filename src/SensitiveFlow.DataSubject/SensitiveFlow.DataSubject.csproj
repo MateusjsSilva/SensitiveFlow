@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Implementacao dos 8 direitos do titular de dados conforme Art. 18 da LGPD.</PackageDescription>
+    <PackageDescription>Implementacao dos 8 direitos do titular de dados conforme requisitos de direitos do titular.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,4 +10,5 @@
   </ItemGroup>
 
 </Project>
+
 

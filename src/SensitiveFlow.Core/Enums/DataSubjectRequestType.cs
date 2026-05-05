@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Rights request types available to data subjects under Art. 18 of the LGPD.
+/// Rights request types available to data subjects under applicable privacy regulations.
 /// </summary>
 public enum DataSubjectRequestType
 {
@@ -32,4 +32,5 @@ public enum DataSubjectRequestType
     /// <summary>Objection to processing.</summary>
     Objection
 }
+
 

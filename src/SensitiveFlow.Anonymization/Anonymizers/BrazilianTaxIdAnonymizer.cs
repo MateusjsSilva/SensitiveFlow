@@ -6,7 +6,7 @@ namespace SensitiveFlow.Anonymization.Anonymizers;
 /// <summary>
 /// Anonymizes Brazilian CPF (<c>000.000.000-00</c>) and CNPJ (<c>00.000.000/0000-00</c>) values
 /// by replacing digits with asterisks while preserving punctuation structure.
-/// The result is no longer personal data under Art. 12 of the LGPD.
+/// The result is no longer personal data under applicable privacy regulations.
 /// </summary>
 public sealed class BrazilianTaxIdAnonymizer : IAnonymizer
 {
@@ -31,4 +31,5 @@ public sealed class BrazilianTaxIdAnonymizer : IAnonymizer
         return Regex.Replace(value, @"\d", "*");
     }
 }
+
 

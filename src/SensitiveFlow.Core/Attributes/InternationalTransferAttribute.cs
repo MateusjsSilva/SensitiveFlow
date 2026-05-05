@@ -3,7 +3,7 @@ using SensitiveFlow.Core.Enums;
 namespace SensitiveFlow.Core.Attributes;
 
 /// <summary>
-/// Marks a property whose data can be transferred internationally under Art. 33-36 of the LGPD.
+/// Marks a property whose data can be transferred internationally under applicable international transfer rules.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
 public sealed class InternationalTransferAttribute : Attribute
@@ -17,4 +17,5 @@ public sealed class InternationalTransferAttribute : Attribute
     /// <summary>Recipient name (company or external service).</summary>
     public string? Recipient { get; set; }
 }
+
 

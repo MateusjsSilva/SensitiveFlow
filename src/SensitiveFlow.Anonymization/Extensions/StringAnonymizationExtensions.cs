@@ -12,16 +12,16 @@ namespace SensitiveFlow.Anonymization.Extensions;
 /// <remarks>
 /// <para>
 /// <b>Anonymization</b> (<c>AnonymizeTaxId</c>) produces a result that is no longer personal data
-/// under Art. 12 of the LGPD — the transform is irreversible and non-identifiable.
+/// under applicable privacy regulations — the transform is irreversible and non-identifiable.
 /// </para>
 /// <para>
 /// <b>Masking</b> (<c>MaskEmail</c>, <c>MaskPhone</c>, <c>MaskName</c>) reduces accidental exposure
 /// for display or logging purposes but does <b>not</b> constitute anonymization. The result remains
-/// personal data and all LGPD obligations apply.
+/// personal data and all privacy obligations apply.
 /// </para>
 /// <para>
-/// IP addresses are not covered here. IP truncation does not constitute anonymization under Art. 12
-/// of the LGPD. IP addresses must be pseudonymized using <see cref="TokenPseudonymizer"/> before
+/// IP addresses are not covered here. IP truncation does not constitute anonymization under applicable privacy regulations
+/// under applicable privacy regulations. IP addresses must be pseudonymized using <see cref="TokenPseudonymizer"/> before
 /// being stored in audit logs.
 /// </para>
 /// </remarks>
@@ -32,11 +32,11 @@ public static class StringAnonymizationExtensions
     private static readonly PhoneMasker              PhoneMasker     = new();
     private static readonly NameMasker               NameMasker      = new();
 
-    // ── Anonymization (Art. 12 — data leaves LGPD scope) ──────────────────────
+    // ── Anonymization (data may leave personal-data scope) ─────────────────────
 
     /// <summary>
     /// Anonymizes a Brazilian CPF or CNPJ tax identifier by replacing all digits with asterisks.
-    /// The result is no longer personal data under Art. 12 of the LGPD.
+    /// The result is no longer personal data under applicable privacy regulations.
     /// </summary>
     public static string AnonymizeTaxId(this string value) =>
         TaxIdAnonymizer.Anonymize(value);
@@ -67,7 +67,7 @@ public static class StringAnonymizationExtensions
     public static string MaskName(this string value) =>
         NameMasker.Mask(value);
 
-    // ── Pseudonymization (Art. 12, §3 — data remains personal) ───────────────
+    // ── Pseudonymization (data remains personal) ───────────────────────────────
 
     /// <summary>
     /// Pseudonymizes a value using a reversible token backed by the provided <see cref="ITokenStore"/>.
@@ -86,4 +86,6 @@ public static class StringAnonymizationExtensions
     public static string PseudonymizeHmac(this string value, string secretKey) =>
         new HmacPseudonymizer(secretKey).Pseudonymize(value);
 }
+
+
 

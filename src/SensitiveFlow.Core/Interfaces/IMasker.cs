@@ -5,10 +5,10 @@ namespace SensitiveFlow.Core.Interfaces;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Masking is not anonymization under Art. 12 of the LGPD.</b>
+/// <b>Masking is not anonymization under applicable privacy regulations.</b>
 /// A masked value (e.g. <c>j*********@example.com</c>) retains enough structure
 /// to allow re-identification in many contexts. The result remains personal data
-/// and all LGPD obligations continue to apply.
+/// and all privacy obligations continue to apply.
 /// </para>
 /// <para>
 /// Use maskers when you need to reduce accidental exposure in UIs, logs, or reports —
@@ -32,3 +32,4 @@ public interface IMasker
     /// <returns><see langword="true"/> when the value can be masked; otherwise <see langword="false"/>.</returns>
     bool CanMask(string value);
 }
+

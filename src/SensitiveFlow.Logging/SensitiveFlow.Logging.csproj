@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Redacao automatica de dados pessoais em logs para conformidade com a LGPD.</PackageDescription>
+    <PackageDescription>Redacao automatica de dados pessoais em logs para conformidade com regulamentacoes de privacidade.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,4 +10,5 @@
   </ItemGroup>
 
 </Project>
+
 

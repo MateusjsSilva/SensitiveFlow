@@ -10,7 +10,7 @@ namespace SensitiveFlow.Anonymization.Masking;
 /// <remarks>
 /// <b>This is masking, not anonymization.</b> The last two digits and the formatting structure
 /// remain visible, which may allow re-identification when combined with other fields.
-/// The result remains personal data and all LGPD obligations apply.
+/// The result remains personal data and all privacy obligations apply.
 /// Use this class to reduce accidental exposure in UIs or logs — not as a compliance measure.
 /// </remarks>
 public sealed class PhoneMasker : IMasker
@@ -59,4 +59,5 @@ public sealed class PhoneMasker : IMasker
         return new string(chars);
     }
 }
+
 

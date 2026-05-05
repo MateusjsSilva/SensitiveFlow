@@ -3,7 +3,7 @@ using SensitiveFlow.Core.Models;
 namespace SensitiveFlow.Core.Interfaces;
 
 /// <summary>
-/// Store for processing operation records under Art. 37 of the LGPD.
+/// Store for processing operation records under applicable privacy regulations.
 /// </summary>
 public interface IProcessingInventory
 {
@@ -23,3 +23,4 @@ public interface IProcessingInventory
     /// <returns>Processing operation records.</returns>
     Task<IReadOnlyList<ProcessingOperationRecord>> ListAsync(CancellationToken cancellationToken = default);
 }
+

@@ -10,7 +10,7 @@ namespace SensitiveFlow.Anonymization.Masking;
 /// <remarks>
 /// <b>This is masking, not anonymization.</b> The domain and first character remain visible,
 /// which may be sufficient to re-identify the person in many contexts.
-/// The result remains personal data and all LGPD obligations apply.
+/// The result remains personal data and all privacy obligations apply.
 /// Use this class to reduce accidental exposure in UIs or logs — not as a compliance measure.
 /// </remarks>
 public sealed class EmailMasker : IMasker
@@ -48,4 +48,5 @@ public sealed class EmailMasker : IMasker
         return masked + domain;
     }
 }
+
 

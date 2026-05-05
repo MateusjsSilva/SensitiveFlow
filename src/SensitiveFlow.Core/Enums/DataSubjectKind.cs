@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Age-related classification of the data subject for LGPD handling.
+/// Age-related classification of the data subject for privacy governance.
 /// </summary>
 public enum DataSubjectKind
 {
@@ -14,4 +14,5 @@ public enum DataSubjectKind
     /// <summary>Adolescent data subject.</summary>
     Adolescent
 }
+
 

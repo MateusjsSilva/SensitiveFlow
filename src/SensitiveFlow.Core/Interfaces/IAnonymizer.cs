@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Interfaces;
 
 /// <summary>
-/// Irreversible anonymization. The resulting data is no longer personal data (Art. 12 of the LGPD).
+/// Irreversible anonymization. The resulting data may no longer be personal data, depending on re-identification risk.
 /// </summary>
 public interface IAnonymizer
 {
@@ -15,3 +15,4 @@ public interface IAnonymizer
     /// <returns><see langword="true" /> when the value can be anonymized; otherwise, <see langword="false" />.</returns>
     bool CanAnonymize(string value);
 }
+

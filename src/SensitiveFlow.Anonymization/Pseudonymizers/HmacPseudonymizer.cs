@@ -10,7 +10,7 @@ namespace SensitiveFlow.Anonymization.Pseudonymizers;
 /// lookups without storing a mapping table.
 /// This implementation is NOT reversible through <see cref="Reverse"/> unless the
 /// caller maintains its own lookup; <see cref="Reverse"/> throws <see cref="NotSupportedException"/>.
-/// The data remains personal and all LGPD obligations apply (Art. 12, §3).
+/// The data remains personal and all privacy obligations apply.
 /// </summary>
 /// <remarks>
 /// Use <see cref="TokenPseudonymizer"/> when you need true reversibility.
@@ -60,4 +60,5 @@ public sealed class HmacPseudonymizer : IPseudonymizer
         throw new NotSupportedException(
             "HmacPseudonymizer does not support reversal. Use TokenPseudonymizer for reversible pseudonymization.");
 }
+
 

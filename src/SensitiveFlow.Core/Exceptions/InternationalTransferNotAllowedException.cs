@@ -26,10 +26,11 @@ public sealed class InternationalTransferNotAllowedException : Exception
         TransferCountry country,
         SafeguardMechanism? mechanism = null,
         string? reason = null)
-        : base($"International transfer to '{country}' is not allowed: {reason ?? "safeguard mechanism missing or invalid"} (Art. 33 of the LGPD).")
+        : base($"International transfer to '{country}' is not allowed: {reason ?? "safeguard mechanism missing or invalid"}.")
     {
         Country = country;
         Mechanism = mechanism;
         Reason = reason;
     }
 }
+

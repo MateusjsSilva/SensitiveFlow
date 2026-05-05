@@ -3,7 +3,7 @@ using SensitiveFlow.Core.Enums;
 namespace SensitiveFlow.Core.Models;
 
 /// <summary>
-/// Record of a data subject rights request under Art. 18 of the LGPD.
+/// Record of a data subject rights request under applicable privacy regulations.
 /// </summary>
 public sealed record DataSubjectRequest
 {
@@ -35,7 +35,7 @@ public sealed record DataSubjectRequest
     /// Reason why the request was rejected, required when <see cref="Status"/> is
     /// <see cref="DataSubjectRequestStatus.Rejected"/>.
     /// <para>
-    /// Art. 18, §4 of the LGPD requires the controller to communicate the factual and
+    /// Applicable regulations may require the controller to communicate the factual and
     /// legal grounds for not fulfilling a request. Leaving this field empty on a rejected
     /// request is a compliance gap.
     /// </para>
@@ -45,4 +45,5 @@ public sealed record DataSubjectRequest
     /// <summary>Additional notes or handling context.</summary>
     public string? Notes { get; init; }
 }
+
 

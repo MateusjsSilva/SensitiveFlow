@@ -1,6 +1,6 @@
 # Anonymization, Masking, and Pseudonymization
 
-`SensitiveFlow.Anonymization` provides three distinct levels of data protection, each with different legal implications under the LGPD.
+`SensitiveFlow.Anonymization` provides three distinct levels of data protection, each with different legal implications under applicable regulations.
 
 ## Installation
 
@@ -10,19 +10,19 @@ dotnet add package SensitiveFlow.Anonymization
 
 ## The three levels — what each one means legally
 
-| Technique | Reversible | Data remains personal? | LGPD scope | Use when |
+| Technique | Reversible | Data remains personal? | Regulatory scope | Use when |
 |-----------|-----------|------------------------|------------|----------|
-| **Anonymization** | No | **No** | Removed (Art. 12) | You no longer need to identify the subject |
+| **Anonymization** | No | **No** | Usually out of scope | You no longer need to identify the subject |
 | **Masking** | No | **Yes** | Still in scope | Reducing accidental exposure in UIs or logs |
-| **Pseudonymization** | Yes (with store/key) | **Yes** | Still in scope (Art. 12, §3) | You need the mapping for operational reasons |
+| **Pseudonymization** | Yes (with store/key) | **Yes** | Still in scope | You need the mapping for operational reasons |
 
-> **Important:** only anonymization removes data from LGPD scope. Masking and pseudonymization are risk-reduction techniques — all LGPD obligations continue to apply.
+> **Important:** only anonymization can remove data from personal-data scope. Masking and pseudonymization are risk-reduction techniques — all privacy obligations continue to apply.
 
 ---
 
 ## Anonymization
 
-Anonymizers implement `IAnonymizer`. The result carries no information that can re-identify the person — it is no longer personal data under Art. 12.
+Anonymizers implement `IAnonymizer`. The result carries no information that can re-identify the person — it may no longer be personal data, depending on context and re-identification risk.
 
 ### BrazilianTaxIdAnonymizer
 
@@ -81,14 +81,14 @@ var masker = new NameMasker();
 masker.Mask("João da Silva");           // "J*** d* S****"
 ```
 
-> For full removal of a name from LGPD scope, delete the field entirely or replace it with a `TokenPseudonymizer` token. Keeping the initial and word length can be sufficient to re-identify common names.
+> For full removal of a name from personal-data scope, delete the field entirely or replace it with a `TokenPseudonymizer` token. Keeping the initial and word length can be sufficient to re-identify common names.
 
 ### Extension methods
 
 ```csharp
 using SensitiveFlow.Anonymization.Extensions;
 
-// Anonymization — Art. 12 compliant
+// Anonymization
 string taxId = "123.456.789-09".AnonymizeTaxId();
 
 // Masking — risk reduction, data remains personal
@@ -103,14 +103,14 @@ string name  = "João da Silva".MaskName();
 
 ## IP addresses — why truncation is not anonymization
 
-IP truncation (`192.168.1.42` → `192.168.1.0`) is a common practice but **does not constitute anonymization** under Art. 12 of the LGPD or GDPR Recital 49. The CNIL ruled that truncated IPs combined with any metadata remain personal data. The EDPB requires anonymization to pass three cumulative tests (singling out, linkability, inference) — truncation fails all three.
+IP truncation (`192.168.1.42` → `192.168.1.0`) is a common practice but **does not constitute anonymization** under many privacy frameworks and GDPR Recital 49. The CNIL ruled that truncated IPs combined with any metadata remain personal data. The EDPB requires anonymization to pass three cumulative tests (singling out, linkability, inference) — truncation fails all three.
 
 **The correct treatment for IP addresses:**
 
 | Context | Correct treatment | Legal basis |
 |---------|------------------|-------------|
-| Audit / security logs | **Pseudonymize** with `TokenPseudonymizer` | Legitimate interest (Art. 7, IX) |
-| Analytics / reporting | Do not store, or collect only with consent | Consent (Art. 7, I) |
+| Audit / security logs | **Pseudonymize** with `TokenPseudonymizer` | Legitimate interest or equivalent basis |
+| Analytics / reporting | Do not store, or collect only with consent | Consent or equivalent basis |
 
 ```csharp
 // Pseudonymize IP before writing to the audit log
@@ -133,7 +133,7 @@ var originalIp = await pseudonymizer.ReverseAsync(ipToken);
 
 ## Pseudonymization
 
-Pseudonymizers implement `IPseudonymizer`. They replace a value with a token. The original can be recovered given the right store or key — the data remains personal and all LGPD obligations apply (Art. 12, §3).
+Pseudonymizers implement `IPseudonymizer`. They replace a value with a token. The original can be recovered given the right store or key, so the data remains personal and privacy obligations still apply.
 
 ### TokenPseudonymizer
 
@@ -212,3 +212,5 @@ new HashStrategy("my-fixed-salt-16ch").Apply("value");
 ```
 
 > Always use a salt in production. Without a salt, identical values produce identical hashes — a lookup table can reverse common inputs such as CPF numbers.
+
+

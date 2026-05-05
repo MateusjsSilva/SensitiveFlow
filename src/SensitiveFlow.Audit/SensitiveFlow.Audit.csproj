@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Registro imutavel de acessos e modificacoes de dados pessoais para conformidade com a LGPD.</PackageDescription>
+    <PackageDescription>Registro imutavel de acessos e modificacoes de dados pessoais para conformidade com regulamentacoes de privacidade.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,4 +9,5 @@
   </ItemGroup>
 
 </Project>
+
 

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Anonimizacao e pseudonimizacao de dados pessoais para conformidade com o Art. 12 da LGPD.</PackageDescription>
+    <PackageDescription>Anonimizacao e pseudonimizacao de dados pessoais para conformidade com regulamentacoes de privacidade aplicaveis.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,4 +9,5 @@
   </ItemGroup>
 
 </Project>
+
 

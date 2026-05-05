@@ -9,9 +9,9 @@ namespace SensitiveFlow.Anonymization.Masking;
 /// <remarks>
 /// <b>This is masking, not anonymization.</b> The initial letter and word length remain visible,
 /// which is often sufficient to re-identify a person, especially for uncommon names or when
-/// combined with other fields. The result remains personal data and all LGPD obligations apply.
+/// combined with other fields. The result remains personal data and all privacy obligations apply.
 /// Use this class to reduce accidental exposure in UIs or logs — not as a compliance measure.
-/// For full Art. 12 anonymization of names, remove the field entirely or replace it
+/// For full anonymization of names, remove the field entirely or replace it
 /// with a <c>TokenPseudonymizer</c> token.
 /// </remarks>
 public sealed class NameMasker : IMasker
@@ -46,4 +46,6 @@ public sealed class NameMasker : IMasker
         return string.Join(' ', masked);
     }
 }
+
+
 

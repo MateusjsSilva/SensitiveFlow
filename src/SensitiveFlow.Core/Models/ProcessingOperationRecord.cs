@@ -3,7 +3,7 @@ using SensitiveFlow.Core.Enums;
 namespace SensitiveFlow.Core.Models;
 
 /// <summary>
-/// Record of a personal data processing operation under Art. 37 of the LGPD.
+/// Record of a personal data processing operation under applicable privacy regulations.
 /// </summary>
 public sealed record ProcessingOperationRecord
 {
@@ -25,7 +25,7 @@ public sealed record ProcessingOperationRecord
     /// <summary>Legal basis that authorizes the operation.</summary>
     public LegalBasis LegalBasis { get; init; } = LegalBasis.Consent;
 
-    /// <summary>LGPD Art. 6 principles considered for the operation.</summary>
+    /// <summary>Privacy principles considered for the operation.</summary>
     public IReadOnlyList<ProcessingPrinciple> Principles { get; init; } = [];
 
     /// <summary>Retention period in years, when declared.</summary>
@@ -40,4 +40,5 @@ public sealed record ProcessingOperationRecord
     /// <summary>Human-readable description of the operation.</summary>
     public string Description { get; init; } = string.Empty;
 }
+
 

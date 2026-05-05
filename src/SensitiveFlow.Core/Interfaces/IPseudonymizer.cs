@@ -1,7 +1,7 @@
 namespace SensitiveFlow.Core.Interfaces;
 
 /// <summary>
-/// Reversible pseudonymization. The data remains personal and all LGPD obligations apply (Art. 12, sec. 3).
+/// Reversible pseudonymization. The data remains personal and all privacy obligations apply .
 /// </summary>
 public interface IPseudonymizer
 {
@@ -20,3 +20,4 @@ public interface IPseudonymizer
     /// <returns><see langword="true" /> when the value can be pseudonymized; otherwise, <see langword="false" />.</returns>
     bool CanPseudonymize(string value);
 }
+

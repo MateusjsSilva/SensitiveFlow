@@ -1,13 +1,13 @@
 namespace SensitiveFlow.Core.Enums;
 
 /// <summary>
-/// Categories of regular personal data under Art. 5, I of the LGPD.
+/// Categories of regular personal data.
 /// Use with <c>PersonalDataAttribute</c>.
 /// </summary>
 /// <remarks>
 /// <b>Do not use this enum for sensitive data.</b> Health, biometric, genetic, racial/ethnic origin,
 /// political opinion, religious belief, sexual orientation, and trade-union membership are sensitive
-/// personal data under Art. 5, II of the LGPD and carry additional obligations (Art. 11).
+/// personal data and carry additional handling obligations.
 /// Use <see cref="SensitiveDataCategory"/> with <c>SensitiveDataAttribute</c> for those categories.
 /// </remarks>
 public enum DataCategory
@@ -33,4 +33,5 @@ public enum DataCategory
     /// <summary>Location data.</summary>
     Location,
 }
+
 
