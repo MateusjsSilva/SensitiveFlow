@@ -17,5 +17,6 @@ public sealed class RetentionDataAttribute : Attribute
     /// <summary>Action executed when the period expires.</summary>
     public RetentionPolicy Policy { get; set; } = RetentionPolicy.AnonymizeOnExpiration;
 
+    /// <summary>Approximate retention period represented as a time span.</summary>
     public TimeSpan Period => TimeSpan.FromDays((Years * 365) + (Months * 30));
 }

@@ -5,5 +5,6 @@ namespace LGPD.NET.Core.Interfaces;
 /// </summary>
 public interface IDataSubject
 {
+    /// <summary>Identifier of the data subject represented by the entity.</summary>
     string DataSubjectId { get; }
 }

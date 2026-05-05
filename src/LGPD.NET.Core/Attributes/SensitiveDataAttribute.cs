@@ -9,7 +9,12 @@ namespace LGPD.NET.Core.Attributes;
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
 public sealed class SensitiveDataAttribute : Attribute
 {
+    /// <summary>Category of sensitive personal data.</summary>
     public DataCategory Category { get; set; } = DataCategory.Other;
+
+    /// <summary>Legal basis for processing sensitive personal data.</summary>
     public SensitiveLegalBasis SensitiveLegalBasis { get; set; } = SensitiveLegalBasis.ExplicitConsent;
+
+    /// <summary>Purpose for which the sensitive data is processed.</summary>
     public ProcessingPurpose Purpose { get; set; } = ProcessingPurpose.ServiceProvision;
 }

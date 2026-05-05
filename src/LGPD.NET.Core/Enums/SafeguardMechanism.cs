@@ -8,7 +8,7 @@ public enum SafeguardMechanism
     /// <summary>Country with an adequate level of protection recognized by the ANPD (Art. 33, I).</summary>
     AdequacyDecision,
 
-    /// <summary>Standard contractual clauses (Art. 33, II).</summary>
+    /// <summary>Contractual clauses or equivalent contractual safeguards (Art. 33, II).</summary>
     ContractualClauses,
 
     /// <summary>Binding corporate rules (Art. 33, III).</summary>
