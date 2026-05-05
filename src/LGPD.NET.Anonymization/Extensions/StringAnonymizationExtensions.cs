@@ -6,30 +6,35 @@ namespace LGPD.NET.Anonymization.Extensions;
 
 /// <summary>
 /// Convenience extensions for anonymizing and pseudonymizing string values inline.
-/// Each method creates a short-lived anonymizer instance — suitable for one-off operations.
-/// For high-throughput scenarios, instantiate and reuse the anonymizer classes directly.
+/// Shared anonymizer instances are reused across calls — safe for high-throughput scenarios.
 /// </summary>
 public static class StringAnonymizationExtensions
 {
+    private static readonly BrazilianTaxIdAnonymizer TaxIdAnonymizer = new();
+    private static readonly EmailAnonymizer          EmailAnonymizer  = new();
+    private static readonly PhoneAnonymizer          PhoneAnonymizer  = new();
+    private static readonly NameAnonymizer           NameAnonymizer   = new();
+    private static readonly IpAnonymizer             IpAnonymizer     = new();
+
     /// <summary>Anonymizes a Brazilian CPF or CNPJ tax identifier.</summary>
     public static string AnonymizeTaxId(this string value) =>
-        new BrazilianTaxIdAnonymizer().Anonymize(value);
+        TaxIdAnonymizer.Anonymize(value);
 
     /// <summary>Anonymizes an e-mail address, preserving the domain.</summary>
     public static string AnonymizeEmail(this string value) =>
-        new EmailAnonymizer().Anonymize(value);
+        EmailAnonymizer.Anonymize(value);
 
     /// <summary>Anonymizes a phone number, preserving the last two digits.</summary>
     public static string AnonymizePhone(this string value) =>
-        new PhoneAnonymizer().Anonymize(value);
+        PhoneAnonymizer.Anonymize(value);
 
     /// <summary>Anonymizes a personal name, keeping the first letter of each word.</summary>
     public static string AnonymizeName(this string value) =>
-        new NameAnonymizer().Anonymize(value);
+        NameAnonymizer.Anonymize(value);
 
     /// <summary>Anonymizes an IP address by zeroing the host portion.</summary>
     public static string AnonymizeIp(this string value) =>
-        new IpAnonymizer().Anonymize(value);
+        IpAnonymizer.Anonymize(value);
 
     /// <summary>
     /// Pseudonymizes a value using a token backed by the provided <see cref="ITokenStore"/>.

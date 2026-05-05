@@ -10,28 +10,37 @@ namespace LGPD.NET.Anonymization.Stores;
 /// </summary>
 public sealed class InMemoryTokenStore : ITokenStore
 {
-    private readonly ConcurrentDictionary<string, string> _valueToToken = new();
-    private readonly ConcurrentDictionary<string, string> _tokenToValue = new();
+    // Single lock ensures both dictionaries stay in sync under concurrent access.
+    private readonly object _lock = new();
+    private readonly Dictionary<string, string> _valueToToken = new();
+    private readonly Dictionary<string, string> _tokenToValue = new();
 
     /// <inheritdoc />
     public Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
     {
-        var token = _valueToToken.GetOrAdd(value, v =>
+        lock (_lock)
         {
-            var newToken = Guid.NewGuid().ToString();
-            _tokenToValue[newToken] = v;
-            return newToken;
-        });
+            if (_valueToToken.TryGetValue(value, out var existing))
+            {
+                return Task.FromResult(existing);
+            }
 
-        return Task.FromResult(token);
+            var newToken = Guid.NewGuid().ToString();
+            _valueToToken[value]    = newToken;
+            _tokenToValue[newToken] = value;
+            return Task.FromResult(newToken);
+        }
     }
 
     /// <inheritdoc />
     public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
     {
-        if (_tokenToValue.TryGetValue(token, out var value))
+        lock (_lock)
         {
-            return Task.FromResult(value);
+            if (_tokenToValue.TryGetValue(token, out var value))
+            {
+                return Task.FromResult(value);
+            }
         }
 
         throw new KeyNotFoundException($"Token '{token}' was not found. The store may have been restarted or the token was never created in this instance.");

@@ -96,4 +96,24 @@ public sealed class TokenPseudonymizerTests
 
         act.Should().Throw<KeyNotFoundException>();
     }
+
+    [Fact]
+    public async Task InMemoryTokenStore_ConcurrentAccess_BidirectionalMappingIsConsistent()
+    {
+        // Verifies that parallel calls never produce a token that cannot be reversed —
+        // the previous ConcurrentDictionary implementation had a race between the two dictionaries.
+        var store = new InMemoryTokenStore();
+        const int threads = 50;
+        const string value = "shared-value";
+
+        var tasks  = Enumerable.Range(0, threads).Select(_ => store.GetOrCreateTokenAsync(value));
+        var tokens = await Task.WhenAll(tasks);
+
+        // All concurrent calls must return the same stable token.
+        tokens.Should().OnlyContain(t => t == tokens[0]);
+
+        // The token must be reversible — both dictionaries must be in sync.
+        var resolved = await store.ResolveTokenAsync(tokens[0]);
+        resolved.Should().Be(value);
+    }
 }

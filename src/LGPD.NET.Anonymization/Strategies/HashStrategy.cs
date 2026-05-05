@@ -15,10 +15,19 @@ public sealed class HashStrategy : IMaskStrategy
     public HashStrategy() { }
 
     /// <summary>Initializes a new instance with a fixed salt to prevent rainbow-table attacks.</summary>
-    /// <param name="salt">Salt prepended to the value before hashing.</param>
+    /// <param name="salt">
+    /// Salt prepended to the value before hashing. Must be at least 16 characters
+    /// to provide adequate entropy against rainbow-table attacks.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="salt"/> is null, whitespace, or shorter than 16 characters.</exception>
     public HashStrategy(string salt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(salt);
+        if (salt.Length < 16)
+        {
+            throw new ArgumentException("Salt must be at least 16 characters to provide adequate entropy.", nameof(salt));
+        }
+
         _salt = salt;
     }
 

@@ -20,6 +20,9 @@ public sealed class EmailAnonymizerTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("notanemail")]
+    [InlineData("user@evil@example.com")]
+    [InlineData("@nodomain")]
+    [InlineData("noatsign")]
     public void CanAnonymize_InvalidEmails_ReturnsFalse(string value)
     {
         _sut.CanAnonymize(value).Should().BeFalse();
@@ -55,5 +58,14 @@ public sealed class EmailAnonymizerTests
         var result = _sut.Anonymize("notanemail");
 
         result.Should().Be("notanemail");
+    }
+
+    [Fact]
+    public void Anonymize_MultipleAtSigns_ReturnsOriginal()
+    {
+        // Multiple @ makes it an invalid email — CanAnonymize returns false, value returned as-is.
+        var result = _sut.Anonymize("user@evil@example.com");
+
+        result.Should().Be("user@evil@example.com");
     }
 }

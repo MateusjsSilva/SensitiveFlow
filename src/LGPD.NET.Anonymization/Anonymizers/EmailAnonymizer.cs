@@ -9,11 +9,21 @@ namespace LGPD.NET.Anonymization.Anonymizers;
 /// </summary>
 public sealed class EmailAnonymizer : IAnonymizer
 {
-    /// <inheritdoc />
-    public bool CanAnonymize(string value) =>
-        !string.IsNullOrWhiteSpace(value) && value.Contains('@');
+    // Requires exactly one @, non-empty local part, and a domain with at least one dot.
+    private static readonly System.Text.RegularExpressions.Regex ValidEmail =
+        new(@"^[^@]+@[^@]+\.[^@]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="value"/> is a well-formed e-mail
+    /// with exactly one <c>@</c> and a non-empty domain containing a dot.
+    /// </summary>
+    public bool CanAnonymize(string value) =>
+        !string.IsNullOrWhiteSpace(value) && ValidEmail.IsMatch(value);
+
+    /// <summary>
+    /// Anonymizes the local part of <paramref name="value"/>, keeping only the first character.
+    /// Returns the original string unchanged when <see cref="CanAnonymize"/> returns <see langword="false"/>.
+    /// </summary>
     public string Anonymize(string value)
     {
         if (!CanAnonymize(value))
