@@ -1,6 +1,7 @@
 using System.Reflection;
 using LGPD.NET.Anonymization.Anonymizers;
 using LGPD.NET.Anonymization.Extensions;
+using LGPD.NET.Anonymization.Masking;
 using LGPD.NET.Anonymization.Pseudonymizers;
 using LGPD.NET.Anonymization.Stores;
 using LGPD.NET.Anonymization.Strategies;
@@ -257,12 +258,13 @@ static void DemoExceptions()
 
 static void DemoAnonymization()
 {
-    // Anonymization is IRREVERSIBLE — the result no longer identifies anyone.
-    // After anonymization, Art. 12 removes the data from LGPD scope entirely.
+    // ANONYMIZATION (Art. 12) — irreversible, result is no longer personal data.
+    // Only BrazilianTaxIdAnonymizer qualifies: replaces all digits, no structure remains.
     //
-    // NOTE: IP addresses are NOT anonymizable by truncation — they remain personal data
-    // regardless of how many octets are zeroed. IP addresses must be pseudonymized
-    // (see DemoAuditAsync) or not stored at all.
+    // MASKING — reduces accidental exposure in UIs/logs, but the result REMAINS personal data.
+    // Email, phone, and name masking keep enough structure to allow re-identification.
+    //
+    // IP addresses cannot be anonymized by truncation — see DemoAuditAsync for correct treatment.
 
     var customer = new Customer
     {
@@ -278,17 +280,17 @@ static void DemoAnonymization()
     Console.WriteLine($"    Email : {customer.Email}");
     Console.WriteLine($"    Phone : {customer.Phone}");
 
-    Console.WriteLine("\n  Anonymized (extension methods):");
-    Console.WriteLine($"    Name  : {customer.Name.AnonymizeName()}");
+    Console.WriteLine("\n  Anonymized — Art. 12 compliant (data leaves LGPD scope):");
     Console.WriteLine($"    TaxId : {customer.TaxId.AnonymizeTaxId()}");
-    Console.WriteLine($"    Email : {customer.Email.AnonymizeEmail()}");
-    Console.WriteLine($"    Phone : {customer.Phone.AnonymizePhone()}");
 
-    // For bulk processing, instantiate and reuse directly — anonymizers are stateless and thread-safe.
-    Console.WriteLine("\n  Anonymized (direct instances — preferred for bulk):");
-    var nameAnon = new NameAnonymizer();
-    var taxAnon  = new BrazilianTaxIdAnonymizer();
-    Console.WriteLine($"    Name  : {nameAnon.Anonymize(customer.Name)}");
+    Console.WriteLine("\n  Masked — risk reduction only (data REMAINS personal):");
+    Console.WriteLine($"    Name  : {customer.Name.MaskName()}");
+    Console.WriteLine($"    Email : {customer.Email.MaskEmail()}");
+    Console.WriteLine($"    Phone : {customer.Phone.MaskPhone()}");
+
+    // For bulk processing, instantiate and reuse directly — classes are stateless and thread-safe.
+    Console.WriteLine("\n  Direct instance (preferred for bulk):");
+    var taxAnon = new BrazilianTaxIdAnonymizer();
     Console.WriteLine($"    TaxId : {taxAnon.Anonymize(customer.TaxId)}");
 }
 
