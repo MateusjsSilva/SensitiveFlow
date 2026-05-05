@@ -8,6 +8,7 @@ public sealed record IncidentRecord
     public DateTimeOffset DetectedAt { get; init; } = DateTimeOffset.UtcNow;
     public IncidentNature Nature { get; init; } = IncidentNature.Other;
     public IncidentSeverity Severity { get; init; } = IncidentSeverity.Medium;
+    public RiskLevel RiskLevel { get; init; } = RiskLevel.Medium;
     public IncidentStatus Status { get; init; } = IncidentStatus.Detected;
     public string Summary { get; init; } = string.Empty;
     public IReadOnlyList<DataCategory> AffectedData { get; init; } = [];

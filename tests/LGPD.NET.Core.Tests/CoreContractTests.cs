@@ -86,6 +86,7 @@ public sealed class CoreContractTests
             Id = "INC-001",
             Nature = IncidentNature.UnauthorizedAccess,
             Severity = IncidentSeverity.High,
+            RiskLevel = RiskLevel.High,
             Status = IncidentStatus.Notified,
             Summary = "Unauthorized access to customer records.",
             AffectedData = [DataCategory.Identification, DataCategory.Financial],
@@ -95,6 +96,7 @@ public sealed class CoreContractTests
         };
 
         record.Nature.Should().Be(IncidentNature.UnauthorizedAccess);
+        record.RiskLevel.Should().Be(RiskLevel.High);
         record.AffectedData.Should().ContainInOrder(DataCategory.Identification, DataCategory.Financial);
         record.EstimatedAffectedDataSubjects.Should().Be(1500);
         record.RemediationAction.Should().Be("Access revoked and credentials rotated.");
@@ -168,6 +170,7 @@ public sealed class CoreContractTests
         {
             Id = "dsr-1",
             DataSubjectId = "user-123",
+            DataSubjectKind = DataSubjectKind.Adolescent,
             Type = DataSubjectRequestType.Access,
             Status = DataSubjectRequestStatus.InProgress,
             RequestedAt = requestedAt,
@@ -178,6 +181,7 @@ public sealed class CoreContractTests
 
         request.Id.Should().Be("dsr-1");
         request.DataSubjectId.Should().Be("user-123");
+        request.DataSubjectKind.Should().Be(DataSubjectKind.Adolescent);
         request.Type.Should().Be(DataSubjectRequestType.Access);
         request.Status.Should().Be(DataSubjectRequestStatus.InProgress);
         request.RequestedAt.Should().Be(requestedAt);
@@ -202,9 +206,16 @@ public sealed class CoreContractTests
         {
             Id = "operation-1",
             Entity = "Customer",
+            AgentRole = ProcessingAgentRole.Controller,
             Fields = ["Email", "Phone"],
             Purpose = ProcessingPurpose.ContractCommunication,
             LegalBasis = LegalBasis.ContractPerformance,
+            Principles =
+            [
+                ProcessingPrinciple.Purpose,
+                ProcessingPrinciple.Necessity,
+                ProcessingPrinciple.Accountability
+            ],
             RetentionYears = 5,
             Sharing = [sharing],
             CreatedAt = createdAt,
@@ -213,9 +224,14 @@ public sealed class CoreContractTests
 
         operation.Id.Should().Be("operation-1");
         operation.Entity.Should().Be("Customer");
+        operation.AgentRole.Should().Be(ProcessingAgentRole.Controller);
         operation.Fields.Should().ContainInOrder("Email", "Phone");
         operation.Purpose.Should().Be(ProcessingPurpose.ContractCommunication);
         operation.LegalBasis.Should().Be(LegalBasis.ContractPerformance);
+        operation.Principles.Should().ContainInOrder(
+            ProcessingPrinciple.Purpose,
+            ProcessingPrinciple.Necessity,
+            ProcessingPrinciple.Accountability);
         operation.RetentionYears.Should().Be(5);
         operation.Sharing.Should().ContainSingle().Which.Should().Be(sharing);
         operation.CreatedAt.Should().Be(createdAt);
@@ -277,5 +293,39 @@ public sealed class CoreContractTests
         await consentStore.Received(1).ListByDataSubjectAsync("user-123", cancellationToken);
         await incidentStore.Received(1).QueryAsync(IncidentStatus.Assessed, cancellationToken: cancellationToken);
         await inventory.Received(1).ListAsync(cancellationToken);
+    }
+
+    [Fact]
+    public void CrossCuttingLgpdEnums_CoverSharedLegalVocabulary()
+    {
+        Enum.GetNames<ProcessingAgentRole>().Should().Contain(
+            nameof(ProcessingAgentRole.Controller),
+            nameof(ProcessingAgentRole.Processor),
+            nameof(ProcessingAgentRole.JointController),
+            nameof(ProcessingAgentRole.SubProcessor),
+            nameof(ProcessingAgentRole.Dpo));
+
+        Enum.GetNames<DataSubjectKind>().Should().Contain(
+            nameof(DataSubjectKind.Adult),
+            nameof(DataSubjectKind.Child),
+            nameof(DataSubjectKind.Adolescent));
+
+        Enum.GetNames<ProcessingPrinciple>().Should().Contain(
+            nameof(ProcessingPrinciple.Purpose),
+            nameof(ProcessingPrinciple.Adequacy),
+            nameof(ProcessingPrinciple.Necessity),
+            nameof(ProcessingPrinciple.FreeAccess),
+            nameof(ProcessingPrinciple.DataQuality),
+            nameof(ProcessingPrinciple.Transparency),
+            nameof(ProcessingPrinciple.Security),
+            nameof(ProcessingPrinciple.Prevention),
+            nameof(ProcessingPrinciple.NonDiscrimination),
+            nameof(ProcessingPrinciple.Accountability));
+
+        Enum.GetNames<RiskLevel>().Should().Contain(
+            nameof(RiskLevel.Low),
+            nameof(RiskLevel.Medium),
+            nameof(RiskLevel.High),
+            nameof(RiskLevel.Critical));
     }
 }

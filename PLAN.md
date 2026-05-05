@@ -107,7 +107,11 @@ lgpd-dotnet/
 │   │   │   ├── ProcessingPurpose.cs
 │   │   │   ├── LegalBasis.cs
 │   │   │   ├── SensitiveLegalBasis.cs
+│   │   │   ├── ProcessingAgentRole.cs
+│   │   │   ├── ProcessingPrinciple.cs
+│   │   │   ├── DataSubjectKind.cs
 │   │   │   ├── AnonymizationType.cs
+│   │   │   ├── RiskLevel.cs
 │   │   │   ├── TransferCountry.cs
 │   │   │   ├── SafeguardMechanism.cs
 │   │   │   ├── RetentionPolicy.cs
@@ -395,7 +399,8 @@ lgpd-dotnet/
 - Attributes `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
 - Enums with the 10 legal bases of Art. 7 and bases for sensitive data in Art. 11
 - Enum `AnonymizationType` distinguishing anonymization (irreversible, outside LGPD scope) from pseudonymization (reversible, still personal data)
-- Typed lifecycle enums for audit, data subject requests, retention, and incidents
+- Cross-cutting LGPD vocabulary: processing agent roles, data subject kinds, Art. 6 processing principles, and shared risk levels
+- Typed lifecycle enums for audit, data subject requests, retention, transfers, and incidents
 - Store interfaces for consent, audit, processing inventory, and incidents
 - Base records for consent, audit, data subject requests, processing operations, data sharing, and incidents
 - Domain exceptions with contextual properties
@@ -716,7 +721,7 @@ GET /.well-known/lgpd
 
 #### Week 3 - Core package
 - [x] Attributes: `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
-- [x] Enums with the 10 legal bases (Art. 7), bases for sensitive data (Art. 11), `AnonymizationType`, audit operations, data subject request status, retention, transfer safeguards, and incident lifecycle
+- [x] Enums with the 10 legal bases (Art. 7), bases for sensitive data (Art. 11), `AnonymizationType`, processing agent roles, data subject kinds, Art. 6 processing principles, risk levels, audit operations, data subject request status, retention, transfer safeguards, and incident lifecycle
 - [x] All base interfaces and models for consent, audit, data subject requests, processing inventory, data sharing, and incidents
 - [x] Typed exceptions with context properties
 - [x] 100% line coverage in Core tests for `net8.0` and `net10.0`
