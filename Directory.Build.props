@@ -14,7 +14,7 @@
     <PackageProjectUrl>https://github.com/lgpd-dotnet/lgpd-dotnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/lgpd-dotnet/lgpd-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>lgpd;anpd;privacidade;dados-pessoais;dotnet;csharp;compliance</PackageTags>
+    <PackageTags>lgpd;anpd;privacy;personal-data;dotnet;csharp;compliance</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

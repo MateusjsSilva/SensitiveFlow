@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Contratos publicos da biblioteca LGPD.NET: atributos, enums, interfaces e excecoes. Zero dependencias externas.</PackageDescription>
+    <PackageDescription>Public contracts for LGPD.NET: attributes, enums, interfaces, and exceptions. Zero external dependencies.</PackageDescription>
   </PropertyGroup>
 
 </Project>
