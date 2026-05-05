@@ -7,6 +7,13 @@ namespace LGPD.NET.Core.Models;
 /// </summary>
 public sealed record AuditRecord
 {
+    /// <summary>
+    /// Unique identifier of this audit record.
+    /// Used to correlate events across systems and to implement idempotent appends.
+    /// Defaults to a new <see cref="Guid"/> when not provided.
+    /// </summary>
+    public string Id { get; init; } = Guid.NewGuid().ToString();
+
     /// <summary>Identifier of the data subject whose data was involved.</summary>
     public required string DataSubjectId { get; init; }
 

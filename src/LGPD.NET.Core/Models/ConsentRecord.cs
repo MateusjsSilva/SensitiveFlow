@@ -16,8 +16,33 @@ public sealed record ConsentRecord
     /// <summary>Processing purpose covered by the consent.</summary>
     public required ProcessingPurpose Purpose { get; init; }
 
-    /// <summary>Legal basis associated with the record.</summary>
-    public LegalBasis LegalBasis { get; init; } = LegalBasis.Consent;
+    /// <summary>
+    /// Legal basis associated with the record.
+    /// Must always be <see cref="LegalBasis.Consent"/> — a <c>ConsentRecord</c> represents
+    /// an act of consent by the data subject (Art. 7, I and Art. 8 of the LGPD).
+    /// Other legal bases do not produce a consent record; use <c>ProcessingOperationRecord</c> instead.
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Thrown on construction when the value is not <see cref="LegalBasis.Consent"/>.
+    /// </exception>
+    public LegalBasis LegalBasis
+    {
+        get => _legalBasis;
+        init
+        {
+            if (value != LegalBasis.Consent)
+            {
+                throw new ArgumentException(
+                    $"ConsentRecord.LegalBasis must be LegalBasis.Consent. " +
+                    $"To record processing under '{value}', use ProcessingOperationRecord instead.",
+                    nameof(LegalBasis));
+            }
+
+            _legalBasis = value;
+        }
+    }
+
+    private readonly LegalBasis _legalBasis = LegalBasis.Consent;
 
     /// <summary>Timestamp when consent was collected.</summary>
     public DateTimeOffset CollectedAt { get; init; } = DateTimeOffset.UtcNow;

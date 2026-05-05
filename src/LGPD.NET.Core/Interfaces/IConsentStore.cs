@@ -26,9 +26,17 @@ public interface IConsentStore
     /// <returns>The matching consent record, or <see langword="null" />.</returns>
     Task<ConsentRecord?> GetAsync(string dataSubjectId, ProcessingPurpose purpose, CancellationToken cancellationToken = default);
 
-    /// <summary>Revokes a consent record by data subject and purpose.</summary>
+    /// <summary>
+    /// Revokes the active consent for a data subject and purpose (Art. 8, §5 of the LGPD).
+    /// </summary>
     /// <param name="dataSubjectId">Data subject identifier.</param>
     /// <param name="purpose">Processing purpose.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task RevokeAsync(string dataSubjectId, ProcessingPurpose purpose, CancellationToken cancellationToken = default);
+    /// <returns>
+    /// <see langword="true"/> when an active consent record was found and revoked;
+    /// <see langword="false"/> when no matching active record existed.
+    /// Callers must treat <see langword="false"/> as a compliance event — a revocation
+    /// request that cannot be confirmed may require manual follow-up.
+    /// </returns>
+    Task<bool> RevokeAsync(string dataSubjectId, ProcessingPurpose purpose, CancellationToken cancellationToken = default);
 }

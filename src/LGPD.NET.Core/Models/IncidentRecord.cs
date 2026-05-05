@@ -37,6 +37,19 @@ public sealed record IncidentRecord
     /// <summary>Remediation action taken or planned.</summary>
     public string? RemediationAction { get; init; }
 
-    /// <summary>Timestamp when an ANPD notification was generated, when applicable.</summary>
+    /// <summary>
+    /// Timestamp when the ANPD notification document was generated.
+    /// This records when the notification was prepared, not when it was sent.
+    /// </summary>
     public DateTimeOffset? AnpdNotificationGeneratedAt { get; init; }
+
+    /// <summary>
+    /// Timestamp when the ANPD notification was effectively sent and confirmed.
+    /// <para>
+    /// Art. 48 of the LGPD requires notification to the ANPD within a reasonable period.
+    /// This field must be set when delivery is confirmed — it is the field that demonstrates
+    /// compliance with the notification deadline, not <see cref="AnpdNotificationGeneratedAt"/>.
+    /// </para>
+    /// </summary>
+    public DateTimeOffset? AnpdNotifiedAt { get; init; }
 }

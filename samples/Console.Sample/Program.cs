@@ -377,7 +377,7 @@ public class Customer
     public string Name { get; set; } = string.Empty;
 
     [SensitiveData(
-        Category             = DataCategory.Financial,
+        Category             = SensitiveDataCategory.Other,
         SensitiveLegalBasis  = SensitiveLegalBasis.ExplicitConsent,
         Purpose              = ProcessingPurpose.ServiceProvision)]
     [RetentionData(Years = 5, Policy = RetentionPolicy.AnonymizeOnExpiration)]

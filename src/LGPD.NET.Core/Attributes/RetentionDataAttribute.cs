@@ -17,6 +17,17 @@ public sealed class RetentionDataAttribute : Attribute
     /// <summary>Action executed when the period expires.</summary>
     public RetentionPolicy Policy { get; set; } = RetentionPolicy.AnonymizeOnExpiration;
 
-    /// <summary>Approximate retention period represented as a time span.</summary>
-    public TimeSpan Period => TimeSpan.FromDays((Years * 365) + (Months * 30));
+    /// <summary>
+    /// Calculates the expiration date from a given reference point using calendar-accurate
+    /// <see cref="DateTimeOffset.AddYears"/> and <see cref="DateTimeOffset.AddMonths"/>.
+    /// </summary>
+    /// <param name="from">The reference date from which the retention period starts (e.g. the creation date of the record).</param>
+    /// <returns>The date on which the retention period expires.</returns>
+    /// <remarks>
+    /// Prefer this method over a fixed <c>TimeSpan</c>, which cannot account for leap years
+    /// or months of varying length — an error that can cause premature deletion or retention
+    /// beyond the legally declared period.
+    /// </remarks>
+    public DateTimeOffset GetExpirationDate(DateTimeOffset from) =>
+        from.AddYears(Years).AddMonths(Months);
 }

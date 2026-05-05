@@ -31,6 +31,17 @@ public sealed record DataSubjectRequest
     /// <summary>Timestamp when the request was completed, when applicable.</summary>
     public DateTimeOffset? CompletedAt { get; init; }
 
+    /// <summary>
+    /// Reason why the request was rejected, required when <see cref="Status"/> is
+    /// <see cref="DataSubjectRequestStatus.Rejected"/>.
+    /// <para>
+    /// Art. 18, §4 of the LGPD requires the controller to communicate the factual and
+    /// legal grounds for not fulfilling a request. Leaving this field empty on a rejected
+    /// request is a compliance gap.
+    /// </para>
+    /// </summary>
+    public string? RejectionReason { get; init; }
+
     /// <summary>Additional notes or handling context.</summary>
     public string? Notes { get; init; }
 }

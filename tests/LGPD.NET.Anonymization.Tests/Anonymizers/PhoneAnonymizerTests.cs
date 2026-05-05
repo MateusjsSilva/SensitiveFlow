@@ -19,6 +19,8 @@ public sealed class PhoneAnonymizerTests
     [Theory]
     [InlineData("")]
     [InlineData("abc")]
+    [InlineData("       ")]   // 7 spaces — no digits, must be rejected
+    [InlineData("(((((((")]   // 7 parens — no digits, must be rejected
     public void CanAnonymize_InvalidPhones_ReturnsFalse(string value)
     {
         _sut.CanAnonymize(value).Should().BeFalse();

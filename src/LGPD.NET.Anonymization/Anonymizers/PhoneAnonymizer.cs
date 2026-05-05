@@ -11,9 +11,15 @@ namespace LGPD.NET.Anonymization.Anonymizers;
 public sealed class PhoneAnonymizer : IAnonymizer
 {
     private static readonly Regex DigitsOnly = new(@"\d", RegexOptions.Compiled);
-    private static readonly Regex ValidPhone = new(@"[\d\s\(\)\-\+]{7,20}", RegexOptions.Compiled);
 
-    /// <inheritdoc />
+    // Requires at least 7 total characters from the allowed set AND at least one digit.
+    private static readonly Regex ValidPhone = new(@"^(?=.*\d)[\d\s\(\)\-\+]{7,20}$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="value"/> looks like a phone number:
+    /// 7–20 characters composed of digits, spaces, parentheses, hyphens, or plus signs,
+    /// with at least one digit present.
+    /// </summary>
     public bool CanAnonymize(string value) =>
         !string.IsNullOrWhiteSpace(value) && ValidPhone.IsMatch(value);
 
