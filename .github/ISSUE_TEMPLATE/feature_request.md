@@ -1,27 +1,27 @@
----
+﻿---
 name: Feature request
-about: Sugira uma nova funcionalidade
+about: Suggest a new feature
 title: '[FEAT] '
 labels: enhancement
 assignees: ''
 ---
 
-## Problema
+## Problem
 
-Descreva o problema que esta funcionalidade resolveria.
+Describe the problem this feature would solve.
 
-## Solução proposta
+## Proposed solution
 
-Descreva a solução desejada. Se possível, inclua um exemplo de API:
+Describe the desired solution. If possible, include an API example:
 
 ```csharp
-// Como a API ideal se pareceria
+// What the ideal API would look like
 ```
 
-## Artigo da LGPD relacionado (se aplicável)
+## Related regulatory/privacy requirement (if applicable)
 
-Ex: Art. 18, § 2º — direito à portabilidade.
+Example: data portability requirement under an applicable regulation.
 
-## Alternativas consideradas
+## Alternatives considered
 
-Descreva alternativas que você considerou.
+Describe any alternatives you considered.

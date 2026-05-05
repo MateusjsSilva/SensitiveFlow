@@ -1,21 +1,21 @@
-## Descrição
+﻿## Description
 
-Descreva as mudanças e a motivação por trás delas.
+Describe the change and the motivation behind it.
 
-## Tipo de mudança
+## Type of change
 
 - [ ] Bug fix
-- [ ] Nova funcionalidade
+- [ ] New feature
 - [ ] Breaking change
-- [ ] Documentação
-- [ ] Refatoração
+- [ ] Documentation
+- [ ] Refactor
 
-## Artigo da LGPD relacionado (se aplicável)
+## Related regulatory/privacy requirement (if applicable)
 
 ## Checklist
 
-- [ ] Testes unitários adicionados / atualizados
-- [ ] Cobertura >= 90% mantida
-- [ ] Documentação XML atualizada
-- [ ] `CHANGELOG.md` atualizado
-- [ ] Sem breaking changes não intencionais
+- [ ] Unit tests added or updated
+- [ ] Coverage >= 90% maintained
+- [ ] XML documentation updated
+- [ ] `CHANGELOG.md` updated
+- [ ] No unintended breaking changes

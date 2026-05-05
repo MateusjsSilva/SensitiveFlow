@@ -50,7 +50,7 @@ public sealed class CoreContractTests
     }
 
     [Fact]
-    public void SensitiveDataCategory_ContainsAllLgpdArt5IiCategories()
+    public void SensitiveDataCategory_ContainsAllExpectedCategories()
     {
         var names = Enum.GetNames<SensitiveDataCategory>();
         names.Should().Contain([
@@ -138,16 +138,16 @@ public sealed class CoreContractTests
             AffectedData                  = [DataCategory.Identification, DataCategory.Financial],
             EstimatedAffectedDataSubjects = 1500,
             RemediationAction             = "Access revoked and credentials rotated.",
-            AnpdNotificationGeneratedAt   = generatedAt,
-            AnpdNotifiedAt                = notifiedAt,
+            AuthorityNotificationGeneratedAt   = generatedAt,
+            AuthorityNotifiedAt                = notifiedAt,
         };
 
         record.Nature.Should().Be(IncidentNature.UnauthorizedAccess);
         record.RiskLevel.Should().Be(RiskLevel.High);
         record.AffectedData.Should().ContainInOrder(DataCategory.Identification, DataCategory.Financial);
         record.EstimatedAffectedDataSubjects.Should().Be(1500);
-        record.AnpdNotificationGeneratedAt.Should().Be(generatedAt);
-        record.AnpdNotifiedAt.Should().Be(notifiedAt);
+        record.AuthorityNotificationGeneratedAt.Should().Be(generatedAt);
+        record.AuthorityNotifiedAt.Should().Be(notifiedAt);
     }
 
     [Fact]
@@ -241,10 +241,10 @@ public sealed class CoreContractTests
             DataSubjectId   = "user-123",
             Type            = DataSubjectRequestType.Deletion,
             Status          = DataSubjectRequestStatus.Rejected,
-            RejectionReason = "Data is required for ongoing legal proceeding (Art. 16, I).",
+            RejectionReason = "Data is required for an ongoing legal proceeding.",
         };
 
-        request.RejectionReason.Should().Contain("Art. 16");
+        request.RejectionReason.Should().Contain("ongoing legal proceeding");
         request.Status.Should().Be(DataSubjectRequestStatus.Rejected);
     }
 
@@ -361,7 +361,7 @@ public sealed class CoreContractTests
     }
 
     [Fact]
-    public void CrossCuttingLgpdEnums_CoverSharedLegalVocabulary()
+    public void CrossCuttingPrivacyEnums_CoverSharedLegalVocabulary()
     {
         Enum.GetNames<ProcessingAgentRole>().Should().Contain(
             nameof(ProcessingAgentRole.Controller),
@@ -380,3 +380,4 @@ public sealed class CoreContractTests
             nameof(RiskLevel.Critical));
     }
 }
+
