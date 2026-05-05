@@ -276,6 +276,17 @@ public sealed class CoreContractTests
     }
 
     [Fact]
+    public void InternationalTransferNotAllowedException_UsesDefaultMessageWhenReasonIsNull()
+    {
+        var transfer = new InternationalTransferNotAllowedException(TransferCountry.UnitedStates);
+
+        transfer.Country.Should().Be(TransferCountry.UnitedStates);
+        transfer.Mechanism.Should().BeNull();
+        transfer.Reason.Should().BeNull();
+        transfer.Message.Should().Contain("safeguard mechanism missing or invalid");
+    }
+
+    [Fact]
     public async Task StoreContracts_ExposeQueriesNeededByModules()
     {
         var cancellationToken = new CancellationTokenSource().Token;
