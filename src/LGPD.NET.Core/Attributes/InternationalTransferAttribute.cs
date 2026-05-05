@@ -9,7 +9,7 @@ namespace LGPD.NET.Core.Attributes;
 public sealed class InternationalTransferAttribute : Attribute
 {
     public TransferCountry Country { get; set; } = TransferCountry.Other;
-    public SafeguardMechanism Safeguard { get; set; } = SafeguardMechanism.StandardContractualClauses;
+    public SafeguardMechanism Mechanism { get; set; } = SafeguardMechanism.ContractualClauses;
 
     /// <summary>Recipient name (company or external service).</summary>
     public string? Recipient { get; set; }

@@ -97,45 +97,51 @@ lgpd-dotnet/
 │   │
 │   ├── LGPD.NET.Core/
 │   │   ├── Attributes/
-│   │   │   ├── DadoPessoalAttribute.cs
-│   │   │   ├── DadoSensivelAttribute.cs
-│   │   │   ├── ExcluirDadosAttribute.cs
-│   │   │   ├── RetencaoDadosAttribute.cs              # NEW - retention period
-│   │   │   └── TransferenciaInternacionalAttribute.cs # NEW - Art. 33-36
+│   │   │   ├── PersonalDataAttribute.cs
+│   │   │   ├── SensitiveDataAttribute.cs
+│   │   │   ├── EraseDataAttribute.cs
+│   │   │   ├── RetentionDataAttribute.cs
+│   │   │   └── InternationalTransferAttribute.cs
 │   │   ├── Enums/
-│   │   │   ├── CategoriaDado.cs
-│   │   │   ├── FinalidadeTratamento.cs
-│   │   │   ├── BaseJuridica.cs                        # Art. 7 - 10 legal bases
-│   │   │   ├── BaseJuridicaSensivel.cs                # Art. 11 - bases for sensitive data
-│   │   │   ├── TipoAnonimizacao.cs                    # Anonymization vs pseudonymization
-│   │   │   └── PaisTransferencia.cs                   # Countries with adequate protection (ANPD)
+│   │   │   ├── DataCategory.cs
+│   │   │   ├── ProcessingPurpose.cs
+│   │   │   ├── LegalBasis.cs
+│   │   │   ├── SensitiveLegalBasis.cs
+│   │   │   ├── AnonymizationType.cs
+│   │   │   ├── TransferCountry.cs
+│   │   │   ├── SafeguardMechanism.cs
+│   │   │   ├── RetentionPolicy.cs
+│   │   │   ├── DataSubjectRequestType.cs
+│   │   │   ├── IncidentSeverity.cs
+│   │   │   └── IncidentStatus.cs
 │   │   ├── Interfaces/
-│   │   │   ├── IConsentimentoStore.cs
-│   │   │   ├── IAuditoriaStore.cs
-│   │   │   ├── ITitularDados.cs
+│   │   │   ├── IConsentStore.cs
+│   │   │   ├── IAuditStore.cs
+│   │   │   ├── IDataSubject.cs
 │   │   │   ├── IAnonymizer.cs
-│   │   │   ├── IPseudonymizer.cs                      # NEW - reversible pseudonymization
-│   │   │   ├── IInventarioTratamento.cs               # NEW - Art. 37
-│   │   │   └── IIncidenteStore.cs                     # NEW - Art. 48
+│   │   │   ├── IPseudonymizer.cs
+│   │   │   ├── IProcessingInventory.cs
+│   │   │   └── IIncidentStore.cs
 │   │   ├── Models/
-│   │   │   ├── Consentimento.cs
-│   │   │   ├── RegistroAuditoria.cs
-│   │   │   └── SolicitacaoTitular.cs
+│   │   │   ├── ConsentRecord.cs
+│   │   │   ├── AuditRecord.cs
+│   │   │   ├── DataSubjectRequest.cs
+│   │   │   └── IncidentRecord.cs
 │   │   ├── Exceptions/
-│   │   │   ├── ConsentimentoNaoEncontradoException.cs
-│   │   │   ├── DadoNaoEncontradoException.cs
-│   │   │   ├── TransferenciaInternacionalNaoPermitidaException.cs  # NEW
-│   │   │   └── RetencaoVencidaException.cs            # NEW
+│   │   │   ├── ConsentNotFoundException.cs
+│   │   │   ├── DataNotFoundException.cs
+│   │   │   ├── InternationalTransferNotAllowedException.cs
+│   │   │   └── RetentionExpiredException.cs
 │   │   └── LGPD.NET.Core.csproj
 │   │
 │   ├── LGPD.NET.Anonymization/
-│   │   ├── Anonymizers/                               # Irreversible anonymization (out of LGPD scope)
-│   │   │   ├── CpfAnonymizer.cs
+│   │   ├── Anonymizers/
+│   │   │   ├── BrazilianTaxIdAnonymizer.cs
 │   │   │   ├── EmailAnonymizer.cs
-│   │   │   ├── TelefoneAnonymizer.cs
-│   │   │   ├── NomeAnonymizer.cs
+│   │   │   ├── PhoneAnonymizer.cs
+│   │   │   ├── NameAnonymizer.cs
 │   │   │   └── IpAnonymizer.cs
-│   │   ├── Pseudonymizers/                            # NEW - reversible (still personal data)
+│   │   ├── Pseudonymizers/
 │   │   │   ├── TokenPseudonymizer.cs
 │   │   │   └── HmacPseudonymizer.cs
 │   │   ├── Extensions/
@@ -143,119 +149,119 @@ lgpd-dotnet/
 │   │   ├── Strategies/
 │   │   │   ├── IMaskStrategy.cs
 │   │   │   ├── HashStrategy.cs
-│   │   │   └── RedacaoStrategy.cs
+│   │   │   └── RedactionStrategy.cs
 │   │   └── LGPD.NET.Anonymization.csproj
 │   │
-│   ├── LGPD.NET.LegalBasis/                           # NEW - Art. 7 and Art. 11
+│   ├── LGPD.NET.LegalBasis/
 │   │   ├── Services/
-│   │   │   ├── IBaseJuridicaService.cs
-│   │   │   └── BaseJuridicaService.cs
+│   │   │   ├── ILegalBasisService.cs
+│   │   │   └── LegalBasisService.cs
 │   │   ├── Models/
-│   │   │   ├── RegistroBaseJuridica.cs
-│   │   │   ├── LegitimidadeInteresse.cs               # Legitimate interest (Art. 7, X)
-│   │   │   └── ObrigacaoLegal.cs                      # Legal obligation (Art. 7, II)
+│   │   │   ├── LegalBasisRecord.cs
+│   │   │   ├── LegitimateInterest.cs
+│   │   │   └── LegalObligation.cs
 │   │   ├── Validators/
-│   │   │   ├── IBaseJuridicaValidator.cs
-│   │   │   └── BaseJuridicaValidator.cs
+│   │   │   ├── ILegalBasisValidator.cs
+│   │   │   └── LegalBasisValidator.cs
 │   │   ├── Stores/
-│   │   │   └── InMemoryBaseJuridicaStore.cs
+│   │   │   └── InMemoryLegalBasisStore.cs
 │   │   └── LGPD.NET.LegalBasis.csproj
 │   │
 │   ├── LGPD.NET.Consent/
 │   │   ├── Services/
-│   │   │   ├── IConsentimentoService.cs
-│   │   │   └── ConsentimentoService.cs
+│   │   │   ├── IConsentService.cs
+│   │   │   └── ConsentService.cs
 │   │   ├── Models/
-│   │   │   ├── RegistroConsentimento.cs
-│   │   │   ├── Finalidade.cs
-│   │   │   └── PoliticaPrivacidade.cs
+│   │   │   ├── ConsentRegistration.cs
+│   │   │   ├── Purpose.cs
+│   │   │   └── PrivacyPolicy.cs
 │   │   ├── Stores/
-│   │   │   └── InMemoryConsentimentoStore.cs
+│   │   │   └── InMemoryConsentStore.cs
 │   │   ├── Options/
-│   │   │   └── ConsentimentoOptions.cs
+│   │   │   └── ConsentOptions.cs
 │   │   └── LGPD.NET.Consent.csproj
 │   │
 │   ├── LGPD.NET.Audit/
 │   │   ├── Services/
-│   │   │   ├── IAuditoriaService.cs
-│   │   │   └── AuditoriaService.cs
+│   │   │   ├── IAuditService.cs
+│   │   │   └── AuditService.cs
 │   │   ├── Models/
-│   │   │   ├── EventoAuditoria.cs
-│   │   │   └── ContextoAcesso.cs
+│   │   │   ├── AuditEvent.cs
+│   │   │   └── AccessContext.cs
 │   │   ├── Stores/
-│   │   │   └── InMemoryAuditoriaStore.cs
+│   │   │   └── InMemoryAuditStore.cs
 │   │   ├── Options/
-│   │   │   └── AuditoriaOptions.cs
+│   │   │   └── AuditOptions.cs
 │   │   └── LGPD.NET.Audit.csproj
 │   │
 │   ├── LGPD.NET.DataSubject/
 │   │   ├── Services/
-│   │   │   ├── ITitularService.cs
-│   │   │   └── TitularService.cs
+│   │   │   ├── IDataSubjectService.cs
+│   │   │   └── DataSubjectService.cs
 │   │   ├── Handlers/
-│   │   │   ├── PortabilidadeHandler.cs
-│   │   │   ├── ExclusaoHandler.cs
-│   │   │   ├── RetificacaoHandler.cs
-│   │   │   └── OposicaoHandler.cs                    # NEW - Art. 18, IX
+│   │   │   ├── PortabilityHandler.cs
+│   │   │   ├── DeletionHandler.cs
+│   │   │   ├── CorrectionHandler.cs
+│   │   │   └── ObjectionHandler.cs
 │   │   ├── Models/
-│   │   │   ├── RelatorioPortabilidade.cs
-│   │   │   ├── SolicitacaoExclusao.cs
-│   │   │   └── RespostaInformacoes.cs                # NEW - Art. 18, I
+│   │   │   ├── PortabilityReport.cs
+│   │   │   ├── DeletionRequest.cs
+│   │   │   └── InformationResponse.cs
 │   │   └── LGPD.NET.DataSubject.csproj
 │   │
-│   ├── LGPD.NET.Retention/                           # NEW - Art. 15 and 16
+│   ├── LGPD.NET.Retention/
 │   │   ├── Services/
-│   │   │   ├── IRetencaoService.cs
-│   │   │   └── RetencaoService.cs
+│   │   │   ├── IRetentionService.cs
+│   │   │   └── RetentionService.cs
 │   │   ├── Policies/
-│   │   │   ├── IRetencaoPolicy.cs
-│   │   │   ├── PrazoFixoPolicy.cs
-│   │   │   └── FinalidadeAtingidaPolicy.cs
+│   │   │   ├── IRetentionPolicy.cs
+│   │   │   ├── FixedTermPolicy.cs
+│   │   │   └── PurposeAchievedPolicy.cs
 │   │   ├── Workers/
-│   │   │   └── RetencaoBackgroundService.cs          # IHostedService for purge
+│   │   │   └── RetentionBackgroundService.cs
 │   │   ├── Options/
-│   │   │   └── RetencaoOptions.cs
+│   │   │   └── RetentionOptions.cs
 │   │   └── LGPD.NET.Retention.csproj
 │   │
-│   ├── LGPD.NET.DataMap/                             # NEW - Art. 37
+│   ├── LGPD.NET.DataMap/
 │   │   ├── Services/
-│   │   │   ├── IInventarioService.cs
-│   │   │   └── InventarioService.cs
+│   │   │   ├── IDataMapService.cs
+│   │   │   └── DataMapService.cs
 │   │   ├── Models/
-│   │   │   ├── OperacaoTratamento.cs
-│   │   │   ├── CompartilhamentoDado.cs
-│   │   │   └── RelatorioInventario.cs
+│   │   │   ├── ProcessingOperation.cs
+│   │   │   ├── DataSharing.cs
+│   │   │   └── InventoryReport.cs
 │   │   ├── Builders/
-│   │   │   └── OperacaoTratamentoBuilder.cs
+│   │   │   └── ProcessingOperationBuilder.cs
 │   │   ├── Stores/
-│   │   │   └── InMemoryInventarioStore.cs
+│   │   │   └── InMemoryDataMapStore.cs
 │   │   └── LGPD.NET.DataMap.csproj
 │   │
-│   ├── LGPD.NET.Incident/                            # NEW - Art. 46-49
+│   ├── LGPD.NET.Incident/
 │   │   ├── Services/
-│   │   │   ├── IIncidenteService.cs
-│   │   │   └── IncidenteService.cs
+│   │   │   ├── IIncidentService.cs
+│   │   │   └── IncidentService.cs
 │   │   ├── Models/
-│   │   │   ├── IncidenteSeguranca.cs
-│   │   │   ├── TitularAfetado.cs
-│   │   │   └── NotificacaoAnpd.cs                    # Structure for Art. 48
+│   │   │   ├── SecurityIncident.cs
+│   │   │   ├── AffectedDataSubject.cs
+│   │   │   └── AnpdNotification.cs
 │   │   ├── Notifications/
-│   │   │   ├── INotificacaoIncidenteHandler.cs
-│   │   │   └── EmailNotificacaoHandler.cs
+│   │   │   ├── IIncidentNotificationHandler.cs
+│   │   │   └── EmailNotificationHandler.cs
 │   │   ├── Stores/
-│   │   │   └── InMemoryIncidenteStore.cs
+│   │   │   └── InMemoryIncidentStore.cs
 │   │   ├── Options/
-│   │   │   └── IncidenteOptions.cs
+│   │   │   └── IncidentOptions.cs
 │   │   └── LGPD.NET.Incident.csproj
 │   │
-│   ├── LGPD.NET.Ripd/                                # NEW - Art. 38
+│   ├── LGPD.NET.Ripd/
 │   │   ├── Services/
 │   │   │   ├── IRipdService.cs
 │   │   │   └── RipdService.cs
 │   │   ├── Models/
-│   │   │   ├── RelatorioImpacto.cs
-│   │   │   ├── RiscoIdentificado.cs
-│   │   │   └── MedidaMitigacao.cs
+│   │   │   ├── ImpactReport.cs
+│   │   │   ├── IdentifiedRisk.cs
+│   │   │   └── MitigationMeasure.cs
 │   │   ├── Builders/
 │   │   │   └── RipdBuilder.cs
 │   │   ├── Export/
@@ -266,9 +272,9 @@ lgpd-dotnet/
 │   ├── LGPD.NET.Logging/
 │   │   ├── Redactors/
 │   │   │   ├── IRedactor.cs
-│   │   │   ├── CpfRedactor.cs
+│   │   │   ├── BrazilianTaxIdRedactor.cs
 │   │   │   ├── EmailRedactor.cs
-│   │   │   ├── CartaoCreditoRedactor.cs              # NEW
+│   │   │   ├── CreditCardRedactor.cs
 │   │   │   └── CompositeRedactor.cs
 │   │   ├── Enrichers/
 │   │   │   └── LgpdLogEnricher.cs
@@ -278,13 +284,13 @@ lgpd-dotnet/
 │   │
 │   ├── LGPD.NET.AspNetCore/
 │   │   ├── Middleware/
-│   │   │   ├── ConsentimentoMiddleware.cs
-│   │   │   ├── AuditoriaMiddleware.cs
-│   │   │   └── TransferenciaInternacionalMiddleware.cs  # NEW
+│   │   │   ├── ConsentMiddleware.cs
+│   │   │   ├── AuditMiddleware.cs
+│   │   │   └── InternationalTransferMiddleware.cs
 │   │   ├── Filters/
-│   │   │   └── DadoPessoalActionFilter.cs
+│   │   │   └── PersonalDataActionFilter.cs
 │   │   ├── Endpoints/
-│   │   │   └── LgpdWellKnownEndpoints.cs             # NEW - GET /.well-known/lgpd (DPO)
+│   │   │   └── LgpdWellKnownEndpoints.cs
 │   │   ├── Extensions/
 │   │   │   └── ApplicationBuilderExtensions.cs
 │   │   ├── Options/
@@ -293,23 +299,23 @@ lgpd-dotnet/
 │   │
 │   ├── LGPD.NET.EFCore/
 │   │   ├── Interceptors/
-│   │   │   ├── AuditoriaInterceptor.cs
-│   │   │   ├── AnonymizacaoSaveInterceptor.cs
-│   │   │   └── RetencaoInterceptor.cs                # NEW
+│   │   │   ├── AuditInterceptor.cs
+│   │   │   ├── AnonymizationSaveInterceptor.cs
+│   │   │   └── RetentionInterceptor.cs
 │   │   ├── Extensions/
 │   │   │   └── DbContextOptionsBuilderExtensions.cs
 │   │   ├── Conventions/
-│   │   │   └── DadoPessoalModelConvention.cs
+│   │   │   └── PersonalDataModelConvention.cs
 │   │   └── LGPD.NET.EFCore.csproj
 │   │
 │   └── LGPD.NET.Analyzers/
 │       ├── Analyzers/
-│       │   ├── DadoPessoalSemAnonimizacaoAnalyzer.cs  # LGPD001
-│       │   ├── ConsentimentoNaoVerificadoAnalyzer.cs  # LGPD002
-│       │   ├── BaseJuridicaNaoDeclaradaAnalyzer.cs    # LGPD003 - NEW
-│       │   └── TransferenciaInternacionalNaoMarcadaAnalyzer.cs  # LGPD004 - NEW
+│       │   ├── PersonalDataWithoutAnonymizationAnalyzer.cs  # LGPD001
+│       │   ├── ConsentNotVerifiedAnalyzer.cs                # LGPD002
+│       │   ├── LegalBasisNotDeclaredAnalyzer.cs             # LGPD003
+│       │   └── InternationalTransferNotMarkedAnalyzer.cs    # LGPD004
 │       ├── CodeFixes/
-│       │   └── AdicionarAtributoCodeFix.cs
+│       │   └── AddAttributeCodeFix.cs
 │       └── LGPD.NET.Analyzers.csproj
 |
 ├── tests/
@@ -329,11 +335,11 @@ lgpd-dotnet/
 │   |
 │   ├── LGPD.NET.Integration.Tests/
 │   │   ├── AspNetCore/
-│   │   │   ├── ConsentimentoMiddlewareTests.cs
+│   │   │   ├── ConsentMiddlewareTests.cs
 │   │   │   └── WellKnownEndpointTests.cs
 │   │   ├── EFCore/
-│   │   │   ├── AuditoriaInterceptorTests.cs
-│   │   │   └── RetencaoInterceptorTests.cs
+│   │   │   ├── AuditInterceptorTests.cs
+│   │   │   └── RetentionInterceptorTests.cs
 │   │   └── LGPD.NET.Integration.Tests.csproj
 │   |
 │   └── LGPD.NET.Benchmarks/
@@ -342,30 +348,30 @@ lgpd-dotnet/
 │       └── LGPD.NET.Benchmarks.csproj
 |
 ├── samples/
-│   ├── WebApi.Sample/             # ASP.NET Core Web API with all modules
-│   ├── MinimalApi.Sample/         # Minimal API with consent and audit
-│   └── Console.Sample/            # Automatic retention and DataMap without ASP.NET
+│   ├── WebApi.Sample/
+│   ├── MinimalApi.Sample/
+│   └── Console.Sample/
 |
 ├── docs/
 │   ├── getting-started.md
-│   ├── atributos.md
-│   ├── bases-juridicas.md         # NEW
-│   ├── consentimento.md
-│   ├── auditoria.md
-│   ├── direitos-titular.md
-│   ├── retencao.md                # NEW
-│   ├── mapa-de-dados.md           # NEW
-│   ├── incidentes.md              # NEW
-│   ├── ripd.md                    # NEW
-│   ├── transferencia-internacional.md  # NEW
+│   ├── attributes.md
+│   ├── legal-bases.md
+│   ├── consent.md
+│   ├── audit.md
+│   ├── data-subject-rights.md
+│   ├── retention.md
+│   ├── data-map.md
+│   ├── incidents.md
+│   ├── ripd.md
+│   ├── international-transfer.md
 │   ├── efcore.md
 │   ├── aspnetcore.md
-│   └── migracao.md
+│   └── migration.md
 |
 ├── Directory.Build.props
 ├── Directory.Packages.props
 ├── NuGet.config
-├── lgpd-dotnet.sln
+├── lgpd-dotnet.slnx
 ├── LICENSE
 ├── README.md
 ├── CHANGELOG.md
@@ -381,31 +387,31 @@ lgpd-dotnet/
 **What it is:** Public contract of the library. No business implementation - only types, interfaces, and attributes.
 
 **Responsibilities:**
-- Attributes `[DadoPessoal]`, `[DadoSensivel]`, `[ExcluirDados]`, `[RetencaoDados]`, `[TransferenciaInternacional]` (to be renamed in English)
+- Attributes `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
 - Enums with the 10 legal bases of Art. 7 and bases for sensitive data in Art. 11
-- Enum `TipoAnonimizacao` distinguishing anonymization (irreversible, outside LGPD scope) from pseudonymization (reversible, still personal data)
+- Enum `AnonymizationType` distinguishing anonymization (irreversible, outside LGPD scope) from pseudonymization (reversible, still personal data)
 - Interfaces for all modules
 - Domain exceptions
 - Zero external dependencies
 
 **Example:**
 ```csharp
-public class Cliente
+public class Customer
 {
     public Guid Id { get; set; }
 
-    [DadoPessoal(Categoria = CategoriaDado.Identificacao,
-                 BaseJuridica = BaseJuridica.ExecucaoContrato)]
-    public string Nome { get; set; } = string.Empty;
+    [PersonalData(Category = DataCategory.Identification,
+                 LegalBasis = LegalBasis.ContractPerformance)]
+    public string Name { get; set; } = string.Empty;
 
-    [DadoSensivel(Categoria = CategoriaDado.Financeiro,
-                  BaseJuridicaSensivel = BaseJuridicaSensivel.ConsentimentoExplicito)]
-    [RetencaoDados(Anos = 5, Politica = PoliticaRetencao.AnonimizarAoVencer)]
-    public string Cpf { get; set; } = string.Empty;
+    [SensitiveData(Category = DataCategory.Financial,
+                  SensitiveLegalBasis = SensitiveLegalBasis.ExplicitConsent)]
+    [RetentionData(Years = 5, Policy = RetentionPolicy.AnonymizeOnExpiration)]
+    public string BrazilianTaxId { get; set; } = string.Empty;
 
-    [DadoPessoal(Categoria = CategoriaDado.Contato)]
-    [TransferenciaInternacional(Pais = PaisTransferencia.EstadosUnidos,
-                                Mecanismo = MecanismoGarantia.ClausulasContratuais)]
+    [PersonalData(Category = DataCategory.Contact)]
+    [InternationalTransfer(Country = TransferCountry.UnitedStates,
+                                Mechanism = SafeguardMechanism.ContractualClauses)]
     public string Email { get; set; } = string.Empty;
 }
 ```
@@ -422,17 +428,17 @@ public class Cliente
 - Model and document the 10 legal bases in Art. 7
 - Model the bases for sensitive data in Art. 11
 - Document legitimate interest justification with the balancing test (Art. 10)
-- `InMemoryBaseJuridicaStore` for tests
+- `InMemoryLegalBasisStore` for tests
 
 **Example:**
 ```csharp
-await baseJuridicaService.RegistrarAsync(new RegistroBaseJuridica
+await legalBasisService.RegisterAsync(new LegalBasisRecord
 {
-    Entidade = nameof(Cliente),
-    Campo = nameof(Cliente.Email),
-    Base = BaseJuridica.LegitimoInteresse,
-    Justificativa = "Sending communications about the active contract",
-    TesteBalanceamento = "Legitimate interest does not override data subject rights because..."
+    Entity = nameof(Customer),
+    Field = nameof(Customer.Email),
+    Base = LegalBasis.LegitimateInterest,
+    Justification = "Sending communications about the active contract",
+    BalancingTest = "Legitimate interest does not override data subject rights because..."
 });
 ```
 
@@ -447,7 +453,7 @@ await baseJuridicaService.RegistrarAsync(new RegistroBaseJuridica
 - **Pseudonymization** (`IPseudonymizer`): reversible. The data remains personal and **all LGPD obligations apply**
 
 **Responsibilities:**
-- Anonymizers for CPF, CNPJ, email, phone, name, IP
+- Anonymizers for Brazilian CPF/CNPJ tax IDs, email, phone, name, IP
 - Pseudonymizers: `TokenPseudonymizer` (UUID mapping) and `HmacPseudonymizer` (HMAC-SHA256)
 - `string` extensions for direct usage
 - Benchmarks: < 500ns per operation
@@ -455,13 +461,13 @@ await baseJuridicaService.RegistrarAsync(new RegistroBaseJuridica
 **Example:**
 ```csharp
 // Anonymization - irreversible, data leaves LGPD scope
-var cpfAnonimizado = anonymizer.Anonimizar("123.456.789-09");
+var anonymizedTaxId = anonymizer.Anonymize("123.456.789-09");
 // "***.***.***-**"
 
 // Pseudonymization - reversible, data remains personal
-var token = pseudonymizer.Pseudonimizar("123.456.789-09");
+var token = pseudonymizer.Pseudonymize("123.456.789-09");
 // "a3f8c2d1-..." - can be reversed with the right key
-var original = pseudonymizer.Reverter(token);
+var original = pseudonymizer.Reverse(token);
 // "123.456.789-09"
 ```
 
@@ -480,12 +486,12 @@ var original = pseudonymizer.Reverter(token);
 
 **Example:**
 ```csharp
-await consentimentoService.RegistrarAsync(new RegistroConsentimento
+await consentService.RegisterAsync(new ConsentRegistration
 {
-    TitularId = "user-123",
-    Finalidade = FinalidadeTratamento.Marketing,
-    ExpiraEm = DateTimeOffset.UtcNow.AddYears(1),
-    EvidenciaColeta = "Checkbox accepted at /signup on 05/01/2026 at 14:32 UTC"
+    DataSubjectId = "user-123",
+    Purpose = ProcessingPurpose.Marketing,
+    ExpiresAt = DateTimeOffset.UtcNow.AddYears(1),
+    CollectionEvidence = "Checkbox accepted at /signup on 05/01/2026 at 14:32 UTC"
 });
 ```
 
@@ -498,7 +504,7 @@ await consentimentoService.RegistrarAsync(new RegistroConsentimento
 **Responsibilities:**
 - Register access, modification, and deletion events
 - Capture context: who, when, which data, which operation, IP
-- `InMemoryAuditoriaStore` for tests
+- `InMemoryAuditStore` for tests
 - Audit reports by data subject and period
 
 ---
@@ -524,25 +530,25 @@ await consentimentoService.RegistrarAsync(new RegistroConsentimento
 **What it is:** Automatic lifecycle and processing termination policies.
 
 **Responsibilities:**
-- `[RetencaoDados]` attribute defines period and action on expiration
-- `RetencaoBackgroundService`: `IHostedService` that runs periodic purges
+- `[RetentionData]` attribute defines period and action on expiration
+- `RetentionBackgroundService`: `IHostedService` that runs periodic purges
 - Pluggable policies: fixed term, purpose achieved
 - Automatic audit for each purge executed
-- Integration with `EFCore` via `RetencaoInterceptor`
+- Integration with `EFCore` via `RetentionInterceptor`
 
 **Example:**
 ```csharp
-builder.Services.AddLgpdRetencao(options =>
+builder.Services.AddLgpdRetention(options =>
 {
-    options.IntervaloVerificacao = TimeSpan.FromHours(24);
-    options.AcaoPadrao = AcaoRetencao.Anonimizar;
+    options.CheckInterval = TimeSpan.FromHours(24);
+    options.DefaultAction = RetentionAction.Anonymize;
 });
 
 // Model
-public class Pedido
+public class Order
 {
-    [RetencaoDados(Anos = 5, Politica = PoliticaRetencao.ApagarAoVencer)]
-    public string DadosCartao { get; set; } = string.Empty;
+    [RetentionData(Years = 5, Policy = RetentionPolicy.DeleteOnExpiration)]
+    public string CardData { get; set; } = string.Empty;
 }
 ```
 
@@ -555,20 +561,20 @@ public class Pedido
 **Difference from Audit:** `Audit` records *access* at runtime (who read or modified specific data). `DataMap` records *operations* (which data the organization collects, for what purpose, under which legal basis, and who it shares with). These are complementary and both required by law.
 
 **Responsibilities:**
-- `OperacaoTratamentoBuilder` with a fluent API
+- `ProcessingOperationBuilder` with a fluent API
 - Inventory report generation in JSON
 - Base for RIPD generation via `Ripd`
 
 **Example:**
 ```csharp
-await inventarioService.RegistrarOperacaoAsync(
-    new OperacaoTratamentoBuilder()
-        .ParaEntidade<Cliente>()
-        .Campos(c => c.Email, c => c.Telefone)
-        .ComFinalidade(FinalidadeTratamento.ComunicacaoContratual)
-        .ComBaseJuridica(BaseJuridica.ExecucaoContrato)
-        .RetidoPor(anos: 5)
-        .CompartilhadoCom("Email provider", "Transactional-only delivery")
+await dataMapService.RegisterOperationAsync(
+    new ProcessingOperationBuilder()
+        .ForEntity<Customer>()
+        .Fields(c => c.Email, c => c.Phone)
+        .WithPurpose(ProcessingPurpose.ContractCommunication)
+        .WithLegalBasis(LegalBasis.ContractPerformance)
+        .RetainedFor(years: 5)
+        .SharedWith("Email provider", "Transactional-only delivery")
         .Build()
 );
 ```
@@ -582,21 +588,21 @@ await inventarioService.RegistrarOperacaoAsync(
 **Responsibilities:**
 - Register incidents with date, nature, affected data, and impacted subjects
 - Generate structure for ANPD notification (Art. 48) within legal deadline
-- Notify affected data subjects via `INotificacaoIncidenteHandler`
+- Notify affected data subjects via `IIncidentNotificationHandler`
 - Track status (detected -> assessed -> notified -> closed)
 
 **Example:**
 ```csharp
-var incidente = await incidenteService.RegistrarAsync(new IncidenteSeguranca
+var incident = await incidentService.RegisterAsync(new SecurityIncident
 {
-    DataDeteccao = DateTimeOffset.UtcNow,
-    Natureza = NaturezaIncidente.AcessoNaoAutorizado,
-    DadosAfetados = [CategoriaDado.Identificacao, CategoriaDado.Financeiro],
-    TitularesAfetadosEstimativa = 1500,
-    MedidaAdotada = "Access revoked, passwords reset, CISO notified"
+    DetectedAt = DateTimeOffset.UtcNow,
+    Nature = IncidentNature.UnauthorizedAccess,
+    AffectedData = [DataCategory.Identification, DataCategory.Financial],
+    EstimatedAffectedDataSubjects = 1500,
+    RemediationAction = "Access revoked, passwords reset, CISO notified"
 });
 
-var notificacao = incidenteService.GerarNotificacaoAnpd(incidente.Id);
+var notification = incidentService.GenerateAnpdNotification(incident.Id);
 ```
 
 ---
@@ -612,16 +618,16 @@ var notificacao = incidenteService.GerarNotificacaoAnpd(incidente.Id);
 
 **Example:**
 ```csharp
-var ripd = await ripdService.GerarAsync(
+var ripd = await ripdService.GenerateAsync(
     new RipdBuilder()
-        .ParaOperacao("Processing of customer data")
-        .ImportarDoInventario(inventarioId)
-        .AdicionarRisco(new RiscoIdentificado
+        .ForOperation("Processing of customer data")
+        .ImportFromInventory(inventoryId)
+        .AddRisk(new IdentifiedRisk
         {
-            Descricao = "Unauthorized access to the database",
-            Probabilidade = NivelRisco.Medio,
-            Impacto = NivelRisco.Alto,
-            Mitigacao = "Encryption at rest, MFA for DBAs, query auditing"
+            Description = "Unauthorized access to the database",
+            Likelihood = RiskLevel.Medium,
+            Impact = RiskLevel.High,
+            Mitigation = "Encryption at rest, MFA for DBAs, query auditing"
         })
         .Build()
 );
@@ -634,23 +640,23 @@ var ripd = await ripdService.GerarAsync(
 **What it is:** Integration with the ASP.NET Core pipeline.
 
 **Responsibilities:**
-- `ConsentimentoMiddleware` and `AuditoriaMiddleware`
-- `TransferenciaInternacionalMiddleware`: validates and blocks unauthorized transfers
-- `[ExigirConsentimento]` as action/controller attribute
+- `ConsentMiddleware` and `AuditMiddleware`
+- `InternationalTransferMiddleware`: validates and blocks unauthorized transfers
+- `[RequireConsent]` as action/controller attribute
 - `GET /.well-known/lgpd` endpoint with DPO contact info (Art. 41)
 
 **DPO endpoint example:**
 ```json
 GET /.well-known/lgpd
 {
-  "controlador": "Empresa XPTO Ltda",
+  "dataController": "Example Company Ltd.",
   "cnpj": "00.000.000/0001-00",
-  "encarregado": {
-    "nome": "Joao Silva",
-    "email": "dpo@empresa.com.br"
+  "dpo": {
+    "name": "Joao Silva",
+    "email": "dpo@example.com"
   },
-  "politicaPrivacidadeUrl": "https://empresa.com.br/privacidade",
-  "versaoPolitica": "2.1"
+  "privacyPolicyUrl": "https://example.com/privacy",
+  "policyVersion": "2.1"
 }
 ```
 
@@ -661,10 +667,10 @@ GET /.well-known/lgpd
 **What it is:** Integration with Entity Framework Core via interceptors and conventions.
 
 **Responsibilities:**
-- `AuditoriaInterceptor`: intercepts `SaveChanges` and records changes on `[DadoPessoal]` fields
-- `AnonymizacaoSaveInterceptor`: anonymizes fields before persistence when configured
-- `RetencaoInterceptor`: checks and applies retention policies on persistence
-- `DadoPessoalModelConvention`: applies model configuration automatically
+- `AuditInterceptor`: intercepts `SaveChanges` and records changes on `[PersonalData]` fields
+- `AnonymizationSaveInterceptor`: anonymizes fields before persistence when configured
+- `RetentionInterceptor`: checks and applies retention policies on persistence
+- `PersonalDataModelConvention`: applies model configuration automatically
 
 ---
 
@@ -673,10 +679,10 @@ GET /.well-known/lgpd
 **What it is:** Roslyn analyzers that detect violations at compile time.
 
 **Responsibilities:**
-- `LGPD001`: property with PII without `[DadoPessoal]` in public types
-- `LGPD002`: access to `[DadoSensivel]` without consent check
+- `LGPD001`: property with PII without `[PersonalData]` in public types
+- `LGPD002`: access to `[SensitiveData]` without consent check
 - `LGPD003`: personal data field without declared legal basis
-- `LGPD004`: data transfer to external service without `[TransferenciaInternacional]`
+- `LGPD004`: data transfer to external service without `[InternationalTransfer]`
 - Code fixes for all four analyzers
 
 ---
@@ -702,8 +708,8 @@ GET /.well-known/lgpd
 - [ ] Badges in README
 
 #### Week 3 - Core package
-- [ ] Attributes: `[DadoPessoal]`, `[DadoSensivel]`, `[ExcluirDados]`, `[RetencaoDados]`, `[TransferenciaInternacional]`
-- [ ] Enums with the 10 legal bases (Art. 7), bases for sensitive data (Art. 11), and `TipoAnonimizacao`
+- [ ] Attributes: `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
+- [ ] Enums with the 10 legal bases (Art. 7), bases for sensitive data (Art. 11), and `AnonymizationType`
 - [ ] All base interfaces and models
 - [ ] Typed exceptions
 - [ ] 100% coverage in Core tests
@@ -728,27 +734,27 @@ GET /.well-known/lgpd
 - [ ] Tests covering each legal basis individually
 
 #### Week 6 - Consent + Audit
-- [ ] `ConsentimentoService` with full lifecycle and integration with `LegalBasis`
-- [ ] `AuditoriaService` with immutable records and access context
+- [ ] `ConsentService` with full lifecycle and integration with `LegalBasis`
+- [ ] `AuditService` with immutable records and access context
 - [ ] Concurrency tests for both
 
 #### Week 7 - DataSubject
 - [ ] All 8 rights in Art. 18 including objection (Art. 18, IX)
-- [ ] `PortabilidadeHandler` with JSON and CSV export
+- [ ] `PortabilityHandler` with JSON and CSV export
 - [ ] Integration tests: `DataSubject` + `Audit` + `Consent`
 
 #### Week 8 - Retention
-- [ ] `RetencaoService` with pluggable policies
-- [ ] `RetencaoBackgroundService` as `IHostedService`
+- [ ] `RetentionService` with pluggable policies
+- [ ] `RetentionBackgroundService` as `IHostedService`
 - [ ] Lifecycle tests: data created -> period expired -> purge executed -> audit logged
 
 #### Week 9 - DataMap
-- [ ] `InventarioService` with fluent `OperacaoTratamentoBuilder`
+- [ ] `DataMapService` with fluent `ProcessingOperationBuilder`
 - [ ] JSON inventory report generation
 - [ ] Tests validating inventory reflects model attributes
 
 #### Week 10 - Incident + Logging
-- [ ] `IncidenteService` with status tracking and ANPD notification generation
+- [ ] `IncidentService` with status tracking and ANPD notification generation
 - [ ] Logging redactors including credit card
 - [ ] Publish preview of all modules
 
@@ -765,12 +771,12 @@ GET /.well-known/lgpd
 - [ ] Tests with real scenarios
 
 #### Week 12 - AspNetCore
-- [ ] `ConsentimentoMiddleware`, `AuditoriaMiddleware`, `TransferenciaInternacionalMiddleware`
+- [ ] `ConsentMiddleware`, `AuditMiddleware`, `InternationalTransferMiddleware`
 - [ ] `/.well-known/lgpd` endpoint with DPO data (Art. 41)
 - [ ] Integration tests with `WebApplicationFactory`
 
 #### Week 13 - EFCore
-- [ ] `AuditoriaInterceptor`, `RetencaoInterceptor`, `DadoPessoalModelConvention`
+- [ ] `AuditInterceptor`, `RetentionInterceptor`, `PersonalDataModelConvention`
 - [ ] Tests with `Testcontainers` (real PostgreSQL container)
 - [ ] Validate compatibility with EF Core 8 and 10
 

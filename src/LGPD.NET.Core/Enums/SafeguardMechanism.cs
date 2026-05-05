@@ -9,7 +9,7 @@ public enum SafeguardMechanism
     AdequacyDecision,
 
     /// <summary>Standard contractual clauses (Art. 33, II).</summary>
-    StandardContractualClauses,
+    ContractualClauses,
 
     /// <summary>Binding corporate rules (Art. 33, III).</summary>
     BindingCorporateRules,

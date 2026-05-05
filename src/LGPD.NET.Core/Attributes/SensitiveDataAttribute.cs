@@ -10,6 +10,6 @@ namespace LGPD.NET.Core.Attributes;
 public sealed class SensitiveDataAttribute : Attribute
 {
     public DataCategory Category { get; set; } = DataCategory.Other;
-    public SensitiveLegalBasis LegalBasis { get; set; } = SensitiveLegalBasis.ExplicitConsent;
+    public SensitiveLegalBasis SensitiveLegalBasis { get; set; } = SensitiveLegalBasis.ExplicitConsent;
     public ProcessingPurpose Purpose { get; set; } = ProcessingPurpose.ServiceProvision;
 }

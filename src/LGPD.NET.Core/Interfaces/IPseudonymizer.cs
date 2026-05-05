@@ -6,6 +6,6 @@ namespace LGPD.NET.Core.Interfaces;
 public interface IPseudonymizer
 {
     string Pseudonymize(string value);
-    string Revert(string token);
+    string Reverse(string token);
     bool CanPseudonymize(string value);
 }

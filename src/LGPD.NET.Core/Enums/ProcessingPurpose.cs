@@ -5,7 +5,7 @@ public enum ProcessingPurpose
     Other = 0,
     ServiceProvision,
     Marketing,
-    ContractualCommunication,
+    ContractCommunication,
     LegalCompliance,
     Security,
     Research,
