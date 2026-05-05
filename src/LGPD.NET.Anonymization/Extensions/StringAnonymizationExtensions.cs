@@ -8,13 +8,18 @@ namespace LGPD.NET.Anonymization.Extensions;
 /// Convenience extensions for anonymizing and pseudonymizing string values inline.
 /// Shared anonymizer instances are reused across calls — safe for high-throughput scenarios.
 /// </summary>
+/// <remarks>
+/// IP addresses are not covered here because IP truncation does not constitute anonymization
+/// under Art. 12 of the LGPD or GDPR Recital 49. IP addresses must be pseudonymized using
+/// <see cref="TokenPseudonymizer"/> before being stored in audit logs. See the Anonymization
+/// documentation for details.
+/// </remarks>
 public static class StringAnonymizationExtensions
 {
     private static readonly BrazilianTaxIdAnonymizer TaxIdAnonymizer = new();
     private static readonly EmailAnonymizer          EmailAnonymizer  = new();
     private static readonly PhoneAnonymizer          PhoneAnonymizer  = new();
     private static readonly NameAnonymizer           NameAnonymizer   = new();
-    private static readonly IpAnonymizer             IpAnonymizer     = new();
 
     /// <summary>Anonymizes a Brazilian CPF or CNPJ tax identifier.</summary>
     public static string AnonymizeTaxId(this string value) =>
@@ -32,10 +37,6 @@ public static class StringAnonymizationExtensions
     public static string AnonymizeName(this string value) =>
         NameAnonymizer.Anonymize(value);
 
-    /// <summary>Anonymizes an IP address by zeroing the host portion.</summary>
-    public static string AnonymizeIp(this string value) =>
-        IpAnonymizer.Anonymize(value);
-
     /// <summary>
     /// Pseudonymizes a value using a token backed by the provided <see cref="ITokenStore"/>.
     /// The store must be durable in production — see <see cref="ITokenStore"/> for details.
@@ -49,7 +50,7 @@ public static class StringAnonymizationExtensions
     /// Pseudonymizes a value using HMAC-SHA256 with the provided secret key (deterministic, non-reversible).
     /// </summary>
     /// <param name="value">Value to pseudonymize.</param>
-    /// <param name="secretKey">Secret key for HMAC.</param>
+    /// <param name="secretKey">Secret key for HMAC. Must be at least 32 characters.</param>
     public static string PseudonymizeHmac(this string value, string secretKey) =>
         new HmacPseudonymizer(secretKey).Pseudonymize(value);
 }

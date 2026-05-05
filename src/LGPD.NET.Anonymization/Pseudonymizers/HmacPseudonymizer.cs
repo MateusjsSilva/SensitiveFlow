@@ -22,10 +22,19 @@ public sealed class HmacPseudonymizer : IPseudonymizer
     private readonly byte[] _keyBytes;
 
     /// <summary>Initializes a new instance with the provided secret key.</summary>
-    /// <param name="secretKey">Secret key used for HMAC-SHA256. Must not be empty.</param>
+    /// <param name="secretKey">
+    /// Secret key used for HMAC-SHA256. Must be at least 32 characters to match the
+    /// SHA-256 digest size and prevent brute-force attacks on the key.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="secretKey"/> is null, whitespace, or shorter than 32 characters.</exception>
     public HmacPseudonymizer(string secretKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(secretKey);
+        if (secretKey.Length < 32)
+        {
+            throw new ArgumentException("Secret key must be at least 32 characters to match the SHA-256 digest size.", nameof(secretKey));
+        }
+
         _keyBytes = Encoding.UTF8.GetBytes(secretKey);
     }
 

@@ -40,3 +40,4 @@ public class Customer
 
 - Read the [Attributes](attributes.md) documentation
 - Learn about [Legal Bases](legal-bases.md)
+- Anonymize and pseudonymize data with [LGPD.NET.Anonymization](anonymization.md)

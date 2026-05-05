@@ -25,8 +25,22 @@ public sealed record AuditRecord
     /// <summary>Identifier of the actor that performed the operation, when known.</summary>
     public string? ActorId { get; init; }
 
-    /// <summary>IP address associated with the operation, when available.</summary>
-    public string? IpAddress { get; init; }
+    /// <summary>
+    /// Pseudonymized token representing the IP address associated with the operation.
+    /// <para>
+    /// <b>Never store the raw IP address here.</b> An IP address is personal data under Art. 5, I
+    /// of the LGPD and GDPR Recital 49. Before assigning this field, pseudonymize the IP using
+    /// <c>TokenPseudonymizer</c> backed by a durable store so that it can be resolved during
+    /// a security investigation while remaining opaque in the audit log itself.
+    /// </para>
+    /// <example>
+    /// <code>
+    /// var ipToken = await pseudonymizer.PseudonymizeAsync(request.HttpContext.Connection.RemoteIpAddress?.ToString());
+    /// var record  = new AuditRecord { ..., IpAddressToken = ipToken };
+    /// </code>
+    /// </example>
+    /// </summary>
+    public string? IpAddressToken { get; init; }
 
     /// <summary>Additional audit details.</summary>
     public string? Details { get; init; }

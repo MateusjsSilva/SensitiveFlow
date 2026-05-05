@@ -28,7 +28,7 @@ public sealed class HmacPseudonymizerTests
     [Fact]
     public void Pseudonymize_DifferentKeys_ProduceDifferentTokens()
     {
-        var sut2 = new HmacPseudonymizer("different-secret-key!!!");
+        var sut2 = new HmacPseudonymizer("different-secret-key-32-bytes!!!!");
 
         var token1 = _sut.Pseudonymize("joao@example.com");
         var token2 = sut2.Pseudonymize("joao@example.com");
@@ -61,5 +61,13 @@ public sealed class HmacPseudonymizerTests
         var act = () => _sut.Reverse(token);
 
         act.Should().Throw<NotSupportedException>();
+    }
+
+    [Fact]
+    public void Constructor_ShortKey_ThrowsArgumentException()
+    {
+        var act = () => new HmacPseudonymizer("short-key");
+
+        act.Should().Throw<ArgumentException>().WithMessage("*32*");
     }
 }

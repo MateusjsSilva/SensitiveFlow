@@ -1,11 +1,16 @@
 using System.Reflection;
+using LGPD.NET.Anonymization.Anonymizers;
+using LGPD.NET.Anonymization.Extensions;
+using LGPD.NET.Anonymization.Pseudonymizers;
+using LGPD.NET.Anonymization.Stores;
+using LGPD.NET.Anonymization.Strategies;
 using LGPD.NET.Core.Attributes;
 using LGPD.NET.Core.Enums;
 using LGPD.NET.Core.Exceptions;
 using LGPD.NET.Core.Models;
 
 // ─────────────────────────────────────────────
-// LGPD.NET.Core — Console Sample
+// LGPD.NET — Console Sample
 // ─────────────────────────────────────────────
 
 PrintSection("1. Annotating models with LGPD attributes");
@@ -18,7 +23,7 @@ PrintSection("3. Working with consent records");
 DemoConsent();
 
 PrintSection("4. Audit trail records");
-DemoAudit();
+await DemoAuditAsync();
 
 PrintSection("5. Data subject rights requests (Art. 18)");
 DemoDataSubjectRequests();
@@ -28,6 +33,15 @@ DemoIncidents();
 
 PrintSection("7. Domain exceptions");
 DemoExceptions();
+
+PrintSection("8. Anonymization (Art. 12 — data leaves LGPD scope)");
+DemoAnonymization();
+
+PrintSection("9. Pseudonymization (Art. 12, §3 — data remains personal)");
+await DemoPseudonymizationAsync();
+
+PrintSection("10. Masking strategies (one-way transforms)");
+DemoStrategies();
 
 // ─────────────────────────────────────────────
 
@@ -45,15 +59,15 @@ static void DemoAttributes()
         var transfer  = prop.GetCustomAttribute<InternationalTransferAttribute>();
         var erase     = prop.GetCustomAttribute<EraseDataAttribute>();
 
-        if (personal is null && sensitive is null) continue;
+        if (personal is null && sensitive is null) { continue; }
 
         Console.Write($"  {prop.Name,-18}");
 
-        if (personal  is not null) Console.Write($"[PersonalData  category={personal.Category,-16} basis={personal.LegalBasis}]");
-        if (sensitive  is not null) Console.Write($"[SensitiveData category={sensitive.Category,-16} basis={sensitive.SensitiveLegalBasis}]");
-        if (retention  is not null) Console.Write($" [Retention years={retention.Years} policy={retention.Policy}]");
-        if (transfer   is not null) Console.Write($" [Transfer country={transfer.Country} mechanism={transfer.Mechanism}]");
-        if (erase      is not null) Console.Write($" [Erase anonymize={erase.AnonymizeInsteadOfDelete}]");
+        if (personal  is not null) { Console.Write($"[PersonalData  category={personal.Category,-16} basis={personal.LegalBasis}]"); }
+        if (sensitive  is not null) { Console.Write($"[SensitiveData category={sensitive.Category,-16} basis={sensitive.SensitiveLegalBasis}]"); }
+        if (retention  is not null) { Console.Write($" [Retention years={retention.Years} policy={retention.Policy}]"); }
+        if (transfer   is not null) { Console.Write($" [Transfer country={transfer.Country} mechanism={transfer.Mechanism}]"); }
+        if (erase      is not null) { Console.Write($" [Erase anonymize={erase.AnonymizeInsteadOfDelete}]"); }
 
         Console.WriteLine();
     }
@@ -66,7 +80,7 @@ static void DemoReflection()
     foreach (var prop in typeof(Customer).GetProperties())
     {
         var attr = prop.GetCustomAttribute<PersonalDataAttribute>();
-        if (attr is null) continue;
+        if (attr is null) { continue; }
 
         Console.WriteLine($"  Field   : {prop.Name}");
         Console.WriteLine($"  Category: {attr.Category}");
@@ -108,8 +122,17 @@ static void DemoConsent()
     Console.WriteLine($"\n  [revoked] Revoked={revoked.Revoked}  RevokedAt={revoked.RevokedAt:u}");
 }
 
-static void DemoAudit()
+static async Task DemoAuditAsync()
 {
+    // IP addresses are personal data (LGPD Art. 5, I).
+    // They must be PSEUDONYMIZED before being stored in the audit log — never stored raw.
+    // This allows a security team to resolve the original IP during an investigation,
+    // while keeping the audit log itself opaque to anyone without access to the token store.
+    var ipStore      = new InMemoryTokenStore();
+    var ipPseudo     = new TokenPseudonymizer(ipStore);
+    var rawIp        = "192.168.1.10";
+    var ipToken      = await ipPseudo.PseudonymizeAsync(rawIp);
+
     var records = new[]
     {
         new AuditRecord
@@ -119,7 +142,7 @@ static void DemoAudit()
             Field         = nameof(Customer.Email),
             Operation     = AuditOperation.Access,
             ActorId       = "admin-7",
-            IpAddress     = "192.168.1.10",
+            IpAddressToken = ipToken,          // pseudonymized — not raw IP
         },
         new AuditRecord
         {
@@ -140,7 +163,13 @@ static void DemoAudit()
     };
 
     foreach (var r in records)
-        Console.WriteLine($"  {r.Timestamp:u}  {r.Operation,-12} {r.Entity}.{r.Field,-20} actor={r.ActorId ?? "—"}");
+    {
+        Console.WriteLine($"  {r.Timestamp:u}  {r.Operation,-12} {r.Entity}.{r.Field,-20} actor={r.ActorId ?? "—"}  ip={r.IpAddressToken ?? "—"}");
+    }
+
+    // During a security investigation the original IP can be recovered from the token store:
+    var resolvedIp = await ipPseudo.ReverseAsync(ipToken);
+    Console.WriteLine($"\n  [investigation] token {ipToken[..8]}… resolved to: {resolvedIp}");
 }
 
 static void DemoDataSubjectRequests()
@@ -177,7 +206,9 @@ static void DemoDataSubjectRequests()
     };
 
     foreach (var r in requests)
+    {
         Console.WriteLine($"  {r.Id}  {r.Type,-14} {r.Status,-12} subject={r.DataSubjectId} kind={r.DataSubjectKind}");
+    }
 }
 
 static void DemoIncidents()
@@ -222,6 +253,101 @@ static void DemoExceptions()
             TransferCountry.UnitedStates,
             SafeguardMechanism.ContractualClauses,
             "destination country not approved by ANPD"));
+}
+
+static void DemoAnonymization()
+{
+    // Anonymization is IRREVERSIBLE — the result no longer identifies anyone.
+    // After anonymization, Art. 12 removes the data from LGPD scope entirely.
+    //
+    // NOTE: IP addresses are NOT anonymizable by truncation — they remain personal data
+    // regardless of how many octets are zeroed. IP addresses must be pseudonymized
+    // (see DemoAuditAsync) or not stored at all.
+
+    var customer = new Customer
+    {
+        Name  = "João da Silva",
+        TaxId = "123.456.789-09",
+        Email = "joao.silva@example.com",
+        Phone = "+55 11 99999-8877",
+    };
+
+    Console.WriteLine("  Original:");
+    Console.WriteLine($"    Name  : {customer.Name}");
+    Console.WriteLine($"    TaxId : {customer.TaxId}");
+    Console.WriteLine($"    Email : {customer.Email}");
+    Console.WriteLine($"    Phone : {customer.Phone}");
+
+    Console.WriteLine("\n  Anonymized (extension methods):");
+    Console.WriteLine($"    Name  : {customer.Name.AnonymizeName()}");
+    Console.WriteLine($"    TaxId : {customer.TaxId.AnonymizeTaxId()}");
+    Console.WriteLine($"    Email : {customer.Email.AnonymizeEmail()}");
+    Console.WriteLine($"    Phone : {customer.Phone.AnonymizePhone()}");
+
+    // For bulk processing, instantiate and reuse directly — anonymizers are stateless and thread-safe.
+    Console.WriteLine("\n  Anonymized (direct instances — preferred for bulk):");
+    var nameAnon = new NameAnonymizer();
+    var taxAnon  = new BrazilianTaxIdAnonymizer();
+    Console.WriteLine($"    Name  : {nameAnon.Anonymize(customer.Name)}");
+    Console.WriteLine($"    TaxId : {taxAnon.Anonymize(customer.TaxId)}");
+}
+
+static async Task DemoPseudonymizationAsync()
+{
+    // Pseudonymization replaces data with a reversible token.
+    // Art. 12, §3: pseudonymized data REMAINS personal — LGPD obligations still apply.
+    // The token can be reversed only by whoever holds the store with the mapping.
+
+    // TokenPseudonymizer — reversible, requires a durable ITokenStore in production.
+    // InMemoryTokenStore is for tests and single-session batch only.
+    var store         = new InMemoryTokenStore();
+    var tokenPseudo   = new TokenPseudonymizer(store);
+
+    var original      = "joao.silva@example.com";
+    var token         = await tokenPseudo.PseudonymizeAsync(original);
+    var recovered     = await tokenPseudo.ReverseAsync(token);
+
+    Console.WriteLine("  TokenPseudonymizer (reversible):");
+    Console.WriteLine($"    Original  : {original}");
+    Console.WriteLine($"    Token     : {token}");
+    Console.WriteLine($"    Recovered : {recovered}");
+    Console.WriteLine($"    Same token for same input: {await tokenPseudo.PseudonymizeAsync(original) == token}");
+
+    // HmacPseudonymizer — deterministic (same input + key = same token), NOT reversible.
+    // Useful as a join key across systems that share the secret — no mapping table needed.
+    var hmacPseudo    = new HmacPseudonymizer("my-secret-key-for-hmac-32-bytes!!");
+    var hmacToken     = hmacPseudo.Pseudonymize(original);
+    var hmacToken2    = hmacPseudo.Pseudonymize(original);
+
+    Console.WriteLine("\n  HmacPseudonymizer (deterministic, non-reversible):");
+    Console.WriteLine($"    Original       : {original}");
+    Console.WriteLine($"    Token          : {hmacToken}");
+    Console.WriteLine($"    Deterministic  : {hmacToken == hmacToken2}");
+
+    // Extension method shortcut
+    var viaExtension  = original.PseudonymizeHmac("my-secret-key-for-hmac-32-bytes!!");
+    Console.WriteLine($"    Via extension  : {viaExtension == hmacToken}");
+}
+
+static void DemoStrategies()
+{
+    // Strategies are composable one-way transforms that can be applied to any string.
+    // Use them directly when you need a custom pipeline instead of a named anonymizer.
+
+    var value = "sensitive-value";
+
+    // Redaction — replaces the value entirely
+    var redacted  = new RedactionStrategy().Apply(value);
+    var custom    = new RedactionStrategy("***").Apply(value);
+    Console.WriteLine($"  Redaction (default) : {redacted}");
+    Console.WriteLine($"  Redaction (custom)  : {custom}");
+
+    // Hash — SHA-256, one-way, deterministic
+    var hash      = new HashStrategy().Apply(value);
+    var salted    = new HashStrategy("my-fixed-salt-16ch").Apply(value);
+    Console.WriteLine($"  Hash (no salt)      : {hash[..16]}…");
+    Console.WriteLine($"  Hash (with salt)    : {salted[..16]}…");
+    Console.WriteLine($"  Same input = same hash: {new HashStrategy().Apply(value) == hash}");
 }
 
 static void TryCatch(string label, Action action)
@@ -272,6 +398,12 @@ public class Customer
         LegalBasis = LegalBasis.ContractPerformance,
         Purpose    = ProcessingPurpose.ServiceProvision)]
     public string Address { get; set; } = string.Empty;
+
+    [PersonalData(
+        Category   = DataCategory.Contact,
+        LegalBasis = LegalBasis.ContractPerformance,
+        Purpose    = ProcessingPurpose.ServiceProvision)]
+    public string Phone { get; set; } = string.Empty;
 
     [EraseData(AnonymizeInsteadOfDelete = true)]
     public string? TemporaryNotes { get; set; }
