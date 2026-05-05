@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Implementacao dos 8 direitos do titular de dados conforme Art. 18 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LGPD.NET.Core\LGPD.NET.Core.csproj" />
+    <ProjectReference Include="..\LGPD.NET.Audit\LGPD.NET.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

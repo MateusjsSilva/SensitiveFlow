@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Geracao e gestao do Relatorio de Impacto a Protecao de Dados Pessoais (RIPD) conforme Art. 38 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LGPD.NET.Core\LGPD.NET.Core.csproj" />
+    <ProjectReference Include="..\LGPD.NET.DataMap\LGPD.NET.DataMap.csproj" />
+  </ItemGroup>
+
+</Project>

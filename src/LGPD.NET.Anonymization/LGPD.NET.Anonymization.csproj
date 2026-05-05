@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Anonimizacao e pseudonimizacao de dados pessoais para conformidade com o Art. 12 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LGPD.NET.Core\LGPD.NET.Core.csproj" />
+  </ItemGroup>
+
+</Project>

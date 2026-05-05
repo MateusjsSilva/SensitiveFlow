@@ -1,0 +1,30 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.nupkg
+*.snupkg
+TestResults/
+coverage/
+BenchmarkDotNet.Artifacts/
+
+## NuGet
+*.nuspec
+nuget.exe
+.nuget/
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+## OS
+.DS_Store
+Thumbs.db

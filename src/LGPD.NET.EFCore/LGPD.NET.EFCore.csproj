@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Integracao com Entity Framework Core: interceptors de auditoria, anonimizacao e retencao para conformidade com a LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <ProjectReference Include="..\LGPD.NET.Core\LGPD.NET.Core.csproj" />
+    <ProjectReference Include="..\LGPD.NET.Audit\LGPD.NET.Audit.csproj" />
+    <ProjectReference Include="..\LGPD.NET.Retention\LGPD.NET.Retention.csproj" />
+  </ItemGroup>
+
+</Project>

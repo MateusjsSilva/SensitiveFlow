@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Inventario das operacoes de tratamento de dados conforme Art. 37 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LGPD.NET.Core\LGPD.NET.Core.csproj" />
+  </ItemGroup>
+
+</Project>

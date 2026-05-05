@@ -1,0 +1,40 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Console.Sample/Console.Sample.csproj" />
+    <Project Path="samples/MinimalApi.Sample/MinimalApi.Sample.csproj" />
+    <Project Path="samples/WebApi.Sample/WebApi.Sample.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/LGPD.NET.Analyzers/LGPD.NET.Analyzers.csproj" />
+    <Project Path="src/LGPD.NET.Anonymization/LGPD.NET.Anonymization.csproj" />
+    <Project Path="src/LGPD.NET.AspNetCore/LGPD.NET.AspNetCore.csproj" />
+    <Project Path="src/LGPD.NET.Audit/LGPD.NET.Audit.csproj" />
+    <Project Path="src/LGPD.NET.Consent/LGPD.NET.Consent.csproj" />
+    <Project Path="src/LGPD.NET.Core/LGPD.NET.Core.csproj" />
+    <Project Path="src/LGPD.NET.DataMap/LGPD.NET.DataMap.csproj" />
+    <Project Path="src/LGPD.NET.DataSubject/LGPD.NET.DataSubject.csproj" />
+    <Project Path="src/LGPD.NET.EFCore/LGPD.NET.EFCore.csproj" />
+    <Project Path="src/LGPD.NET.Incident/LGPD.NET.Incident.csproj" />
+    <Project Path="src/LGPD.NET.LegalBasis/LGPD.NET.LegalBasis.csproj" />
+    <Project Path="src/LGPD.NET.Logging/LGPD.NET.Logging.csproj" />
+    <Project Path="src/LGPD.NET.Retention/LGPD.NET.Retention.csproj" />
+    <Project Path="src/LGPD.NET.Ripd/LGPD.NET.Ripd.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LGPD.NET.Anonymization.Tests/LGPD.NET.Anonymization.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.AspNetCore.Tests/LGPD.NET.AspNetCore.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Audit.Tests/LGPD.NET.Audit.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Benchmarks/LGPD.NET.Benchmarks.csproj" />
+    <Project Path="tests/LGPD.NET.Consent.Tests/LGPD.NET.Consent.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Core.Tests/LGPD.NET.Core.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.DataMap.Tests/LGPD.NET.DataMap.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.DataSubject.Tests/LGPD.NET.DataSubject.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.EFCore.Tests/LGPD.NET.EFCore.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Incident.Tests/LGPD.NET.Incident.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Integration.Tests/LGPD.NET.Integration.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.LegalBasis.Tests/LGPD.NET.LegalBasis.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Logging.Tests/LGPD.NET.Logging.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Retention.Tests/LGPD.NET.Retention.Tests.csproj" />
+    <Project Path="tests/LGPD.NET.Ripd.Tests/LGPD.NET.Ripd.Tests.csproj" />
+  </Folder>
+</Solution>
