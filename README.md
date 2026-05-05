@@ -1,7 +1,7 @@
 # LGPD.NET
 
-[![CI](https://github.com/lgpd-dotnet/lgpd-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/lgpd-dotnet/lgpd-dotnet/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/lgpd-dotnet/lgpd-dotnet/actions/workflows/codeql.yml/badge.svg)](https://github.com/lgpd-dotnet/lgpd-dotnet/actions/workflows/codeql.yml)
+[![CI](https://github.com/MateusjsSilva/LGPD.NET/actions/workflows/ci.yml/badge.svg)](https://github.com/MateusjsSilva/LGPD.NET/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/MateusjsSilva/LGPD.NET/actions/workflows/codeql.yml/badge.svg)](https://github.com/MateusjsSilva/LGPD.NET/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![NuGet](https://img.shields.io/nuget/v/LGPD.NET.Core)](https://www.nuget.org/packages/LGPD.NET.Core)
 

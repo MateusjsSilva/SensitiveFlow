@@ -7,12 +7,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <Authors>LGPD.NET Contributors</Authors>
-    <Company>LGPD.NET</Company>
-    <Copyright>Copyright © 2026 LGPD.NET Contributors</Copyright>
+    <Authors>Mateus Silva</Authors>
+    <Company>Mateus Silva</Company>
+    <Copyright>Copyright © 2026 Mateus Silva</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/lgpd-dotnet/lgpd-dotnet</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/lgpd-dotnet/lgpd-dotnet</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/MateusjsSilva/LGPD.NET</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/MateusjsSilva/LGPD.NET</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>lgpd;anpd;privacy;personal-data;dotnet;csharp;compliance</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
