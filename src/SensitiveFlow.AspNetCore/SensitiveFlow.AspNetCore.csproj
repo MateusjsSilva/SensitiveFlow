@@ -6,9 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
-    <ProjectReference Include="..\SensitiveFlow.Consent\SensitiveFlow.Consent.csproj" />
-    <ProjectReference Include="..\SensitiveFlow.LegalBasis\SensitiveFlow.LegalBasis.csproj" />
   </ItemGroup>
 
 </Project>
