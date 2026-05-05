@@ -33,6 +33,6 @@ O que está acontecendo.
 
 ## Ambiente
 
-- Pacote e versão: `LGPD.NET.X v1.0.0`
+- Pacote e versão: `SensitiveFlow.X v1.0.0`
 - .NET version: `net8.0` / `net10.0`
 - OS: Windows / Linux / macOS

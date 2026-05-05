@@ -1,17 +1,17 @@
 using System.Reflection;
-using LGPD.NET.Anonymization.Anonymizers;
-using LGPD.NET.Anonymization.Extensions;
-using LGPD.NET.Anonymization.Masking;
-using LGPD.NET.Anonymization.Pseudonymizers;
-using LGPD.NET.Anonymization.Stores;
-using LGPD.NET.Anonymization.Strategies;
-using LGPD.NET.Core.Attributes;
-using LGPD.NET.Core.Enums;
-using LGPD.NET.Core.Exceptions;
-using LGPD.NET.Core.Models;
+using SensitiveFlow.Anonymization.Anonymizers;
+using SensitiveFlow.Anonymization.Extensions;
+using SensitiveFlow.Anonymization.Masking;
+using SensitiveFlow.Anonymization.Pseudonymizers;
+using SensitiveFlow.Anonymization.Stores;
+using SensitiveFlow.Anonymization.Strategies;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
+using SensitiveFlow.Core.Exceptions;
+using SensitiveFlow.Core.Models;
 
 // ─────────────────────────────────────────────
-// LGPD.NET — Console Sample
+// SensitiveFlow — Console Sample
 // ─────────────────────────────────────────────
 
 PrintSection("1. Annotating models with LGPD attributes");
@@ -76,7 +76,7 @@ static void DemoAttributes()
 
 static void DemoReflection()
 {
-    // Modules like LGPD.NET.DataMap scan types at startup to build a processing inventory.
+    // Modules like SensitiveFlow.DataMap scan types at startup to build a processing inventory.
     // This shows the pattern they use.
     foreach (var prop in typeof(Customer).GetProperties())
     {
@@ -410,3 +410,4 @@ public class Customer
     [EraseData(AnonymizeInsteadOfDelete = true)]
     public string? TemporaryNotes { get; set; }
 }
+

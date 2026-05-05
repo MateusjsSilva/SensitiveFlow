@@ -1,6 +1,6 @@
 # Attributes
 
-LGPD.NET provides attributes to annotate your model classes with LGPD metadata. These attributes are the declarative foundation of the library.
+SensitiveFlow provides attributes to annotate your model classes with LGPD metadata. These attributes are the declarative foundation of the library.
 
 ## PersonalDataAttribute
 

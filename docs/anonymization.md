@@ -1,11 +1,11 @@
 # Anonymization, Masking, and Pseudonymization
 
-`LGPD.NET.Anonymization` provides three distinct levels of data protection, each with different legal implications under the LGPD.
+`SensitiveFlow.Anonymization` provides three distinct levels of data protection, each with different legal implications under the LGPD.
 
 ## Installation
 
 ```bash
-dotnet add package LGPD.NET.Anonymization
+dotnet add package SensitiveFlow.Anonymization
 ```
 
 ## The three levels — what each one means legally
@@ -86,7 +86,7 @@ masker.Mask("João da Silva");           // "J*** d* S****"
 ### Extension methods
 
 ```csharp
-using LGPD.NET.Anonymization.Extensions;
+using SensitiveFlow.Anonymization.Extensions;
 
 // Anonymization — Art. 12 compliant
 string taxId = "123.456.789-09".AnonymizeTaxId();

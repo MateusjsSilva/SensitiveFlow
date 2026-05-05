@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,8 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LGPD.NET.Core\LGPD.NET.Core.csproj" />
-    <ProjectReference Include="..\..\src\LGPD.NET.Anonymization\LGPD.NET.Anonymization.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
   </ItemGroup>
 
 </Project>
+

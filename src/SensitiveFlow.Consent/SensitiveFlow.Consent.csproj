@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Gerenciamento do ciclo de vida do consentimento conforme Art. 7, I e Art. 8 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.LegalBasis\SensitiveFlow.LegalBasis.csproj" />
+  </ItemGroup>
+
+</Project>
+

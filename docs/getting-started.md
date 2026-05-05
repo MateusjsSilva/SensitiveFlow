@@ -1,11 +1,11 @@
-# Getting Started with LGPD.NET
+# Getting Started with SensitiveFlow
 
-LGPD.NET is a modular, MIT-licensed library that helps .NET developers implement LGPD (Brazilian General Data Protection Law - Law 13.709/2018) compliance in a declarative, testable way.
+SensitiveFlow is a modular, MIT-licensed library that helps .NET developers implement LGPD (Brazilian General Data Protection Law - Law 13.709/2018) compliance in a declarative, testable way.
 
 ## Installation
 
 ```bash
-dotnet add package LGPD.NET.Core
+dotnet add package SensitiveFlow.Core
 ```
 
 ## Quick Start
@@ -13,8 +13,8 @@ dotnet add package LGPD.NET.Core
 ### 1. Annotate your model
 
 ```csharp
-using LGPD.NET.Core.Attributes;
-using LGPD.NET.Core.Enums;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
 
 public class Customer
 {
@@ -40,4 +40,4 @@ public class Customer
 
 - Read the [Attributes](attributes.md) documentation
 - Learn about [Legal Bases](legal-bases.md)
-- Anonymize and pseudonymize data with [LGPD.NET.Anonymization](anonymization.md)
+- Anonymize and pseudonymize data with [SensitiveFlow.Anonymization](anonymization.md)

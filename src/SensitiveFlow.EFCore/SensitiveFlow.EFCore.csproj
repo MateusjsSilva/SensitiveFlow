@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Integracao com Entity Framework Core: interceptors de auditoria, anonimizacao e retencao para conformidade com a LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Retention\SensitiveFlow.Retention.csproj" />
+  </ItemGroup>
+
+</Project>
+

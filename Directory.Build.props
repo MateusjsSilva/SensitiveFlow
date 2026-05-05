@@ -11,10 +11,10 @@
     <Company>Mateus Silva</Company>
     <Copyright>Copyright © 2026 Mateus Silva</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/MateusjsSilva/LGPD.NET</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/MateusjsSilva/LGPD.NET</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/MateusjsSilva/SensitiveFlow</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/MateusjsSilva/SensitiveFlow</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>lgpd;anpd;privacy;personal-data;dotnet;csharp;compliance</PackageTags>
+    <PackageTags>privacy;data-protection;personal-data;dotnet;csharp;compliance</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -36,3 +36,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>
+

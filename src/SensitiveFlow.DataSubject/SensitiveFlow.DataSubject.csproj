@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Implementacao dos 8 direitos do titular de dados conforme Art. 18 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
+  </ItemGroup>
+
+</Project>
+

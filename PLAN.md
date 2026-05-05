@@ -1,4 +1,4 @@
-# LGPD.NET - Complete Work Plan
+# SensitiveFlow - Complete Work Plan
 
 > MIT open source library for LGPD compliance in .NET projects.
 > Modular, testable, with no required dependencies beyond `Core`.
@@ -38,20 +38,20 @@ Provide a set of NuGet packages that allow .NET developers to implement LGPD req
 ### Packages and dependencies
 
 ```
-LGPD.NET.Core                    (no external dependencies)
-├── LGPD.NET.Anonymization        depends on: Core
-├── LGPD.NET.LegalBasis           depends on: Core
-├── LGPD.NET.Consent              depends on: Core, LegalBasis
-├── LGPD.NET.Audit                depends on: Core
-├── LGPD.NET.DataSubject          depends on: Core, Audit
-├── LGPD.NET.Retention            depends on: Core, Audit
-├── LGPD.NET.DataMap              depends on: Core
-├── LGPD.NET.Incident             depends on: Core, Audit
-├── LGPD.NET.Ripd                 depends on: Core, DataMap
-├── LGPD.NET.Logging              depends on: Core, Microsoft.Extensions.Logging.Abstractions
-├── LGPD.NET.AspNetCore           depends on: Core, Consent, LegalBasis, Microsoft.AspNetCore.Http
-├── LGPD.NET.EFCore               depends on: Core, Audit, Retention, Microsoft.EntityFrameworkCore
-└── LGPD.NET.Analyzers            depends on: Microsoft.CodeAnalysis (Roslyn)
+SensitiveFlow.Core                    (no external dependencies)
+├── SensitiveFlow.Anonymization        depends on: Core
+├── SensitiveFlow.LegalBasis           depends on: Core
+├── SensitiveFlow.Consent              depends on: Core, LegalBasis
+├── SensitiveFlow.Audit                depends on: Core
+├── SensitiveFlow.DataSubject          depends on: Core, Audit
+├── SensitiveFlow.Retention            depends on: Core, Audit
+├── SensitiveFlow.DataMap              depends on: Core
+├── SensitiveFlow.Incident             depends on: Core, Audit
+├── SensitiveFlow.Ripd                 depends on: Core, DataMap
+├── SensitiveFlow.Logging              depends on: Core, Microsoft.Extensions.Logging.Abstractions
+├── SensitiveFlow.AspNetCore           depends on: Core, Consent, LegalBasis, Microsoft.AspNetCore.Http
+├── SensitiveFlow.EFCore               depends on: Core, Audit, Retention, Microsoft.EntityFrameworkCore
+└── SensitiveFlow.Analyzers            depends on: Microsoft.CodeAnalysis (Roslyn)
 ```
 
 ---
@@ -81,7 +81,7 @@ Mapping between LGPD articles and library modules:
 ## Folder structure
 
 ```
-lgpd-dotnet/
+sensitiveflow/
 |
 ├── .github/
 │   ├── workflows/
@@ -95,7 +95,7 @@ lgpd-dotnet/
 │
 ├── src/
 │   │
-│   ├── LGPD.NET.Core/
+│   ├── SensitiveFlow.Core/
 │   │   ├── Attributes/
 │   │   │   ├── PersonalDataAttribute.cs
 │   │   │   ├── SensitiveDataAttribute.cs
@@ -141,9 +141,9 @@ lgpd-dotnet/
 │   │   │   ├── DataNotFoundException.cs
 │   │   │   ├── InternationalTransferNotAllowedException.cs
 │   │   │   └── RetentionExpiredException.cs
-│   │   └── LGPD.NET.Core.csproj
+│   │   └── SensitiveFlow.Core.csproj
 │   │
-│   ├── LGPD.NET.Anonymization/
+│   ├── SensitiveFlow.Anonymization/
 │   │   ├── Anonymizers/
 │   │   │   ├── BrazilianTaxIdAnonymizer.cs
 │   │   │   ├── EmailAnonymizer.cs
@@ -159,9 +159,9 @@ lgpd-dotnet/
 │   │   │   ├── IMaskStrategy.cs
 │   │   │   ├── HashStrategy.cs
 │   │   │   └── RedactionStrategy.cs
-│   │   └── LGPD.NET.Anonymization.csproj
+│   │   └── SensitiveFlow.Anonymization.csproj
 │   │
-│   ├── LGPD.NET.LegalBasis/
+│   ├── SensitiveFlow.LegalBasis/
 │   │   ├── Services/
 │   │   │   ├── ILegalBasisService.cs
 │   │   │   └── LegalBasisService.cs
@@ -174,9 +174,9 @@ lgpd-dotnet/
 │   │   │   └── LegalBasisValidator.cs
 │   │   ├── Stores/
 │   │   │   └── InMemoryLegalBasisStore.cs
-│   │   └── LGPD.NET.LegalBasis.csproj
+│   │   └── SensitiveFlow.LegalBasis.csproj
 │   │
-│   ├── LGPD.NET.Consent/
+│   ├── SensitiveFlow.Consent/
 │   │   ├── Services/
 │   │   │   ├── IConsentService.cs
 │   │   │   └── ConsentService.cs
@@ -188,9 +188,9 @@ lgpd-dotnet/
 │   │   │   └── InMemoryConsentStore.cs
 │   │   ├── Options/
 │   │   │   └── ConsentOptions.cs
-│   │   └── LGPD.NET.Consent.csproj
+│   │   └── SensitiveFlow.Consent.csproj
 │   │
-│   ├── LGPD.NET.Audit/
+│   ├── SensitiveFlow.Audit/
 │   │   ├── Services/
 │   │   │   ├── IAuditService.cs
 │   │   │   └── AuditService.cs
@@ -201,9 +201,9 @@ lgpd-dotnet/
 │   │   │   └── InMemoryAuditStore.cs
 │   │   ├── Options/
 │   │   │   └── AuditOptions.cs
-│   │   └── LGPD.NET.Audit.csproj
+│   │   └── SensitiveFlow.Audit.csproj
 │   │
-│   ├── LGPD.NET.DataSubject/
+│   ├── SensitiveFlow.DataSubject/
 │   │   ├── Services/
 │   │   │   ├── IDataSubjectService.cs
 │   │   │   └── DataSubjectService.cs
@@ -216,9 +216,9 @@ lgpd-dotnet/
 │   │   │   ├── PortabilityReport.cs
 │   │   │   ├── DeletionRequest.cs
 │   │   │   └── InformationResponse.cs
-│   │   └── LGPD.NET.DataSubject.csproj
+│   │   └── SensitiveFlow.DataSubject.csproj
 │   │
-│   ├── LGPD.NET.Retention/
+│   ├── SensitiveFlow.Retention/
 │   │   ├── Services/
 │   │   │   ├── IRetentionService.cs
 │   │   │   └── RetentionService.cs
@@ -230,9 +230,9 @@ lgpd-dotnet/
 │   │   │   └── RetentionBackgroundService.cs
 │   │   ├── Options/
 │   │   │   └── RetentionOptions.cs
-│   │   └── LGPD.NET.Retention.csproj
+│   │   └── SensitiveFlow.Retention.csproj
 │   │
-│   ├── LGPD.NET.DataMap/
+│   ├── SensitiveFlow.DataMap/
 │   │   ├── Services/
 │   │   │   ├── IDataMapService.cs
 │   │   │   └── DataMapService.cs
@@ -244,9 +244,9 @@ lgpd-dotnet/
 │   │   │   └── ProcessingOperationBuilder.cs
 │   │   ├── Stores/
 │   │   │   └── InMemoryDataMapStore.cs
-│   │   └── LGPD.NET.DataMap.csproj
+│   │   └── SensitiveFlow.DataMap.csproj
 │   │
-│   ├── LGPD.NET.Incident/
+│   ├── SensitiveFlow.Incident/
 │   │   ├── Services/
 │   │   │   ├── IIncidentService.cs
 │   │   │   └── IncidentService.cs
@@ -261,9 +261,9 @@ lgpd-dotnet/
 │   │   │   └── InMemoryIncidentStore.cs
 │   │   ├── Options/
 │   │   │   └── IncidentOptions.cs
-│   │   └── LGPD.NET.Incident.csproj
+│   │   └── SensitiveFlow.Incident.csproj
 │   │
-│   ├── LGPD.NET.Ripd/
+│   ├── SensitiveFlow.Ripd/
 │   │   ├── Services/
 │   │   │   ├── IRipdService.cs
 │   │   │   └── RipdService.cs
@@ -276,9 +276,9 @@ lgpd-dotnet/
 │   │   ├── Export/
 │   │   │   ├── IRipdExporter.cs
 │   │   │   └── JsonRipdExporter.cs
-│   │   └── LGPD.NET.Ripd.csproj
+│   │   └── SensitiveFlow.Ripd.csproj
 │   │
-│   ├── LGPD.NET.Logging/
+│   ├── SensitiveFlow.Logging/
 │   │   ├── Redactors/
 │   │   │   ├── IRedactor.cs
 │   │   │   ├── BrazilianTaxIdRedactor.cs
@@ -289,9 +289,9 @@ lgpd-dotnet/
 │   │   │   └── LgpdLogEnricher.cs
 │   │   ├── Extensions/
 │   │   │   └── LoggingBuilderExtensions.cs
-│   │   └── LGPD.NET.Logging.csproj
+│   │   └── SensitiveFlow.Logging.csproj
 │   │
-│   ├── LGPD.NET.AspNetCore/
+│   ├── SensitiveFlow.AspNetCore/
 │   │   ├── Middleware/
 │   │   │   ├── ConsentMiddleware.cs
 │   │   │   ├── AuditMiddleware.cs
@@ -304,9 +304,9 @@ lgpd-dotnet/
 │   │   │   └── ApplicationBuilderExtensions.cs
 │   │   ├── Options/
 │   │   │   └── LgpdAspNetOptions.cs
-│   │   └── LGPD.NET.AspNetCore.csproj
+│   │   └── SensitiveFlow.AspNetCore.csproj
 │   │
-│   ├── LGPD.NET.EFCore/
+│   ├── SensitiveFlow.EFCore/
 │   │   ├── Interceptors/
 │   │   │   ├── AuditInterceptor.cs
 │   │   │   ├── AnonymizationSaveInterceptor.cs
@@ -315,9 +315,9 @@ lgpd-dotnet/
 │   │   │   └── DbContextOptionsBuilderExtensions.cs
 │   │   ├── Conventions/
 │   │   │   └── PersonalDataModelConvention.cs
-│   │   └── LGPD.NET.EFCore.csproj
+│   │   └── SensitiveFlow.EFCore.csproj
 │   │
-│   └── LGPD.NET.Analyzers/
+│   └── SensitiveFlow.Analyzers/
 │       ├── Analyzers/
 │       │   ├── PersonalDataWithoutAnonymizationAnalyzer.cs  # LGPD001
 │       │   ├── ConsentNotVerifiedAnalyzer.cs                # LGPD002
@@ -325,36 +325,36 @@ lgpd-dotnet/
 │       │   └── InternationalTransferNotMarkedAnalyzer.cs    # LGPD004
 │       ├── CodeFixes/
 │       │   └── AddAttributeCodeFix.cs
-│       └── LGPD.NET.Analyzers.csproj
+│       └── SensitiveFlow.Analyzers.csproj
 |
 ├── tests/
-│   ├── LGPD.NET.Core.Tests/
-│   ├── LGPD.NET.Anonymization.Tests/
-│   ├── LGPD.NET.LegalBasis.Tests/
-│   ├── LGPD.NET.Consent.Tests/
-│   ├── LGPD.NET.Audit.Tests/
-│   ├── LGPD.NET.DataSubject.Tests/
-│   ├── LGPD.NET.Retention.Tests/
-│   ├── LGPD.NET.DataMap.Tests/
-│   ├── LGPD.NET.Incident.Tests/
-│   ├── LGPD.NET.Ripd.Tests/
-│   ├── LGPD.NET.Logging.Tests/
-│   ├── LGPD.NET.AspNetCore.Tests/
-│   ├── LGPD.NET.EFCore.Tests/
+│   ├── SensitiveFlow.Core.Tests/
+│   ├── SensitiveFlow.Anonymization.Tests/
+│   ├── SensitiveFlow.LegalBasis.Tests/
+│   ├── SensitiveFlow.Consent.Tests/
+│   ├── SensitiveFlow.Audit.Tests/
+│   ├── SensitiveFlow.DataSubject.Tests/
+│   ├── SensitiveFlow.Retention.Tests/
+│   ├── SensitiveFlow.DataMap.Tests/
+│   ├── SensitiveFlow.Incident.Tests/
+│   ├── SensitiveFlow.Ripd.Tests/
+│   ├── SensitiveFlow.Logging.Tests/
+│   ├── SensitiveFlow.AspNetCore.Tests/
+│   ├── SensitiveFlow.EFCore.Tests/
 │   |
-│   ├── LGPD.NET.Integration.Tests/
+│   ├── SensitiveFlow.Integration.Tests/
 │   │   ├── AspNetCore/
 │   │   │   ├── ConsentMiddlewareTests.cs
 │   │   │   └── WellKnownEndpointTests.cs
 │   │   ├── EFCore/
 │   │   │   ├── AuditInterceptorTests.cs
 │   │   │   └── RetentionInterceptorTests.cs
-│   │   └── LGPD.NET.Integration.Tests.csproj
+│   │   └── SensitiveFlow.Integration.Tests.csproj
 │   |
-│   └── LGPD.NET.Benchmarks/
+│   └── SensitiveFlow.Benchmarks/
 │       ├── AnonymizationBenchmarks.cs
 │       ├── LoggingBenchmarks.cs
-│       └── LGPD.NET.Benchmarks.csproj
+│       └── SensitiveFlow.Benchmarks.csproj
 |
 ├── samples/
 │   ├── WebApi.Sample/
@@ -380,7 +380,7 @@ lgpd-dotnet/
 ├── Directory.Build.props
 ├── Directory.Packages.props
 ├── NuGet.config
-├── lgpd-dotnet.slnx
+├── sensitiveflow.slnx
 ├── LICENSE
 ├── README.md
 ├── CHANGELOG.md
@@ -391,7 +391,7 @@ lgpd-dotnet/
 
 ## Responsibilities by project
 
-### `LGPD.NET.Core`
+### `SensitiveFlow.Core`
 
 **What it is:** Public contract of the library. No business implementation - only types, interfaces, and attributes.
 
@@ -430,7 +430,7 @@ public class Customer
 
 ---
 
-### `LGPD.NET.LegalBasis` - Art. 7 and Art. 11 (NEW)
+### `SensitiveFlow.LegalBasis` - Art. 7 and Art. 11 (NEW)
 
 **What it is:** Management of legal bases that authorize data processing.
 
@@ -456,7 +456,7 @@ await legalBasisService.RegisterAsync(new LegalBasisRecord
 
 ---
 
-### `LGPD.NET.Anonymization`
+### `SensitiveFlow.Anonymization`
 
 **What it is:** Masking, anonymization, and pseudonymization of personal data.
 
@@ -485,7 +485,7 @@ var original = pseudonymizer.Reverse(token);
 
 ---
 
-### `LGPD.NET.Consent`
+### `SensitiveFlow.Consent`
 
 **What it is:** Consent lifecycle management (Art. 7, I and Art. 8).
 
@@ -509,7 +509,7 @@ await consentService.RegisterAsync(new ConsentRegistration
 
 ---
 
-### `LGPD.NET.Audit`
+### `SensitiveFlow.Audit`
 
 **What it is:** Immutable record of who accessed or modified personal data.
 
@@ -521,7 +521,7 @@ await consentService.RegisterAsync(new ConsentRegistration
 
 ---
 
-### `LGPD.NET.DataSubject` - Art. 18
+### `SensitiveFlow.DataSubject` - Art. 18
 
 **What it is:** Implementation of the 8 data subject rights.
 
@@ -537,7 +537,7 @@ await consentService.RegisterAsync(new ConsentRegistration
 
 ---
 
-### `LGPD.NET.Retention` - Art. 15 and 16 (NEW)
+### `SensitiveFlow.Retention` - Art. 15 and 16 (NEW)
 
 **What it is:** Automatic lifecycle and processing termination policies.
 
@@ -566,7 +566,7 @@ public class Order
 
 ---
 
-### `LGPD.NET.DataMap` - Art. 37 (NEW)
+### `SensitiveFlow.DataMap` - Art. 37 (NEW)
 
 **What it is:** Inventory of the organization's data processing operations.
 
@@ -593,7 +593,7 @@ await dataMapService.RegisterOperationAsync(
 
 ---
 
-### `LGPD.NET.Incident` - Art. 46-49 (NEW)
+### `SensitiveFlow.Incident` - Art. 46-49 (NEW)
 
 **What it is:** Security incident management and breach notification.
 
@@ -619,7 +619,7 @@ var notification = incidentService.GenerateAnpdNotification(incident.Id);
 
 ---
 
-### `LGPD.NET.Ripd` - Art. 38 (NEW)
+### `SensitiveFlow.Ripd` - Art. 38 (NEW)
 
 **What it is:** Generation and management of the Personal Data Protection Impact Report.
 
@@ -647,7 +647,7 @@ var ripd = await ripdService.GenerateAsync(
 
 ---
 
-### `LGPD.NET.AspNetCore`
+### `SensitiveFlow.AspNetCore`
 
 **What it is:** Integration with the ASP.NET Core pipeline.
 
@@ -674,7 +674,7 @@ GET /.well-known/lgpd
 
 ---
 
-### `LGPD.NET.EFCore`
+### `SensitiveFlow.EFCore`
 
 **What it is:** Integration with Entity Framework Core via interceptors and conventions.
 
@@ -686,7 +686,7 @@ GET /.well-known/lgpd
 
 ---
 
-### `LGPD.NET.Analyzers`
+### `SensitiveFlow.Analyzers`
 
 **What it is:** Roslyn analyzers that detect violations at compile time.
 
@@ -725,7 +725,7 @@ GET /.well-known/lgpd
 - [x] All base interfaces and models for consent, audit, data subject requests, processing inventory, data sharing, and incidents
 - [x] Typed exceptions with context properties
 - [x] 100% line coverage in Core tests for `net8.0` and `net10.0`
-- [ ] Publish `LGPD.NET.Core` `1.0.0-preview.1`
+- [ ] Publish `SensitiveFlow.Core` `1.0.0-preview.1`
 
 ---
 
@@ -934,8 +934,8 @@ jobs:
 <PropertyGroup>
   <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
   <Authors>Your Name</Authors>
-  <PackageProjectUrl>https://github.com/your-user/lgpd-dotnet</PackageProjectUrl>
-  <RepositoryUrl>https://github.com/your-user/lgpd-dotnet</RepositoryUrl>
+  <PackageProjectUrl>https://github.com/your-user/sensitiveflow</PackageProjectUrl>
+  <RepositoryUrl>https://github.com/your-user/sensitiveflow</RepositoryUrl>
   <PackageLicenseExpression>MIT</PackageLicenseExpression>
   <PackageIcon>icon.png</PackageIcon>
   <PackageTags>lgpd;anpd;privacy;personal-data;dotnet;csharp;compliance</PackageTags>
@@ -989,3 +989,4 @@ Reflection is slow and does not work well with .NET 10 Native AOT. Phase 3 evalu
 
 ### Why English for the public API?
 The library is intended for broad .NET adoption. English identifiers reduce friction for global teams while keeping LGPD terminology and legal references intact.
+

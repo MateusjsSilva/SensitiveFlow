@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.LegalBasis\SensitiveFlow.LegalBasis.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Consent\SensitiveFlow.Consent.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore\SensitiveFlow.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

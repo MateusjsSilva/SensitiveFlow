@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Politicas automaticas de ciclo de vida e encerramento do tratamento conforme Art. 15 e 16 da LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
+  </ItemGroup>
+
+</Project>
+

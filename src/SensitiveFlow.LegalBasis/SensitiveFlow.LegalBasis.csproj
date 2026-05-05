@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Gerenciamento das bases juridicas que autorizam o tratamento de dados (Art. 7 e Art. 11 da LGPD).</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+  </ItemGroup>
+
+</Project>
+

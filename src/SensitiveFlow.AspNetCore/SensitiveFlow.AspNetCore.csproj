@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Integracao com ASP.NET Core: middlewares, filtros e endpoint /.well-known/lgpd (DPO) para conformidade com a LGPD.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" />
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Consent\SensitiveFlow.Consent.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.LegalBasis\SensitiveFlow.LegalBasis.csproj" />
+  </ItemGroup>
+
+</Project>
+
