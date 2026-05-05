@@ -1,11 +1,13 @@
+using LGPD.NET.Core.Models;
+
 namespace LGPD.NET.Core.Interfaces;
 
 /// <summary>
-/// Record of processing operations under Art. 37 of the LGPD.
+/// Store for processing operation records under Art. 37 of the LGPD.
 /// </summary>
 public interface IProcessingInventory
 {
-    string Id { get; }
-    string Description { get; }
-    DateTimeOffset CreatedAt { get; }
+    Task SaveAsync(ProcessingOperationRecord record, CancellationToken cancellationToken = default);
+    Task<ProcessingOperationRecord?> GetAsync(string id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ProcessingOperationRecord>> ListAsync(CancellationToken cancellationToken = default);
 }

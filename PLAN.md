@@ -112,6 +112,9 @@ lgpd-dotnet/
 │   │   │   ├── SafeguardMechanism.cs
 │   │   │   ├── RetentionPolicy.cs
 │   │   │   ├── DataSubjectRequestType.cs
+│   │   │   ├── DataSubjectRequestStatus.cs
+│   │   │   ├── AuditOperation.cs
+│   │   │   ├── IncidentNature.cs
 │   │   │   ├── IncidentSeverity.cs
 │   │   │   └── IncidentStatus.cs
 │   │   ├── Interfaces/
@@ -126,6 +129,8 @@ lgpd-dotnet/
 │   │   │   ├── ConsentRecord.cs
 │   │   │   ├── AuditRecord.cs
 │   │   │   ├── DataSubjectRequest.cs
+│   │   │   ├── ProcessingOperationRecord.cs
+│   │   │   ├── DataSharingRecord.cs
 │   │   │   └── IncidentRecord.cs
 │   │   ├── Exceptions/
 │   │   │   ├── ConsentNotFoundException.cs
@@ -390,8 +395,10 @@ lgpd-dotnet/
 - Attributes `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
 - Enums with the 10 legal bases of Art. 7 and bases for sensitive data in Art. 11
 - Enum `AnonymizationType` distinguishing anonymization (irreversible, outside LGPD scope) from pseudonymization (reversible, still personal data)
-- Interfaces for all modules
-- Domain exceptions
+- Typed lifecycle enums for audit, data subject requests, retention, and incidents
+- Store interfaces for consent, audit, processing inventory, and incidents
+- Base records for consent, audit, data subject requests, processing operations, data sharing, and incidents
+- Domain exceptions with contextual properties
 - Zero external dependencies
 
 **Example:**
@@ -708,11 +715,11 @@ GET /.well-known/lgpd
 - [ ] Badges in README
 
 #### Week 3 - Core package
-- [ ] Attributes: `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
-- [ ] Enums with the 10 legal bases (Art. 7), bases for sensitive data (Art. 11), and `AnonymizationType`
-- [ ] All base interfaces and models
-- [ ] Typed exceptions
-- [ ] 100% coverage in Core tests
+- [x] Attributes: `[PersonalData]`, `[SensitiveData]`, `[EraseData]`, `[RetentionData]`, `[InternationalTransfer]`
+- [x] Enums with the 10 legal bases (Art. 7), bases for sensitive data (Art. 11), `AnonymizationType`, audit operations, data subject request status, retention, transfer safeguards, and incident lifecycle
+- [x] All base interfaces and models for consent, audit, data subject requests, processing inventory, data sharing, and incidents
+- [x] Typed exceptions with context properties
+- [x] 100% line coverage in Core tests for `net8.0` and `net10.0`
 - [ ] Publish `LGPD.NET.Core` `1.0.0-preview.1`
 
 ---
