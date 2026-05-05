@@ -42,16 +42,22 @@ public sealed class RetentionEvaluator
         {
             var attr = property.GetCustomAttribute<RetentionDataAttribute>();
             if (attr is null)
+            {
                 continue;
+            }
 
             var expiration = attr.GetExpirationDate(referenceDate);
             if (DateTimeOffset.UtcNow <= expiration)
+            {
                 continue;
+            }
 
             if (_handlers.Any())
             {
                 foreach (var handler in _handlers)
+                {
                     await handler.HandleAsync(entity, property.Name, expiration, cancellationToken);
+                }
             }
             else
             {

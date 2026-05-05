@@ -64,9 +64,14 @@ public sealed class InMemoryAuditStore : IAuditStore
         DateTimeOffset? to)
     {
         if (from.HasValue)
+        {
             records = records.Where(r => r.Timestamp >= from.Value);
+        }
+
         if (to.HasValue)
+        {
             records = records.Where(r => r.Timestamp <= to.Value);
+        }
         return records;
     }
 }

@@ -80,7 +80,9 @@ public sealed class InMemoryAuditStoreTests
     {
         var store = new InMemoryAuditStore();
         for (var i = 0; i < 5; i++)
+        {
             await store.AppendAsync(MakeRecord($"sub-{i}", timestamp: DateTimeOffset.UtcNow.AddSeconds(i)));
+        }
 
         var results = await store.QueryAsync(skip: 3);
         results.Should().HaveCount(2);
@@ -91,7 +93,9 @@ public sealed class InMemoryAuditStoreTests
     {
         var store = new InMemoryAuditStore();
         for (var i = 0; i < 5; i++)
+        {
             await store.AppendAsync(MakeRecord($"sub-{i}"));
+        }
 
         var results = await store.QueryAsync(take: 2);
         results.Should().HaveCount(2);

@@ -33,7 +33,9 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         CancellationToken cancellationToken = default)
     {
         if (eventData.Context is not null)
+        {
             await EmitAuditRecordsAsync(eventData.Context, cancellationToken);
+        }
 
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
@@ -44,7 +46,9 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result)
     {
         if (eventData.Context is not null)
+        {
             EmitAuditRecordsAsync(eventData.Context, CancellationToken.None).GetAwaiter().GetResult();
+        }
 
         return base.SavingChanges(eventData, result);
     }
@@ -79,13 +83,17 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
                 var isSensitive = Attribute.IsDefined(property, typeof(SensitiveDataAttribute));
 
                 if (!isPersonal && !isSensitive)
+                {
                     continue;
+                }
 
                 if (entry.State == EntityState.Modified)
                 {
                     var propEntry = entry.Property(property.Name);
                     if (!propEntry.IsModified)
+                    {
                         continue;
+                    }
                 }
 
                 var record = new AuditRecord

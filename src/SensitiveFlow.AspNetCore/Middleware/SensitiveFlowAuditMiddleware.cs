@@ -29,8 +29,7 @@ public sealed class SensitiveFlowAuditMiddleware
         var ip = context.Connection.RemoteIpAddress?.ToString();
         if (!string.IsNullOrEmpty(ip))
         {
-            var token = await _pseudonymizer.PseudonymizeAsync(ip);
-            context.Items[IpTokenKey] = token;
+            context.Items[IpTokenKey] = _pseudonymizer.Pseudonymize(ip);
         }
 
         await _next(context);

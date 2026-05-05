@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using SensitiveFlow.Logging.Redaction;
 
@@ -5,8 +6,7 @@ namespace SensitiveFlow.Logging.Loggers;
 
 /// <summary>
 /// <see cref="ILogger"/> decorator that intercepts log messages and redacts any
-/// value found inside <c>{[Sensitive]...}</c> placeholders before forwarding to
-/// the inner logger.
+/// value found inside <c>[Sensitive]</c> placeholders before forwarding to the inner logger.
 /// <para>
 /// Mark sensitive structured log parameters with the <c>[Sensitive]</c> prefix:
 /// <code>
@@ -16,6 +16,9 @@ namespace SensitiveFlow.Logging.Loggers;
 /// </summary>
 public sealed class RedactingLogger : ILogger
 {
+    private static readonly Regex SensitivePattern =
+        new(@"\[Sensitive\][^\s,}]*", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+
     private readonly ILogger _inner;
     private readonly ISensitiveValueRedactor _redactor;
 
@@ -42,22 +45,17 @@ public sealed class RedactingLogger : ILogger
         Func<TState, Exception?, string> formatter)
     {
         if (!IsEnabled(logLevel))
+        {
             return;
+        }
 
         _inner.Log(logLevel, eventId, state, exception, (s, ex) =>
         {
             var message = formatter(s, ex);
-            return RedactMessage(message);
+            return Redact(message);
         });
     }
 
-    internal string RedactMessage(string message)
-    {
-        // Replace occurrences of {[Sensitive]<anything>} in the formatted message
-        // with the redacted marker.
-        return System.Text.RegularExpressions.Regex.Replace(
-            message,
-            @"\[Sensitive\][^\s,}]*",
-            _ => _redactor.Redact(string.Empty));
-    }
+    internal string Redact(string message)
+        => SensitivePattern.Replace(message, _ => _redactor.Redact(string.Empty));
 }

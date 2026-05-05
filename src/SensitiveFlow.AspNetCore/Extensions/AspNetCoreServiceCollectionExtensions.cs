@@ -12,7 +12,7 @@ public static class AspNetCoreServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="HttpAuditContext"/> as the scoped <see cref="IAuditContext"/>,
-    /// backed by <see cref="IHttpContextAccessor"/>.
+    /// backed by the HTTP context accessor.
     /// </summary>
     public static IServiceCollection AddSensitiveFlowAspNetCore(this IServiceCollection services)
     {
