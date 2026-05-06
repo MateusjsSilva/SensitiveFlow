@@ -32,20 +32,27 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddTokenStore_RegistersBothAsSingleton()
+    public void AddTokenStore_RegistersBothAsScoped()
     {
         var services = new ServiceCollection();
         services.AddTokenStore<FakeTokenStore>();
 
         var provider = services.BuildServiceProvider();
 
-        var store1 = provider.GetRequiredService<ITokenStore>();
-        var store2 = provider.GetRequiredService<ITokenStore>();
-        store1.Should().BeSameAs(store2);
+        using var scope1 = provider.CreateScope();
+        using var scope2 = provider.CreateScope();
 
-        var pseudo1 = provider.GetRequiredService<IPseudonymizer>();
-        var pseudo2 = provider.GetRequiredService<IPseudonymizer>();
+        var store1 = scope1.ServiceProvider.GetRequiredService<ITokenStore>();
+        var store2 = scope1.ServiceProvider.GetRequiredService<ITokenStore>();
+        var store3 = scope2.ServiceProvider.GetRequiredService<ITokenStore>();
+        store1.Should().BeSameAs(store2);
+        store1.Should().NotBeSameAs(store3);
+
+        var pseudo1 = scope1.ServiceProvider.GetRequiredService<IPseudonymizer>();
+        var pseudo2 = scope1.ServiceProvider.GetRequiredService<IPseudonymizer>();
+        var pseudo3 = scope2.ServiceProvider.GetRequiredService<IPseudonymizer>();
         pseudo1.Should().BeSameAs(pseudo2);
+        pseudo1.Should().NotBeSameAs(pseudo3);
     }
 
     [Fact]

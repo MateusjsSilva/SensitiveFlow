@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SensitiveFlow.Core.Attributes;
@@ -17,6 +18,7 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 {
     private readonly IAuditStore _auditStore;
     private readonly IAuditContext _auditContext;
+    private readonly ConditionalWeakTable<DbContext, PendingAuditRecords> _pendingRecords = new();
 
     /// <summary>
     /// Initializes a new instance of <see cref="SensitiveDataAuditInterceptor"/>.
@@ -35,7 +37,7 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is not null)
         {
-            await EmitAuditRecordsAsync(eventData.Context, cancellationToken);
+            CaptureAuditRecords(eventData.Context);
         }
 
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
@@ -55,13 +57,62 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is not null)
         {
-            EmitAuditRecordsAsync(eventData.Context, CancellationToken.None).GetAwaiter().GetResult();
+            CaptureAuditRecords(eventData.Context);
         }
 
         return base.SavingChanges(eventData, result);
     }
 
-    private async Task EmitAuditRecordsAsync(DbContext context, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public override async ValueTask<int> SavedChangesAsync(
+        SaveChangesCompletedEventData eventData,
+        int result,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is not null)
+        {
+            await FlushAuditRecordsAsync(eventData.Context, cancellationToken);
+        }
+
+        return await base.SavedChangesAsync(eventData, result, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+    {
+        if (eventData.Context is not null)
+        {
+            FlushAuditRecordsAsync(eventData.Context, CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        return base.SavedChanges(eventData, result);
+    }
+
+    /// <inheritdoc />
+    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    {
+        if (eventData.Context is not null)
+        {
+            _pendingRecords.Remove(eventData.Context);
+        }
+
+        base.SaveChangesFailed(eventData);
+    }
+
+    /// <inheritdoc />
+    public override Task SaveChangesFailedAsync(
+        DbContextErrorEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is not null)
+        {
+            _pendingRecords.Remove(eventData.Context);
+        }
+
+        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+    }
+
+    private void CaptureAuditRecords(DbContext context)
     {
         var entries = context.ChangeTracker.Entries()
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
@@ -109,8 +160,30 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
                     IpAddressToken = ipToken
                 };
 
-                await _auditStore.AppendAsync(record, cancellationToken);
+                var pending = _pendingRecords.GetOrCreateValue(context);
+                pending.Records.Add(record);
             }
+        }
+    }
+
+    private async Task FlushAuditRecordsAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        if (!_pendingRecords.TryGetValue(context, out var pending) || pending.Records.Count == 0)
+        {
+            return;
+        }
+
+        _pendingRecords.Remove(context);
+
+        if (_auditStore is IBatchAuditStore batchStore)
+        {
+            await batchStore.AppendRangeAsync(pending.Records, cancellationToken);
+            return;
+        }
+
+        foreach (var record in pending.Records)
+        {
+            await _auditStore.AppendAsync(record, cancellationToken);
         }
     }
 
@@ -130,5 +203,10 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
                   ?? entity.GetType().GetProperty("UserId");
 
         return idProp?.GetValue(entity)?.ToString() ?? "unknown";
+    }
+
+    private sealed class PendingAuditRecords
+    {
+        public List<AuditRecord> Records { get; } = [];
     }
 }

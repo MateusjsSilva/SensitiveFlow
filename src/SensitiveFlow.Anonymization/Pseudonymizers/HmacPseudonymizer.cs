@@ -51,6 +51,10 @@ public sealed class HmacPseudonymizer : IPseudonymizer
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
+    /// <inheritdoc />
+    public Task<string> PseudonymizeAsync(string value, CancellationToken cancellationToken = default)
+        => Task.FromResult(Pseudonymize(value));
+
     /// <summary>
     /// Not supported — HMAC pseudonymization is deterministic but not reversible without a lookup table.
     /// Use <see cref="TokenPseudonymizer"/> for reversible pseudonymization.
@@ -59,6 +63,10 @@ public sealed class HmacPseudonymizer : IPseudonymizer
     public string Reverse(string token) =>
         throw new NotSupportedException(
             "HmacPseudonymizer does not support reversal. Use TokenPseudonymizer for reversible pseudonymization.");
+
+    /// <inheritdoc />
+    public Task<string> ReverseAsync(string token, CancellationToken cancellationToken = default)
+        => Task.FromResult(Reverse(token));
 }
 
 

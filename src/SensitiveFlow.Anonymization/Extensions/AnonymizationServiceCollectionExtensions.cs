@@ -11,7 +11,7 @@ public static class AnonymizationServiceCollectionExtensions
 {
     /// <summary>
     /// Registers a durable <see cref="ITokenStore"/> implementation and wires
-    /// <see cref="TokenPseudonymizer"/> as the <see cref="IPseudonymizer"/> singleton.
+    /// <see cref="TokenPseudonymizer"/> as the scoped <see cref="IPseudonymizer"/>.
     /// </summary>
     /// <typeparam name="TStore">
     /// Your <see cref="ITokenStore"/> implementation backed by a durable sink
@@ -25,16 +25,16 @@ public static class AnonymizationServiceCollectionExtensions
     /// builder.Services.AddTokenStore&lt;EfCoreTokenStore&gt;();
     ///
     /// // Or register manually with a factory:
-    /// builder.Services.AddSingleton&lt;ITokenStore&gt;(sp =>
+    /// builder.Services.AddScoped&lt;ITokenStore&gt;(sp =>
     ///     new EfCoreTokenStore(sp.GetRequiredService&lt;TokenDbContext&gt;()));
-    /// builder.Services.AddSingleton&lt;IPseudonymizer, TokenPseudonymizer&gt;();
+    /// builder.Services.AddScoped&lt;IPseudonymizer, TokenPseudonymizer&gt;();
     /// </code>
     /// </example>
     public static IServiceCollection AddTokenStore<TStore>(this IServiceCollection services)
         where TStore : class, ITokenStore
     {
-        services.AddSingleton<ITokenStore, TStore>();
-        services.AddSingleton<IPseudonymizer, TokenPseudonymizer>();
+        services.AddScoped<ITokenStore, TStore>();
+        services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
         return services;
     }
 }

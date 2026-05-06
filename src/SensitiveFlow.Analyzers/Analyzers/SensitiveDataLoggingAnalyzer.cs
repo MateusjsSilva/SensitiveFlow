@@ -64,6 +64,7 @@ public sealed class SensitiveDataLoggingAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        return method.ContainingType.Name is "LoggerExtensions" or "ILogger";
+        return method.ContainingType.Name is "LoggerExtensions" or "ILogger" ||
+               method.ContainingType.OriginalDefinition.Name == "ILogger";
     }
 }

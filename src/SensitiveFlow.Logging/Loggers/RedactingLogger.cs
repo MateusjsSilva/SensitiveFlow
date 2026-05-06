@@ -62,10 +62,10 @@ public sealed class RedactingLogger : ILogger
         if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
         {
             var redacted = RedactPairs(pairs);
-            _inner.Log(logLevel, eventId, redacted, exception, (s, ex) =>
+            _inner.Log(logLevel, eventId, redacted, exception, (_, ex) =>
             {
                 var message = formatter(state, ex);
-                return RedactTemplate(message);
+                return RedactSensitiveValues(message, pairs);
             });
             return;
         }
@@ -80,6 +80,26 @@ public sealed class RedactingLogger : ILogger
     // Visible for testing.
     internal string RedactTemplate(string message)
         => SensitiveTemplatePattern.Replace(message, _ => _redactor.Redact(string.Empty));
+
+    private string RedactSensitiveValues(string message, IEnumerable<KeyValuePair<string, object?>> pairs)
+    {
+        var redacted = RedactTemplate(message);
+        foreach (var pair in pairs)
+        {
+            if (!SensitiveKeyPattern.IsMatch(pair.Key) || pair.Value is null)
+            {
+                continue;
+            }
+
+            var value = pair.Value.ToString();
+            if (!string.IsNullOrEmpty(value))
+            {
+                redacted = redacted.Replace(value, _redactor.Redact(string.Empty), StringComparison.Ordinal);
+            }
+        }
+
+        return redacted;
+    }
 
     private List<KeyValuePair<string, object?>> RedactPairs(IEnumerable<KeyValuePair<string, object?>> pairs)
     {

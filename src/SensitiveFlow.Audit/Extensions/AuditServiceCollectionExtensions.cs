@@ -9,7 +9,7 @@ namespace SensitiveFlow.Audit.Extensions;
 public static class AuditServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers a custom <see cref="IAuditStore"/> implementation as a singleton.
+    /// Registers a custom <see cref="IAuditStore"/> implementation as scoped.
     /// </summary>
     /// <typeparam name="TStore">
     /// Your <see cref="IAuditStore"/> implementation backed by a durable sink
@@ -22,14 +22,14 @@ public static class AuditServiceCollectionExtensions
     /// builder.Services.AddAuditStore&lt;EfCoreAuditStore&gt;();
     ///
     /// // Or register manually with a factory:
-    /// builder.Services.AddSingleton&lt;IAuditStore&gt;(sp =>
+    /// builder.Services.AddScoped&lt;IAuditStore&gt;(sp =>
     ///     new EfCoreAuditStore(sp.GetRequiredService&lt;AuditDbContext&gt;()));
     /// </code>
     /// </example>
     public static IServiceCollection AddAuditStore<TStore>(this IServiceCollection services)
         where TStore : class, IAuditStore
     {
-        services.AddSingleton<IAuditStore, TStore>();
+        services.AddScoped<IAuditStore, TStore>();
         return services;
     }
 }

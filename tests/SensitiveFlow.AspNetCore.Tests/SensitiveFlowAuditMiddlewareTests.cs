@@ -22,7 +22,8 @@ public sealed class SensitiveFlowAuditMiddlewareTests
     public async Task Middleware_WithRemoteIp_StoresTokenInItems()
     {
         var pseudonymizer = Substitute.For<IPseudonymizer>();
-        pseudonymizer.Pseudonymize("192.168.1.42").Returns("token-abc");
+        pseudonymizer.PseudonymizeAsync("192.168.1.42", Arg.Any<CancellationToken>())
+            .Returns("token-abc");
 
         var httpContext = MakeContext("192.168.1.42");
 
@@ -36,14 +37,15 @@ public sealed class SensitiveFlowAuditMiddlewareTests
     public async Task Middleware_CallsPseudonymizer_WithRemoteIp()
     {
         var pseudonymizer = Substitute.For<IPseudonymizer>();
-        pseudonymizer.Pseudonymize(Arg.Any<string>()).Returns("token-x");
+        pseudonymizer.PseudonymizeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("token-x");
 
         var httpContext = MakeContext("10.0.0.1");
 
         var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
         await middleware.InvokeAsync(httpContext);
 
-        pseudonymizer.Received(1).Pseudonymize("10.0.0.1");
+        await pseudonymizer.Received(1).PseudonymizeAsync("10.0.0.1", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -57,14 +59,15 @@ public sealed class SensitiveFlowAuditMiddlewareTests
         await middleware.InvokeAsync(httpContext);
 
         httpContext.Items.Should().NotContainKey(SensitiveFlowAuditMiddleware.IpTokenKey);
-        pseudonymizer.DidNotReceive().Pseudonymize(Arg.Any<string>());
+        await pseudonymizer.DidNotReceive().PseudonymizeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Middleware_AlwaysCallsNext()
     {
         var pseudonymizer = Substitute.For<IPseudonymizer>();
-        pseudonymizer.Pseudonymize(Arg.Any<string>()).Returns("tok");
+        pseudonymizer.PseudonymizeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("tok");
 
         var nextCalled = false;
         var httpContext = MakeContext();

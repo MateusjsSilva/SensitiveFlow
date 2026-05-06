@@ -41,7 +41,7 @@ public sealed class AspNetCoreExtensionsTests
     public async Task UseSensitiveFlowAudit_AddsMiddlewareTopipeline()
     {
         var pseudonymizer = Substitute.For<IPseudonymizer>();
-        pseudonymizer.Pseudonymize(Arg.Any<string>()).Returns("tok");
+        pseudonymizer.PseudonymizeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("tok");
 
         var middlewareInvoked = false;
 

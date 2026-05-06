@@ -12,7 +12,7 @@ namespace SensitiveFlow.EFCore.Extensions;
 public static class EFCoreServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the <see cref="SensitiveDataAuditInterceptor"/> as a singleton.
+    /// Registers the <see cref="SensitiveDataAuditInterceptor"/> as scoped.
     /// <para>
     /// <see cref="IAuditContext"/> is registered as <see cref="NullAuditContext"/> only when
     /// no prior registration exists, so calling <c>AddSensitiveFlowAspNetCore()</c> before or
@@ -22,7 +22,7 @@ public static class EFCoreServiceCollectionExtensions
     public static IServiceCollection AddSensitiveFlowEFCore(this IServiceCollection services)
     {
         services.TryAddSingleton<IAuditContext>(NullAuditContext.Instance);
-        services.AddSingleton<SensitiveDataAuditInterceptor>();
+        services.AddScoped<SensitiveDataAuditInterceptor>();
         return services;
     }
 

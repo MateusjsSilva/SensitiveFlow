@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using SensitiveFlow.Logging.Extensions;
+using SensitiveFlow.Logging.Loggers;
 using SensitiveFlow.Logging.Redaction;
 
 namespace SensitiveFlow.Logging.Tests;
@@ -63,6 +65,37 @@ public sealed class LoggingExtensionsTests
         var services = new ServiceCollection();
         var result = services.AddSensitiveFlowLogging();
         result.Should().BeSameAs(services);
+    }
+
+    [Fact]
+    public void AddSensitiveFlowLogging_LoggingBuilder_RegistersRedactingProvider()
+    {
+        var services = new ServiceCollection();
+        var builder = new LoggingBuilderStub(services);
+
+        var result = builder.AddSensitiveFlowLogging<FakeLoggerProvider>();
+
+        result.Should().BeSameAs(builder);
+        using var provider = services.BuildServiceProvider();
+        provider.GetServices<ILoggerProvider>()
+            .Should()
+            .ContainSingle(p => p is RedactingLoggerProvider);
+    }
+
+    private sealed class LoggingBuilderStub : ILoggingBuilder
+    {
+        public LoggingBuilderStub(IServiceCollection services) => Services = services;
+
+        public IServiceCollection Services { get; }
+    }
+
+    private sealed class FakeLoggerProvider : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => Substitute.For<ILogger>();
+
+        public void Dispose()
+        {
+        }
     }
 }
 

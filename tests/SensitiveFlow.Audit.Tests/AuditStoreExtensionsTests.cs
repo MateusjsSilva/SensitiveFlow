@@ -20,16 +20,22 @@ public sealed class AuditStoreExtensionsTests
     }
 
     [Fact]
-    public void AddAuditStore_RegistersAsSingleton()
+    public void AddAuditStore_RegistersAsScoped()
     {
         var services = new ServiceCollection();
         services.AddAuditStore<FakeAuditStore>();
 
         var provider = services.BuildServiceProvider();
 
-        var a = provider.GetRequiredService<IAuditStore>();
-        var b = provider.GetRequiredService<IAuditStore>();
+        using var scope1 = provider.CreateScope();
+        using var scope2 = provider.CreateScope();
+
+        var a = scope1.ServiceProvider.GetRequiredService<IAuditStore>();
+        var b = scope1.ServiceProvider.GetRequiredService<IAuditStore>();
+        var c = scope2.ServiceProvider.GetRequiredService<IAuditStore>();
+
         a.Should().BeSameAs(b);
+        a.Should().NotBeSameAs(c);
     }
 
     [Fact]
