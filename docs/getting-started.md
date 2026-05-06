@@ -47,7 +47,12 @@ public class Customer
 
 ```csharp
 // Program.cs
-builder.Services.AddInMemoryAuditStore();        // or a durable store
+
+// Register your durable IAuditStore and ITokenStore implementations.
+// Audit records must survive process restarts — there is no built-in in-memory store for production.
+builder.Services.AddAuditStore<EfCoreAuditStore>();   // your IAuditStore backed by SQL, etc.
+builder.Services.AddTokenStore<EfCoreTokenStore>();   // your ITokenStore backed by SQL, Redis, etc.
+
 builder.Services.AddSensitiveFlowEFCore();       // registers SensitiveDataAuditInterceptor
 builder.Services.AddSensitiveFlowAspNetCore();   // registers HttpAuditContext
 builder.Services.AddSensitiveFlowLogging();      // registers DefaultSensitiveValueRedactor

@@ -14,8 +14,8 @@
 ## Registration
 
 ```csharp
-// Register the interceptor and a default NullAuditContext
-builder.Services.AddInMemoryAuditStore();
+// Register your durable IAuditStore, then the interceptor.
+builder.Services.AddAuditStore<EfCoreAuditStore>();
 builder.Services.AddSensitiveFlowEFCore();
 ```
 

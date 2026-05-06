@@ -1,290 +1,356 @@
-using System.Collections.Concurrent;
-using System.Reflection;
+// ---------------------------------------------
+// SensitiveFlow - Console Sample
+//
+// Shows a real persistence setup:
+//   - SQLite via EF Core (durable AuditStore + TokenStore)
+//   - Serilog for structured log redaction
+//   - OpenTelemetry for activity traces
+//   - [PersonalData] / [SensitiveData] attributes + retention evaluation
+// ---------------------------------------------
+
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Events;
 using SensitiveFlow.Anonymization.Anonymizers;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Masking;
 using SensitiveFlow.Anonymization.Pseudonymizers;
-using SensitiveFlow.Anonymization.Strategies;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
-using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.EFCore.Interceptors;
+using SensitiveFlow.Retention.Services;
 
-// ---------------------------------------------
-// SensitiveFlow - Console Sample
-// ---------------------------------------------
+// ── Serilog ────────────────────────────────────────────────────────────────
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/sensitiveflow-console-.log",
+        rollingInterval: RollingInterval.Day,
+        restrictedToMinimumLevel: LogEventLevel.Information)
+    .CreateLogger();
 
-PrintSection("1. Annotating models with privacy attributes");
-DemoAttributes();
+// ── OpenTelemetry ───────────────────────────────────────────────────────────
+var activitySource = new ActivitySource("SensitiveFlow.Console.Sample");
 
-PrintSection("2. Reading attribute metadata via reflection");
-DemoReflection();
+using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("SensitiveFlow.Console.Sample"))
+    .AddSource(activitySource.Name)
+    .AddConsoleExporter()
+    .Build();
 
-PrintSection("3. Audit trail records");
-await DemoAuditAsync();
+// ── EF Core: SQLite with durable AuditStore and TokenStore ─────────────────
+var options = new DbContextOptionsBuilder<SampleDbContext>()
+    .UseSqlite("Data Source=sensitiveflow-console.db")
+    .Options;
 
-PrintSection("4. Domain exceptions");
-DemoExceptions();
+using var db = new SampleDbContext(options);
+await db.Database.EnsureCreatedAsync();
 
-PrintSection("5. Anonymization (data may leave personal-data scope)");
-DemoAnonymization();
+IAuditStore auditStore = db.AuditStore;
+ITokenStore tokenStore = db.TokenStore;
+var pseudonymizer = new TokenPseudonymizer(tokenStore);
 
-PrintSection("6. Pseudonymization (data remains personal)");
-await DemoPseudonymizationAsync();
+// The EF Core interceptor wires into SaveChanges and emits AuditRecords automatically.
+// In a DI setup, inject SensitiveDataAuditInterceptor via AddSensitiveFlowEFCore().
+var auditContext = new StaticAuditContext("console-runner", ipToken: null);
+var interceptor = new SensitiveDataAuditInterceptor(auditStore, auditContext);
 
-PrintSection("7. Masking strategies (one-way transforms)");
-DemoStrategies();
+// ──────────────────────────────────────────────────────────────────────────
+Section("1. Annotating models with [PersonalData] / [SensitiveData]");
+// ──────────────────────────────────────────────────────────────────────────
 
-// ---------------------------------------------
-
-static void DemoAttributes()
+var customer = new Customer
 {
-    var props = typeof(Customer).GetProperties();
+    DataSubjectId = Guid.NewGuid().ToString(),
+    Name          = "Joao da Silva",
+    Email         = "joao.silva@example.com",
+    TaxId         = "123.456.789-09",
+    Phone         = "+55 11 99999-8877",
+    CreatedAt     = DateTimeOffset.UtcNow,
+};
 
-    foreach (var prop in props)
-    {
-        var personal  = prop.GetCustomAttribute<PersonalDataAttribute>();
-        var sensitive = prop.GetCustomAttribute<SensitiveDataAttribute>();
-        var retention = prop.GetCustomAttribute<RetentionDataAttribute>();
+Log.Information("New customer — name: {Name}, email: {Email}",
+    customer.Name.MaskName(),
+    customer.Email.MaskEmail());
 
-        if (personal is null && sensitive is null)
-        {
-            continue;
-        }
+// ──────────────────────────────────────────────────────────────────────────
+Section("2. Persisting to SQLite and generating automatic audit trail");
+// ──────────────────────────────────────────────────────────────────────────
 
-        Console.Write($"  {prop.Name,-18}");
+using (var activity = activitySource.StartActivity("SaveCustomer"))
+{
+    activity?.SetTag("dataSubjectId", customer.DataSubjectId);
 
-        if (personal  is not null) { Console.Write($"[PersonalData  category={personal.Category}]"); }
-        if (sensitive is not null) { Console.Write($"[SensitiveData category={sensitive.Category}]"); }
-        if (retention is not null) { Console.Write($" [Retention years={retention.Years} policy={retention.Policy}]"); }
+    var saveOptions = new DbContextOptionsBuilder<SampleDbContext>()
+        .UseSqlite("Data Source=sensitiveflow-console.db")
+        .AddInterceptors(interceptor)
+        .Options;
 
-        Console.WriteLine();
-    }
+    using var saveCtx = new SampleDbContext(saveOptions);
+    await saveCtx.Database.EnsureCreatedAsync();
+    saveCtx.Customers.Add(customer);
+    await saveCtx.SaveChangesAsync();
+
+    Log.Information("Customer {DataSubjectId} saved", customer.DataSubjectId);
 }
 
-static void DemoReflection()
-{
-    foreach (var prop in typeof(Customer).GetProperties())
-    {
-        var attr = prop.GetCustomAttribute<PersonalDataAttribute>();
-        if (attr is null)
-        {
-            continue;
-        }
+// ──────────────────────────────────────────────────────────────────────────
+Section("3. Querying the durable audit trail from SQLite");
+// ──────────────────────────────────────────────────────────────────────────
 
-        Console.WriteLine($"  Field   : {prop.Name}");
-        Console.WriteLine($"  Category: {attr.Category}");
-        Console.WriteLine();
-    }
+var auditRecords = await auditStore.QueryByDataSubjectAsync(customer.DataSubjectId);
+Console.WriteLine($"  Audit records for {customer.DataSubjectId}:");
+foreach (var r in auditRecords)
+{
+    Console.WriteLine($"    [{r.Timestamp:u}] {r.Operation,-10} {r.Entity}.{r.Field,-12} actor={r.ActorId ?? "-"}");
 }
 
-static async Task DemoAuditAsync()
+// ──────────────────────────────────────────────────────────────────────────
+Section("4. IP pseudonymization — token survives to SQLite");
+// ──────────────────────────────────────────────────────────────────────────
+
+var rawIp   = "192.168.100.42";
+var ipToken = await pseudonymizer.PseudonymizeAsync(rawIp);
+
+Log.Information("Request from IP token {IpToken} (raw IP never logged)", ipToken[..8] + "...");
+
+// Emit audit record with pseudonymized IP — raw IP never stored.
+await auditStore.AppendAsync(new AuditRecord
 {
-    // IP addresses are personal data and must be pseudonymized before being stored in audit logs.
-    // In production use a durable ITokenStore (SQL, Redis, etc.) so tokens survive restarts.
-    var ipPseudo = new TokenPseudonymizer(new LocalTokenStore());
-    var rawIp    = "192.168.1.10";
-    var ipToken  = await ipPseudo.PseudonymizeAsync(rawIp);
+    DataSubjectId  = customer.DataSubjectId,
+    Entity         = nameof(Customer),
+    Field          = "*",
+    Operation      = AuditOperation.Access,
+    ActorId        = "api-gateway",
+    IpAddressToken = ipToken,
+});
 
-    var records = new[]
-    {
-        new AuditRecord
-        {
-            DataSubjectId  = "user-42",
-            Entity         = nameof(Customer),
-            Field          = nameof(Customer.Email),
-            Operation      = AuditOperation.Access,
-            ActorId        = "admin-7",
-            IpAddressToken = ipToken,
-        },
-        new AuditRecord
-        {
-            DataSubjectId = "user-42",
-            Entity        = nameof(Customer),
-            Field         = nameof(Customer.TaxId),
-            Operation     = AuditOperation.Update,
-            ActorId       = "user-42",
-        },
-        new AuditRecord
-        {
-            DataSubjectId = "user-42",
-            Entity        = nameof(Customer),
-            Field         = nameof(Customer.Name),
-            Operation     = AuditOperation.Anonymize,
-            Details       = "erasure request #req-99",
-        },
-    };
+// In a security investigation, recover the IP from the durable token store:
+var resolvedIp = await pseudonymizer.ReverseAsync(ipToken);
+Console.WriteLine($"  Token {ipToken[..8]}... resolved to: {resolvedIp}");
 
-    foreach (var r in records)
-    {
-        Console.WriteLine($"  {r.Timestamp:u}  {r.Operation,-12} {r.Entity}.{r.Field,-20} actor={r.ActorId ?? "-"}  ip={r.IpAddressToken ?? "-"}");
-    }
+// ──────────────────────────────────────────────────────────────────────────
+Section("5. Masking and anonymization");
+// ──────────────────────────────────────────────────────────────────────────
 
-    // During a security investigation the original IP can be recovered from the token store:
-    var resolvedIp = await ipPseudo.ReverseAsync(ipToken);
-    Console.WriteLine($"\n  [investigation] token {ipToken[..8]}... resolved to: {resolvedIp}");
+Console.WriteLine($"  Name masked  : {customer.Name.MaskName()}");
+Console.WriteLine($"  Email masked : {customer.Email.MaskEmail()}");
+Console.WriteLine($"  Phone masked : {customer.Phone.MaskPhone()}");
+Console.WriteLine($"  TaxId anon.  : {new BrazilianTaxIdAnonymizer().Anonymize(customer.TaxId)}");
+
+// ──────────────────────────────────────────────────────────────────────────
+Section("6. Retention evaluation");
+// ──────────────────────────────────────────────────────────────────────────
+
+var retentionEvaluator = new RetentionEvaluator(Enumerable.Empty<SensitiveFlow.Retention.Contracts.IRetentionExpirationHandler>());
+
+// Not expired: should not throw.
+try
+{
+    await retentionEvaluator.EvaluateAsync(customer, customer.CreatedAt);
+    Console.WriteLine("  Retention OK — not expired.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  Retention expired: {ex.Message}");
 }
 
-static void DemoExceptions()
-{
-    TryCatch("DataNotFoundException", () =>
-        throw new DataNotFoundException("Customer", "user-42"));
+// ──────────────────────────────────────────────────────────────────────────
+Section("7. OpenTelemetry trace exported");
+// ──────────────────────────────────────────────────────────────────────────
 
-    TryCatch("RetentionExpiredException", () =>
-        throw new RetentionExpiredException("Customer", "TaxId", DateTimeOffset.UtcNow.AddYears(-1)));
+using (var span = activitySource.StartActivity("AuditQueryDemo"))
+{
+    span?.SetTag("subject", customer.DataSubjectId);
+    var all = await auditStore.QueryAsync();
+    span?.SetTag("records.count", all.Count);
+    Console.WriteLine($"  Total audit records in store: {all.Count}");
 }
 
-static void DemoAnonymization()
-{
-    var customer = new Customer
-    {
-        Name  = "Joao da Silva",
-        TaxId = "123.456.789-09",
-        Email = "joao.silva@example.com",
-        Phone = "+55 11 99999-8877",
-    };
+Log.Information("Console sample finished.");
+await Log.CloseAndFlushAsync();
 
-    Console.WriteLine("  Original:");
-    Console.WriteLine($"    Name  : {customer.Name}");
-    Console.WriteLine($"    TaxId : {customer.TaxId}");
-    Console.WriteLine($"    Email : {customer.Email}");
-    Console.WriteLine($"    Phone : {customer.Phone}");
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-    Console.WriteLine("\n  Anonymized (data may leave personal-data scope):");
-    Console.WriteLine($"    TaxId : {customer.TaxId.AnonymizeTaxId()}");
-
-    Console.WriteLine("\n  Masked - risk reduction only (data REMAINS personal):");
-    Console.WriteLine($"    Name  : {customer.Name.MaskName()}");
-    Console.WriteLine($"    Email : {customer.Email.MaskEmail()}");
-    Console.WriteLine($"    Phone : {customer.Phone.MaskPhone()}");
-
-    Console.WriteLine("\n  Direct instance (preferred for bulk):");
-    var taxAnon = new BrazilianTaxIdAnonymizer();
-    Console.WriteLine($"    TaxId : {taxAnon.Anonymize(customer.TaxId)}");
-}
-
-static async Task DemoPseudonymizationAsync()
-{
-    // In production use a durable ITokenStore (SQL, Redis, etc.) so tokens survive restarts.
-    var tokenPseudo = new TokenPseudonymizer(new LocalTokenStore());
-
-    var original  = "joao.silva@example.com";
-    var token     = await tokenPseudo.PseudonymizeAsync(original);
-    var recovered = await tokenPseudo.ReverseAsync(token);
-
-    Console.WriteLine("  TokenPseudonymizer (reversible):");
-    Console.WriteLine($"    Original  : {original}");
-    Console.WriteLine($"    Token     : {token}");
-    Console.WriteLine($"    Recovered : {recovered}");
-    Console.WriteLine($"    Same token for same input: {await tokenPseudo.PseudonymizeAsync(original) == token}");
-
-    var hmacPseudo = new HmacPseudonymizer("my-secret-key-for-hmac-32-bytes!!");
-    var hmacToken  = hmacPseudo.Pseudonymize(original);
-    var hmacToken2 = hmacPseudo.Pseudonymize(original);
-
-    Console.WriteLine("\n  HmacPseudonymizer (deterministic, non-reversible):");
-    Console.WriteLine($"    Original       : {original}");
-    Console.WriteLine($"    Token          : {hmacToken}");
-    Console.WriteLine($"    Deterministic  : {hmacToken == hmacToken2}");
-
-    var viaExtension = original.PseudonymizeHmac("my-secret-key-for-hmac-32-bytes!!");
-    Console.WriteLine($"    Via extension  : {viaExtension == hmacToken}");
-}
-
-static void DemoStrategies()
-{
-    var value = "sensitive-value";
-
-    var redacted = new RedactionStrategy().Apply(value);
-    var custom   = new RedactionStrategy("***").Apply(value);
-    Console.WriteLine($"  Redaction (default) : {redacted}");
-    Console.WriteLine($"  Redaction (custom)  : {custom}");
-
-    var hash   = new HashStrategy().Apply(value);
-    var salted = new HashStrategy("my-fixed-salt-16ch").Apply(value);
-    Console.WriteLine($"  Hash (no salt)      : {hash[..16]}...");
-    Console.WriteLine($"  Hash (with salt)    : {salted[..16]}...");
-    Console.WriteLine($"  Same input = same hash: {new HashStrategy().Apply(value) == hash}");
-}
-
-static void TryCatch(string label, Action action)
-{
-    try { action(); }
-    catch (Exception ex) { Console.WriteLine($"  [{label}] {ex.Message}"); }
-}
-
-static void PrintSection(string title)
+static void Section(string title)
 {
     Console.WriteLine();
-    Console.WriteLine($"-- {title} --");
+    Console.WriteLine($"── {title} ──");
 }
 
-// ---------------------------------------------
-// Sample model
-// ---------------------------------------------
+// ── Domain model ──────────────────────────────────────────────────────────
 
-public class Customer
+public sealed class Customer
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
+    public string DataSubjectId { get; set; } = string.Empty;
 
     [PersonalData(Category = DataCategory.Identification)]
     public string Name { get; set; } = string.Empty;
+
+    [PersonalData(Category = DataCategory.Contact)]
+    public string Email { get; set; } = string.Empty;
 
     [SensitiveData(Category = SensitiveDataCategory.Other)]
     [RetentionData(Years = 5, Policy = RetentionPolicy.AnonymizeOnExpiration)]
     public string TaxId { get; set; } = string.Empty;
 
     [PersonalData(Category = DataCategory.Contact)]
-    public string Email { get; set; } = string.Empty;
-
-    [PersonalData(Category = DataCategory.Location)]
-    public string Address { get; set; } = string.Empty;
-
-    [PersonalData(Category = DataCategory.Contact)]
     public string Phone { get; set; } = string.Empty;
 
-    public string? TemporaryNotes { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
-// ---------------------------------------------
-// Local-only token store for this console demo.
-// In production use a durable ITokenStore backed by SQL, Redis, etc.
-// Tokens created here are lost when the process exits.
-// ---------------------------------------------
+// ── EF Core DbContext with durable AuditStore and TokenStore ──────────────
 
-internal sealed class LocalTokenStore : ITokenStore
+public sealed class SampleDbContext : DbContext
 {
-    private readonly object _lock = new();
-    private readonly Dictionary<string, string> _valueToToken = new();
-    private readonly Dictionary<string, string> _tokenToValue = new();
+    public SampleDbContext(DbContextOptions<SampleDbContext> options) : base(options) { }
 
-    public Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<AuditRecordEntity> AuditEntries => Set<AuditRecordEntity>();
+    public DbSet<TokenMappingEntity> TokenMappings => Set<TokenMappingEntity>();
+
+    public IAuditStore AuditStore => new EfCoreAuditStore(this);
+    public ITokenStore TokenStore => new EfCoreTokenStore(this);
+}
+
+public sealed class AuditRecordEntity
+{
+    public int Id { get; set; }
+    public string RecordId { get; set; } = string.Empty;
+    public string DataSubjectId { get; set; } = string.Empty;
+    public string Entity { get; set; } = string.Empty;
+    public string Field { get; set; } = string.Empty;
+    public int Operation { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
+    public string? ActorId { get; set; }
+    public string? IpAddressToken { get; set; }
+    public string? Details { get; set; }
+}
+
+public sealed class TokenMappingEntity
+{
+    public int Id { get; set; }
+    public string Value { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+}
+
+// ── Durable IAuditStore backed by EF Core / SQLite ────────────────────────
+
+public sealed class EfCoreAuditStore : IAuditStore
+{
+    private readonly SampleDbContext _db;
+    public EfCoreAuditStore(SampleDbContext db) => _db = db;
+
+    public async Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        _db.AuditEntries.Add(new AuditRecordEntity
         {
-            if (_valueToToken.TryGetValue(value, out var existing))
-            {
-                return Task.FromResult(existing);
-            }
-
-            var token = Guid.NewGuid().ToString();
-            _valueToToken[value] = token;
-            _tokenToValue[token] = value;
-            return Task.FromResult(token);
-        }
+            RecordId      = record.Id,
+            DataSubjectId = record.DataSubjectId,
+            Entity        = record.Entity,
+            Field         = record.Field,
+            Operation     = (int)record.Operation,
+            Timestamp     = record.Timestamp,
+            ActorId       = record.ActorId,
+            IpAddressToken = record.IpAddressToken,
+            Details       = record.Details,
+        });
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AuditRecord>> QueryAsync(
+        DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int skip = 0, int take = 100, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        var query = _db.AuditEntries.AsQueryable();
+        if (from.HasValue) { query = query.Where(r => r.Timestamp >= from.Value); }
+        if (to.HasValue)   { query = query.Where(r => r.Timestamp <= to.Value); }
+        var rows = await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return rows.Select(ToRecord).ToList();
+    }
+
+    public async Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
+        string dataSubjectId,
+        DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+    {
+        var query = _db.AuditEntries.Where(r => r.DataSubjectId == dataSubjectId);
+        if (from.HasValue) { query = query.Where(r => r.Timestamp >= from.Value); }
+        if (to.HasValue)   { query = query.Where(r => r.Timestamp <= to.Value); }
+        var rows = await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return rows.Select(ToRecord).ToList();
+    }
+
+    private static AuditRecord ToRecord(AuditRecordEntity e) => new()
+    {
+        Id            = e.RecordId,
+        DataSubjectId = e.DataSubjectId,
+        Entity        = e.Entity,
+        Field         = e.Field,
+        Operation     = (AuditOperation)e.Operation,
+        Timestamp     = e.Timestamp,
+        ActorId       = e.ActorId,
+        IpAddressToken = e.IpAddressToken,
+        Details       = e.Details,
+    };
+}
+
+// ── Durable ITokenStore backed by EF Core / SQLite ────────────────────────
+
+public sealed class EfCoreTokenStore : ITokenStore
+{
+    private readonly SampleDbContext _db;
+    public EfCoreTokenStore(SampleDbContext db) => _db = db;
+
+    public async Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
+    {
+        var existing = await _db.TokenMappings
+            .FirstOrDefaultAsync(t => t.Value == value, cancellationToken);
+
+        if (existing is not null)
         {
-            if (_tokenToValue.TryGetValue(token, out var value))
-            {
-                return Task.FromResult(value);
-            }
+            return existing.Token;
         }
 
-        throw new KeyNotFoundException($"Token '{token}' was not found.");
+        var token = Guid.NewGuid().ToString();
+        _db.TokenMappings.Add(new TokenMappingEntity { Value = value, Token = token });
+        await _db.SaveChangesAsync(cancellationToken);
+        return token;
     }
+
+    public async Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        var mapping = await _db.TokenMappings
+            .FirstOrDefaultAsync(t => t.Token == token, cancellationToken);
+
+        if (mapping is null)
+        {
+            throw new KeyNotFoundException($"Token '{token}' not found in the store.");
+        }
+
+        return mapping.Value;
+    }
+}
+
+// ── Static IAuditContext for console (no HTTP context) ────────────────────
+
+public sealed class StaticAuditContext : IAuditContext
+{
+    public StaticAuditContext(string actorId, string? ipToken)
+    {
+        ActorId        = actorId;
+        IpAddressToken = ipToken;
+    }
+
+    public string? ActorId { get; }
+    public string? IpAddressToken { get; }
 }

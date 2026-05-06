@@ -55,16 +55,17 @@ builder.Services.AddSensitiveFlowAspNetCore();
 ## Combining with EF Core
 
 ```csharp
-// Register audit store
-builder.Services.AddInMemoryAuditStore();
+// Register your durable IAuditStore and ITokenStore.
+builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddTokenStore<EfCoreTokenStore>();
 
-// Register interceptor with NullAuditContext as default
+// Register interceptor (NullAuditContext as default, replaced below).
 builder.Services.AddSensitiveFlowEFCore();
 
-// Replace NullAuditContext with the HTTP-aware implementation
+// Replace NullAuditContext with the HTTP-aware implementation.
 builder.Services.AddSensitiveFlowAspNetCore();
 
-// Wire the interceptor
+// Wire the interceptor into your DbContext.
 builder.Services.AddDbContext<AppDbContext>((sp, opts) =>
 {
     opts.UseSqlServer(connectionString);

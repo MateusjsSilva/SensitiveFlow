@@ -154,10 +154,6 @@ produces an `AuditRecord` automatically.
 - **Safe defaults** -- the IP address is never stored raw; the log redactor strips sensitive values before they reach any sink.
 - **Bring your own persistence** -- `IAuditStore` and `ITokenStore` are contracts, not implementations. You choose the database.
 
-## Status
-
-Work in progress. See [PLAN.md](PLAN.md) for the full roadmap.
-
 ## License
 
 MIT

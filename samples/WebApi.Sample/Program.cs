@@ -1,89 +1,116 @@
 // ---------------------------------------------
-// SensitiveFlow - Web API (MVC Controllers) Sample
+// SensitiveFlow - Web API (Controllers) Sample
 //
-// Demonstrates SensitiveFlow in a controller-based ASP.NET Core application:
-//   - [PersonalData] / [SensitiveData] on model properties
-//   - Middleware that pseudonymizes the remote IP before it reaches any controller
-//   - IAuditStore receiving AuditRecords via IAuditContext
-//   - ILogger redaction stripping sensitive values from structured logs
-//   - Masking in responses so raw PII never leaves the API boundary
-//
-// IMPORTANT: This sample uses a stub IAuditStore that discards records.
-// In production, replace it with an implementation backed by a durable database
-// (SQL via EF Core, MongoDB, etc.) using:
-//   builder.Services.AddAuditStore<YourDurableAuditStore>();
+// Real production stack:
+//   - SQLite via EF Core (durable AuditStore + TokenStore)
+//   - Serilog (structured logging with file sink)
+//   - OpenTelemetry (ASP.NET Core + HTTP instrumentation, console exporter)
+//   - SensitiveFlow full integration:
+//       AddAuditStore, AddTokenStore, AddSensitiveFlowEFCore,
+//       AddSensitiveFlowAspNetCore, AddSensitiveFlowLogging
 // ---------------------------------------------
 
+using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Events;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Interfaces;
-using SensitiveFlow.Core.Models;
 using SensitiveFlow.EFCore.Extensions;
 using SensitiveFlow.Logging.Extensions;
+using WebApi.Sample.Infrastructure;
 
-var builder = WebApplication.CreateBuilder(args);
+// ── Serilog bootstrap ──────────────────────────────────────────────────────
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/webapi-sample-.log",
+        rollingInterval: RollingInterval.Day,
+        restrictedToMinimumLevel: LogEventLevel.Information)
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-
-// --- SensitiveFlow: audit store (replace with a durable store in production) ---
-builder.Services.AddAuditStore<NullAuditStore>();
-
-// --- SensitiveFlow: token store + pseudonymizer (replace with a durable store in production) ---
-builder.Services.AddTokenStore<NullTokenStore>();
-
-// --- SensitiveFlow: EF Core interceptor + ASP.NET Core audit context ---
-builder.Services.AddSensitiveFlowEFCore();
-builder.Services.AddSensitiveFlowAspNetCore();
-
-// --- SensitiveFlow: structured log redaction ---
-builder.Services.AddSensitiveFlowLogging();
-
-var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
+try
 {
-    app.MapOpenApi();
+    var builder = WebApplication.CreateBuilder(args);
+
+    // ── Serilog ──────────────────────────────────────────────────────────
+    builder.Host.UseSerilog((ctx, services, config) => config
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(outputTemplate:
+            "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+        .WriteTo.File("logs/webapi-sample-.log", rollingInterval: RollingInterval.Day));
+
+    // ── EF Core / SQLite ──────────────────────────────────────────────────
+    builder.Services.AddDbContext<SampleDbContext>(o =>
+        o.UseSqlite(builder.Configuration.GetConnectionString("Default")
+            ?? "Data Source=sensitiveflow-webapi.db"));
+
+    // ── SensitiveFlow ─────────────────────────────────────────────────────
+    // Register durable stores — EF Core / SQLite implementations.
+    builder.Services.AddScoped<IAuditStore, EfCoreAuditStore>();
+    builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
+
+    // AddAuditStore<T> and AddTokenStore<T> expect singleton stores;
+    // for scoped EF Core stores we register directly and wire the pseudonymizer manually.
+    builder.Services.AddSensitiveFlowLogging();
+    builder.Services.AddSensitiveFlowEFCore();
+    builder.Services.AddSensitiveFlowAspNetCore();
+
+    // Wire the TokenPseudonymizer to the scoped EfCoreTokenStore.
+    builder.Services.AddScoped<IPseudonymizer>(sp =>
+    {
+        var store = sp.GetRequiredService<ITokenStore>();
+        return new SensitiveFlow.Anonymization.Pseudonymizers.TokenPseudonymizer(store);
+    });
+
+    // ── OpenTelemetry ─────────────────────────────────────────────────────
+    builder.Services.AddOpenTelemetry()
+        .WithTracing(tracing => tracing
+            .SetResourceBuilder(ResourceBuilder.CreateDefault()
+                .AddService("SensitiveFlow.WebApi.Sample"))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddConsoleExporter());
+
+    builder.Services.AddControllers();
+    builder.Services.AddOpenApi();
+
+    var app = builder.Build();
+
+    // Ensure DB is created on startup.
+    using (var scope = app.Services.CreateScope())
+    {
+        await scope.ServiceProvider.GetRequiredService<SampleDbContext>()
+            .Database.EnsureCreatedAsync();
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+    }
+
+    app.UseHttpsRedirection();
+
+    // UseSensitiveFlowAudit pseudonymizes the remote IP and stores the token
+    // in HttpContext.Items before any controller executes.
+    app.UseSensitiveFlowAudit();
+
+    app.UseAuthorization();
+    app.MapControllers();
+
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-
-// UseSensitiveFlowAudit must come before UseAuthentication so the IP token
-// is available for every downstream controller.
-app.UseSensitiveFlowAudit();
-
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
-
-// -----------------------------------------------------------------------
-// Stubs — replace both with durable implementations in production.
-// -----------------------------------------------------------------------
-
-public sealed class NullAuditStore : IAuditStore
+catch (Exception ex)
 {
-    public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
-
-    public Task<IReadOnlyList<AuditRecord>> QueryAsync(
-        DateTimeOffset? from = null, DateTimeOffset? to = null,
-        int skip = 0, int take = 100, CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
-
-    public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
-        string dataSubjectId,
-        DateTimeOffset? from = null, DateTimeOffset? to = null,
-        int skip = 0, int take = 100, CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+    Log.Fatal(ex, "Host terminated unexpectedly");
 }
-
-public sealed class NullTokenStore : ITokenStore
+finally
 {
-    public Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
-        => Task.FromResult(value);
-
-    public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
-        => Task.FromResult(token);
+    await Log.CloseAndFlushAsync();
 }

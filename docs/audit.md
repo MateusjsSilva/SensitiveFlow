@@ -59,17 +59,49 @@ public interface IAuditStore
 }
 ```
 
-## InMemoryAuditStore
+## Implementing a durable store
 
-The in-memory store is suitable for development and testing. It stores records in a `ConcurrentBag<AuditRecord>` and supports all query filters.
-
-### Registration
+`IAuditStore` has no built-in implementation — you own the persistence layer so audit records go exactly where your infrastructure requires.
+Audit records must survive process restarts. An in-memory store is not suitable for production.
 
 ```csharp
-builder.Services.AddInMemoryAuditStore();
-```
+public sealed class EfCoreAuditStore : IAuditStore
+{
+    private readonly AuditDbContext _db;
 
-This registers `InMemoryAuditStore` as a singleton `IAuditStore`.
+    public EfCoreAuditStore(AuditDbContext db) => _db = db;
+
+    public async Task AppendAsync(AuditRecord record, CancellationToken ct = default)
+    {
+        _db.AuditRecords.Add(record);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AuditRecord>> QueryAsync(
+        DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int skip = 0, int take = 100, CancellationToken ct = default)
+    {
+        var q = _db.AuditRecords.AsQueryable();
+        if (from.HasValue) { q = q.Where(r => r.Timestamp >= from.Value); }
+        if (to.HasValue)   { q = q.Where(r => r.Timestamp <= to.Value); }
+        return await q.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
+        string dataSubjectId,
+        DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int skip = 0, int take = 100, CancellationToken ct = default)
+    {
+        var q = _db.AuditRecords.Where(r => r.DataSubjectId == dataSubjectId);
+        if (from.HasValue) { q = q.Where(r => r.Timestamp >= from.Value); }
+        if (to.HasValue)   { q = q.Where(r => r.Timestamp <= to.Value); }
+        return await q.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
+    }
+}
+
+// Registration
+builder.Services.AddAuditStore<EfCoreAuditStore>();
+```
 
 ### Querying records
 
@@ -86,38 +118,13 @@ var page = await auditStore.QueryAsync(skip: 20, take: 10);
 
 Records are returned in ascending timestamp order.
 
-## Implementing a durable store
+### Tests
 
-For production, implement `IAuditStore` with your persistence layer and register it instead:
+For tests, implement `IAuditStore` inline or use a local in-memory stub:
 
 ```csharp
-public sealed class SqlAuditStore : IAuditStore
-{
-    private readonly AuditDbContext _db;
-
-    public SqlAuditStore(AuditDbContext db) => _db = db;
-
-    public async Task AppendAsync(AuditRecord record, CancellationToken ct = default)
-    {
-        _db.AuditRecords.Add(record);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<AuditRecord>> QueryAsync(
-        DateTimeOffset? from = null, DateTimeOffset? to = null,
-        int skip = 0, int take = int.MaxValue, CancellationToken ct = default)
-    {
-        var q = _db.AuditRecords.AsQueryable();
-        if (from.HasValue) { q = q.Where(r => r.Timestamp >= from.Value); }
-        if (to.HasValue)   { q = q.Where(r => r.Timestamp <= to.Value); }
-        return await q.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
-    }
-
-    // ...
-}
-
-// Registration
-builder.Services.AddScoped<IAuditStore, SqlAuditStore>();
+var store = new InMemoryAuditStore(); // defined locally in your test project
+services.AddSingleton<IAuditStore>(store);
 ```
 
 ## DataSubjectId resolution
