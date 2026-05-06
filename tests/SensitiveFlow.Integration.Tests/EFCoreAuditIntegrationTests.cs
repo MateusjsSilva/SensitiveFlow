@@ -25,7 +25,7 @@ public sealed class EFCoreAuditIntegrationTests
         [PersonalData(Category = DataCategory.Contact)]
         public string Email { get; set; } = "order@example.com";
 
-        [SensitiveData(Category = SensitiveDataCategory.Financial)]
+        [SensitiveData(Category = SensitiveDataCategory.Health)]
         public string CardToken { get; set; } = "tok_xxx";
 
         public string OrderNumber { get; set; } = "ORD-001";

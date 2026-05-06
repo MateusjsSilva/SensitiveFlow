@@ -39,7 +39,6 @@ public sealed class EFCoreExtensionsTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IAuditStore>());
-        services.AddHttpContextAccessor();
         services.AddSensitiveFlowEFCore();
         services.AddSensitiveFlowAuditContext<FakeAuditContext>();
 

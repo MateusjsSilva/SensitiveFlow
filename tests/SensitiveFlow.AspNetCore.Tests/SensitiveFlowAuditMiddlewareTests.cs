@@ -1,58 +1,35 @@
 using System.Net;
 using FluentAssertions;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using NSubstitute;
-using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Interfaces;
 
 namespace SensitiveFlow.AspNetCore.Tests;
 
 public sealed class SensitiveFlowAuditMiddlewareTests
 {
-    private static IHost BuildHost(IPseudonymizer pseudonymizer, RequestDelegate? handler = null)
+    private static DefaultHttpContext MakeContext(string? remoteIp = "127.0.0.1")
     {
-        return new HostBuilder()
-            .ConfigureWebHost(web =>
-            {
-                web.UseTestServer();
-                web.ConfigureServices(services =>
-                {
-                    services.AddSingleton(pseudonymizer);
-                    services.AddRouting();
-                });
-                web.Configure(app =>
-                {
-                    app.UseMiddleware<SensitiveFlowAuditMiddleware>();
-                    app.Run(handler ?? (ctx => Task.CompletedTask));
-                });
-            })
-            .Build();
+        var ctx = new DefaultHttpContext();
+        if (remoteIp is not null)
+        {
+            ctx.Connection.RemoteIpAddress = IPAddress.Parse(remoteIp);
+        }
+        return ctx;
     }
 
     [Fact]
     public async Task Middleware_WithRemoteIp_StoresTokenInItems()
     {
         var pseudonymizer = Substitute.For<IPseudonymizer>();
-        pseudonymizer.Pseudonymize("127.0.0.1").Returns("token-abc");
+        pseudonymizer.Pseudonymize("192.168.1.42").Returns("token-abc");
 
-        string? capturedToken = null;
+        var httpContext = MakeContext("192.168.1.42");
 
-        using var host = BuildHost(pseudonymizer, ctx =>
-        {
-            capturedToken = ctx.Items[SensitiveFlowAuditMiddleware.IpTokenKey] as string;
-            return Task.CompletedTask;
-        });
+        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
+        await middleware.InvokeAsync(httpContext);
 
-        await host.StartAsync();
-        var client = host.GetTestClient();
-        await client.GetAsync("/");
-
-        capturedToken.Should().Be("token-abc");
+        httpContext.Items[SensitiveFlowAuditMiddleware.IpTokenKey].Should().Be("token-abc");
     }
 
     [Fact]
@@ -61,34 +38,64 @@ public sealed class SensitiveFlowAuditMiddlewareTests
         var pseudonymizer = Substitute.For<IPseudonymizer>();
         pseudonymizer.Pseudonymize(Arg.Any<string>()).Returns("token-x");
 
-        using var host = BuildHost(pseudonymizer);
-        await host.StartAsync();
-        var client = host.GetTestClient();
-        await client.GetAsync("/");
+        var httpContext = MakeContext("10.0.0.1");
 
-        pseudonymizer.Received(1).Pseudonymize(Arg.Any<string>());
+        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
+        await middleware.InvokeAsync(httpContext);
+
+        pseudonymizer.Received(1).Pseudonymize("10.0.0.1");
     }
 
     [Fact]
-    public async Task Middleware_PassesRequestToNextMiddleware()
+    public async Task Middleware_NullRemoteIp_DoesNotStoreToken()
+    {
+        var pseudonymizer = Substitute.For<IPseudonymizer>();
+
+        var httpContext = MakeContext(null);
+
+        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
+        await middleware.InvokeAsync(httpContext);
+
+        httpContext.Items.Should().NotContainKey(SensitiveFlowAuditMiddleware.IpTokenKey);
+        pseudonymizer.DidNotReceive().Pseudonymize(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Middleware_AlwaysCallsNext()
     {
         var pseudonymizer = Substitute.For<IPseudonymizer>();
         pseudonymizer.Pseudonymize(Arg.Any<string>()).Returns("tok");
 
         var nextCalled = false;
+        var httpContext = MakeContext();
 
-        using var host = BuildHost(pseudonymizer, ctx =>
+        var middleware = new SensitiveFlowAuditMiddleware(_ =>
         {
             nextCalled = true;
-            ctx.Response.StatusCode = 200;
             return Task.CompletedTask;
-        });
+        }, pseudonymizer);
 
-        await host.StartAsync();
-        var response = await host.GetTestClient().GetAsync("/");
+        await middleware.InvokeAsync(httpContext);
 
         nextCalled.Should().BeTrue();
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Middleware_NullIp_StillCallsNext()
+    {
+        var pseudonymizer = Substitute.For<IPseudonymizer>();
+        var nextCalled = false;
+        var httpContext = MakeContext(null);
+
+        var middleware = new SensitiveFlowAuditMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        }, pseudonymizer);
+
+        await middleware.InvokeAsync(httpContext);
+
+        nextCalled.Should().BeTrue();
     }
 
     [Fact]
