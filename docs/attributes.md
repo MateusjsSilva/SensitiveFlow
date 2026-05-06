@@ -1,57 +1,63 @@
 # Attributes
 
-SensitiveFlow provides attributes to annotate your model classes with privacy metadata. These attributes are the declarative foundation of the library.
+SensitiveFlow uses attributes to annotate model properties with privacy metadata. The attributes are defined in `SensitiveFlow.Core` and are the declarative foundation of the library.
 
 ## PersonalDataAttribute
 
-Marks a property or field as personal data.
+Marks a property as personal data. The EF Core interceptor emits an audit record whenever this field is created, updated, or deleted.
 
 ```csharp
-[PersonalData(Category = DataCategory.Identification,
-              LegalBasis = LegalBasis.Consent,
-              Purpose = ProcessingPurpose.ServiceProvision)]
-public string Name { get; set; }
+[PersonalData(Category = DataCategory.Contact)]
+public string Email { get; set; }
 ```
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Category` | `DataCategory` | `Other` | Category of personal data |
-| `LegalBasis` | `LegalBasis` | `Consent` | Legal basis that authorizes processing |
-| `Purpose` | `ProcessingPurpose` | `ServiceProvision` | Purpose for which data is processed |
+
+### DataCategory values
+
+| Value | Description |
+|-------|-------------|
+| `Identification` | Name, CPF, RG, passport |
+| `Contact` | Email, phone, address |
+| `Financial` | Bank account, income |
+| `Behavioral` | Browsing history, preferences |
+| `Location` | GPS, IP (raw), address |
+| `Professional` | Employer, job title |
+| `Other` | Anything not covered above |
 
 ## SensitiveDataAttribute
 
-Marks a property or field as sensitive personal data. Implies additional obligations and restricted legal bases.
+Marks a property as sensitive personal data (dados sensíveis under LGPD / special category under GDPR). Implies additional obligations compared to regular personal data.
 
 ```csharp
-[SensitiveData(Category = DataCategory.Financial,
-               SensitiveLegalBasis = SensitiveLegalBasis.ExplicitConsent,
-               Purpose = ProcessingPurpose.ServiceProvision)]
-public string TaxId { get; set; }
+[SensitiveData(Category = SensitiveDataCategory.Health)]
+public string DiagnosisCode { get; set; }
 ```
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Category` | `DataCategory` | `Other` | Category of sensitive data |
-| `SensitiveLegalBasis` | `SensitiveLegalBasis` | `ExplicitConsent` | Legal basis for processing sensitive data |
-| `Purpose` | `ProcessingPurpose` | `ServiceProvision` | Purpose for which data is processed |
+| `Category` | `SensitiveDataCategory` | `Other` | Category of sensitive data |
 
-## EraseDataAttribute
+### SensitiveDataCategory values
 
-Marks a property for automatic deletion when the data subject exercises the right to erasure.
-
-```csharp
-[EraseData(AnonymizeInsteadOfDelete = true)]
-public string TemporaryData { get; set; }
-```
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `AnonymizeInsteadOfDelete` | `bool` | `false` | When true, anonymizes instead of deleting |
+| Value | Description |
+|-------|-------------|
+| `Health` | Medical records, diagnoses |
+| `Biometric` | Fingerprints, facial recognition |
+| `Genetic` | DNA, genome data |
+| `Ethnicity` | Racial or ethnic origin |
+| `PoliticalOpinion` | Political views |
+| `ReligiousBelief` | Religious or philosophical beliefs |
+| `SexualOrientation` | Sexual life or orientation |
+| `Financial` | Payment cards, bank credentials |
+| `Criminal` | Criminal records or proceedings |
+| `Other` | Any other sensitive category |
 
 ## RetentionDataAttribute
 
-Defines the retention period and the action on expiration.
+Declares the retention period for a field. The `RetentionEvaluator` uses this attribute to determine when a field has expired.
 
 ```csharp
 [RetentionData(Years = 5, Months = 0, Policy = RetentionPolicy.AnonymizeOnExpiration)]
@@ -61,24 +67,35 @@ public string ContractData { get; set; }
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Years` | `int` | `0` | Retention period in years |
-| `Months` | `int` | `0` | Retention period in months (added to Years) |
-| `Policy` | `RetentionPolicy` | `AnonymizeOnExpiration` | Action executed when the period expires |
-| `Period` | `TimeSpan` | *(computed)* | Approximate retention period (Years*365 + Months*30 days) |
+| `Months` | `int` | `0` | Additional months (added to Years) |
+| `Policy` | `RetentionPolicy` | `AnonymizeOnExpiration` | Action on expiration |
 
-## InternationalTransferAttribute
+### RetentionPolicy values
 
-Marks a property whose data can be transferred internationally under applicable international transfer rules. Supports multiple transfers per field.
+| Value | Description |
+|-------|-------------|
+| `AnonymizeOnExpiration` | Replace the value with an anonymized placeholder |
+| `DeleteOnExpiration` | Remove the record or nullify the field |
+| `BlockOnExpiration` | Block further processing of the field |
+
+### Calendar-accurate arithmetic
+
+`GetExpirationDate(DateTimeOffset from)` uses `AddYears` and `AddMonths`, not `TimeSpan`, to avoid drift on leap years and variable-length months.
 
 ```csharp
-[InternationalTransfer(Country = TransferCountry.UnitedStates,
-                       Mechanism = SafeguardMechanism.ContractualClauses,
-                       Recipient = "Cloud Service Provider")]
+var attr = new RetentionDataAttribute { Years = 1 };
+var expiry = attr.GetExpirationDate(new DateTimeOffset(2024, 2, 29, 0, 0, 0, TimeSpan.Zero));
+// expiry = 2025-02-28 (not 2025-03-01)
+```
+
+## Combining attributes
+
+Multiple attributes can be applied to a single property:
+
+```csharp
+[PersonalData(Category = DataCategory.Contact)]
+[RetentionData(Years = 3, Policy = RetentionPolicy.DeleteOnExpiration)]
 public string Email { get; set; }
 ```
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Country` | `TransferCountry` | `Other` | Destination country |
-| `Mechanism` | `SafeguardMechanism` | `ContractualClauses` | Safeguard mechanism |
-| `Recipient` | `string?` | `null` | Recipient name (company or service) |
-
+`[SensitiveData]` implies stronger classification; prefer it over `[PersonalData]` for health, biometric, or financial credential data.

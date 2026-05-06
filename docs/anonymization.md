@@ -114,7 +114,7 @@ IP truncation (`192.168.1.42` → `192.168.1.0`) is a common practice but **does
 
 ```csharp
 // Pseudonymize IP before writing to the audit log
-var ipToken = await pseudonymizer.PseudonymizeAsync(request.RemoteIpAddress?.ToString());
+var ipToken = pseudonymizer.Pseudonymize(request.RemoteIpAddress?.ToString() ?? string.Empty);
 
 var record = new AuditRecord
 {
@@ -125,8 +125,8 @@ var record = new AuditRecord
     IpAddressToken = ipToken,   // opaque token — not the raw IP
 };
 
-// During a security investigation, resolve the original:
-var originalIp = await pseudonymizer.ReverseAsync(ipToken);
+// During a security investigation, resolve the original (TokenPseudonymizer only):
+var originalIp = pseudonymizer.Reverse(ipToken);
 ```
 
 ---
@@ -145,8 +145,8 @@ Stable, reversible tokens backed by a persistent `ITokenStore`.
 var store  = new InMemoryTokenStore();
 var pseudo = new TokenPseudonymizer(store);
 
-var token     = await pseudo.PseudonymizeAsync("joao@example.com");
-var recovered = await pseudo.ReverseAsync(token);
+var token     = pseudo.Pseudonymize("joao@example.com");
+var recovered = pseudo.Reverse(token);
 // recovered == "joao@example.com"
 ```
 
@@ -157,15 +157,17 @@ var recovered = await pseudo.ReverseAsync(token);
 ```csharp
 public class SqlTokenStore : ITokenStore
 {
-    public async Task<string> GetOrCreateTokenAsync(string value, CancellationToken ct = default)
+    public Task<string> GetOrCreateTokenAsync(string value, CancellationToken ct = default)
     {
         // INSERT OR IGNORE + SELECT from your tokens table
+        throw new NotImplementedException();
     }
 
-    public async Task<string> ResolveTokenAsync(string token, CancellationToken ct = default)
+    public Task<string> ResolveTokenAsync(string token, CancellationToken ct = default)
     {
         // SELECT original FROM tokens WHERE token = @token
         // Throw KeyNotFoundException if not found
+        throw new NotImplementedException();
     }
 }
 ```
