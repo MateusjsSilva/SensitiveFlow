@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -64,7 +65,21 @@ public sealed class SensitiveDataLoggingAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        return method.ContainingType.Name is "LoggerExtensions" or "ILogger" ||
-               method.ContainingType.OriginalDefinition.Name == "ILogger";
+        var containingType = method.ContainingType;
+
+        if (containingType.Name == "LoggerExtensions")
+        {
+            return true;
+        }
+
+        if (containingType.AllInterfaces.Any(i =>
+                i.Name == "ILogger" &&
+                i.ContainingNamespace.ToDisplayString() == "Microsoft.Extensions.Logging"))
+        {
+            return true;
+        }
+
+        return containingType.Name.StartsWith("ILogger", StringComparison.Ordinal) &&
+               containingType.ContainingNamespace.ToDisplayString() == "Microsoft.Extensions.Logging";
     }
 }

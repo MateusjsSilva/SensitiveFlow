@@ -56,7 +56,7 @@ try
     builder.Services.AddScoped<IAuditStore, EfCoreAuditStore>();
     builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
 
-    // AddAuditStore<T> and AddTokenStore<T> expect singleton stores;
+    // AddAuditStore<T> and AddTokenStore<T> register scoped stores;
     // for scoped EF Core stores we register directly and wire the pseudonymizer manually.
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();

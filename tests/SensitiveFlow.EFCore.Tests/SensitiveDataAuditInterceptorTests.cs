@@ -6,6 +6,7 @@ using SensitiveFlow.EFCore.Tests.Stores;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
+using SensitiveFlow.Core.Models;
 using SensitiveFlow.EFCore.Context;
 using SensitiveFlow.EFCore.Interceptors;
 
@@ -66,6 +67,22 @@ public sealed class SensitiveDataAuditInterceptorTests
         var records = await store.QueryAsync();
         records.Should().HaveCount(2);
         records.Select(r => r.Field).Should().BeEquivalentTo(["Email", "HealthNote"]);
+    }
+
+    [Fact]
+    public async Task AddEntity_UsesBatchAppend_WhenStoreSupportsIt()
+    {
+        var store = Substitute.For<IBatchAuditStore>();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+        var db = new TestDbContext(interceptor);
+        db.Database.EnsureCreated();
+
+        db.Users.Add(new UserEntity());
+        await db.SaveChangesAsync();
+
+        await store.Received(1).AppendRangeAsync(
+            Arg.Is<IReadOnlyCollection<AuditRecord>>(records => records.Count == 2),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

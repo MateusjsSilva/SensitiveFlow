@@ -118,6 +118,12 @@ var page = await auditStore.QueryAsync(skip: 20, take: 10);
 
 Records are returned in ascending timestamp order.
 
+## Batch appends
+
+If your audit store can persist multiple records in one logical operation, implement `IBatchAuditStore` in addition to `IAuditStore`.
+
+`SensitiveDataAuditInterceptor` will call `AppendRangeAsync` once per `SaveChanges` when the store supports batching. That keeps the audit write path closer to the entity save and avoids one roundtrip per sensitive field.
+
 ### Tests
 
 For tests, implement `IAuditStore` inline or use a local in-memory stub:

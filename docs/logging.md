@@ -28,6 +28,14 @@ builder.Services.AddSensitiveFlowLogging("***");     // custom marker
 
 This registers `DefaultSensitiveValueRedactor` as a singleton `ISensitiveValueRedactor`.
 
+`AddSensitiveFlowLogging()` only registers the redactor. To wrap a concrete logging provider, use the `ILoggingBuilder` overload:
+
+```csharp
+builder.Logging.AddSensitiveFlowLogging<ConsoleLoggerProvider>();
+```
+
+That registers `RedactingLoggerProvider` alongside the provider you choose to wrap.
+
 ### Wrapping a specific logger
 
 ```csharp
