@@ -14,8 +14,8 @@
 //   builder.Services.AddAuditStore<YourDurableAuditStore>();
 // ---------------------------------------------
 
-using SensitiveFlow.Anonymization.Pseudonymizers;
-using SensitiveFlow.Anonymization.Stores;
+using SensitiveFlow.Anonymization.Extensions;
+using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
@@ -27,8 +27,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// --- SensitiveFlow: audit store (replace with a durable implementation in production) ---
-builder.Services.AddSingleton<IAuditStore, NullAuditStore>();
+// --- SensitiveFlow: audit store (replace with a durable store in production) ---
+builder.Services.AddAuditStore<NullAuditStore>();
+
+// --- SensitiveFlow: token store + pseudonymizer (replace with a durable store in production) ---
+builder.Services.AddTokenStore<NullTokenStore>();
 
 // --- SensitiveFlow: EF Core interceptor + ASP.NET Core audit context ---
 builder.Services.AddSensitiveFlowEFCore();
@@ -36,11 +39,6 @@ builder.Services.AddSensitiveFlowAspNetCore();
 
 // --- SensitiveFlow: structured log redaction ---
 builder.Services.AddSensitiveFlowLogging();
-
-// --- SensitiveFlow: pseudonymizer used by the audit middleware to tokenize IP addresses ---
-builder.Services.AddSingleton<ITokenStore, InMemoryTokenStore>();
-builder.Services.AddSingleton<IPseudonymizer>(sp =>
-    new TokenPseudonymizer(sp.GetRequiredService<ITokenStore>()));
 
 var app = builder.Build();
 
@@ -61,8 +59,7 @@ app.MapControllers();
 app.Run();
 
 // -----------------------------------------------------------------------
-// Stub audit store — records are discarded.
-// Replace with a durable implementation in production.
+// Stubs — replace both with durable implementations in production.
 // -----------------------------------------------------------------------
 
 public sealed class NullAuditStore : IAuditStore
@@ -80,4 +77,13 @@ public sealed class NullAuditStore : IAuditStore
         DateTimeOffset? from = null, DateTimeOffset? to = null,
         int skip = 0, int take = 100, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+}
+
+public sealed class NullTokenStore : ITokenStore
+{
+    public Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
+        => Task.FromResult(value);
+
+    public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
+        => Task.FromResult(token);
 }

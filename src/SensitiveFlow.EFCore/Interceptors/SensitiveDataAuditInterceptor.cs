@@ -41,6 +41,13 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <b>Deadlock warning:</b> this override blocks the calling thread via
+    /// <c>GetAwaiter().GetResult()</c>. In ASP.NET Core the thread-pool synchronization
+    /// context makes blocking on async code unsafe under high concurrency.
+    /// Prefer <see cref="SavingChangesAsync"/> — use <c>DbContext.SaveChangesAsync</c>
+    /// instead of <c>SaveChanges</c> in all application code.
+    /// </remarks>
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData,
         InterceptionResult<int> result)

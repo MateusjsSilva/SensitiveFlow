@@ -1,13 +1,14 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using SensitiveFlow.Anonymization.Anonymizers;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Masking;
 using SensitiveFlow.Anonymization.Pseudonymizers;
-using SensitiveFlow.Anonymization.Stores;
 using SensitiveFlow.Anonymization.Strategies;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Exceptions;
+using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 
 // ---------------------------------------------
@@ -81,8 +82,8 @@ static void DemoReflection()
 static async Task DemoAuditAsync()
 {
     // IP addresses are personal data and must be pseudonymized before being stored in audit logs.
-    var ipStore  = new InMemoryTokenStore();
-    var ipPseudo = new TokenPseudonymizer(ipStore);
+    // In production use a durable ITokenStore (SQL, Redis, etc.) so tokens survive restarts.
+    var ipPseudo = new TokenPseudonymizer(new LocalTokenStore());
     var rawIp    = "192.168.1.10";
     var ipToken  = await ipPseudo.PseudonymizeAsync(rawIp);
 
@@ -165,8 +166,8 @@ static void DemoAnonymization()
 
 static async Task DemoPseudonymizationAsync()
 {
-    var store       = new InMemoryTokenStore();
-    var tokenPseudo = new TokenPseudonymizer(store);
+    // In production use a durable ITokenStore (SQL, Redis, etc.) so tokens survive restarts.
+    var tokenPseudo = new TokenPseudonymizer(new LocalTokenStore());
 
     var original  = "joao.silva@example.com";
     var token     = await tokenPseudo.PseudonymizeAsync(original);
@@ -244,4 +245,46 @@ public class Customer
     public string Phone { get; set; } = string.Empty;
 
     public string? TemporaryNotes { get; set; }
+}
+
+// ---------------------------------------------
+// Local-only token store for this console demo.
+// In production use a durable ITokenStore backed by SQL, Redis, etc.
+// Tokens created here are lost when the process exits.
+// ---------------------------------------------
+
+internal sealed class LocalTokenStore : ITokenStore
+{
+    private readonly object _lock = new();
+    private readonly Dictionary<string, string> _valueToToken = new();
+    private readonly Dictionary<string, string> _tokenToValue = new();
+
+    public Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            if (_valueToToken.TryGetValue(value, out var existing))
+            {
+                return Task.FromResult(existing);
+            }
+
+            var token = Guid.NewGuid().ToString();
+            _valueToToken[value] = token;
+            _tokenToValue[token] = value;
+            return Task.FromResult(token);
+        }
+    }
+
+    public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            if (_tokenToValue.TryGetValue(token, out var value))
+            {
+                return Task.FromResult(value);
+            }
+        }
+
+        throw new KeyNotFoundException($"Token '{token}' was not found.");
+    }
 }

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using SensitiveFlow.Anonymization.Pseudonymizers;
-using SensitiveFlow.Anonymization.Stores;
+using SensitiveFlow.Anonymization.Tests.Stores;
 
 namespace SensitiveFlow.Anonymization.Tests.Pseudonymizers;
 
