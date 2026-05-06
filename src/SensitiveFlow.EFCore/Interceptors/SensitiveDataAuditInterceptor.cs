@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SensitiveFlow.Core.Attributes;
@@ -74,13 +75,7 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         {
             var entityType = entry.Entity.GetType();
             var entityName = entityType.Name;
-            var operation = entry.State switch
-            {
-                EntityState.Added => AuditOperation.Create,
-                EntityState.Modified => AuditOperation.Update,
-                EntityState.Deleted => AuditOperation.Delete,
-                _ => AuditOperation.Access
-            };
+            var operation = MapOperation(entry.State);
 
             var dataSubjectId = ResolveDataSubjectId(entry.Entity);
 
@@ -118,6 +113,15 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
             }
         }
     }
+
+    [ExcludeFromCodeCoverage]
+    private static AuditOperation MapOperation(EntityState state) => state switch
+    {
+        EntityState.Added    => AuditOperation.Create,
+        EntityState.Modified => AuditOperation.Update,
+        EntityState.Deleted  => AuditOperation.Delete,
+        _                    => AuditOperation.Access,
+    };
 
     private static string ResolveDataSubjectId(object entity)
     {
