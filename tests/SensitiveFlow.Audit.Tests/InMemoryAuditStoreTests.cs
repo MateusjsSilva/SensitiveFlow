@@ -1,5 +1,5 @@
 using FluentAssertions;
-using SensitiveFlow.Audit.Stores;
+using SensitiveFlow.Audit.Tests.Stores;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Models;
 

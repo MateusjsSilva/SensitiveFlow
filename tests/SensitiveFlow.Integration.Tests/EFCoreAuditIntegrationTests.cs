@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using SensitiveFlow.Audit.Extensions;
-using SensitiveFlow.Audit.Stores;
+using SensitiveFlow.Integration.Tests.Stores;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
@@ -50,7 +49,7 @@ public sealed class EFCoreAuditIntegrationTests
     private static (IServiceProvider, OrderDbContext) BuildServices()
     {
         var services = new ServiceCollection();
-        services.AddInMemoryAuditStore();
+        services.AddSingleton<IAuditStore, InMemoryAuditStore>();
         services.AddSensitiveFlowEFCore();
 
         var provider = services.BuildServiceProvider();

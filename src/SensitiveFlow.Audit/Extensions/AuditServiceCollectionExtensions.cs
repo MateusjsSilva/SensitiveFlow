@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using SensitiveFlow.Audit.Stores;
 using SensitiveFlow.Core.Interfaces;
 
 namespace SensitiveFlow.Audit.Extensions;
@@ -10,12 +9,27 @@ namespace SensitiveFlow.Audit.Extensions;
 public static class AuditServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the in-memory <see cref="IAuditStore"/> as a singleton.
-    /// Suitable for tests and development. For production, replace with a durable implementation.
+    /// Registers a custom <see cref="IAuditStore"/> implementation as a singleton.
     /// </summary>
-    public static IServiceCollection AddInMemoryAuditStore(this IServiceCollection services)
+    /// <typeparam name="TStore">
+    /// Your <see cref="IAuditStore"/> implementation backed by a durable sink
+    /// (SQL via EF Core, MongoDB, Azure Table Storage, etc.).
+    /// Audit records must survive process restarts — an in-memory store is not suitable for production.
+    /// </typeparam>
+    /// <example>
+    /// <code>
+    /// // SQL via EF Core:
+    /// builder.Services.AddAuditStore&lt;EfCoreAuditStore&gt;();
+    ///
+    /// // Or register manually with a factory:
+    /// builder.Services.AddSingleton&lt;IAuditStore&gt;(sp =>
+    ///     new EfCoreAuditStore(sp.GetRequiredService&lt;AuditDbContext&gt;()));
+    /// </code>
+    /// </example>
+    public static IServiceCollection AddAuditStore<TStore>(this IServiceCollection services)
+        where TStore : class, IAuditStore
     {
-        services.AddSingleton<IAuditStore, InMemoryAuditStore>();
+        services.AddSingleton<IAuditStore, TStore>();
         return services;
     }
 }

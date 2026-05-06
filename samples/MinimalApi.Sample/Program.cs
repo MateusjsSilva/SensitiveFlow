@@ -1,12 +1,53 @@
+// ---------------------------------------------
+// SensitiveFlow - Minimal API Sample
+//
+// Demonstrates how SensitiveFlow integrates into a Minimal API application:
+//   - [PersonalData] / [SensitiveData] on model properties
+//   - Middleware that pseudonymizes the remote IP before it reaches any handler
+//   - IAuditStore receiving AuditRecords from IAuditContext
+//   - ILogger redaction stripping sensitive values from structured logs
+//   - Masking in responses so raw PII never leaves the API boundary
+//
+// IMPORTANT: This sample uses a stub IAuditStore that discards records.
+// In production, replace it with an implementation backed by a durable database
+// (SQL via EF Core, MongoDB, etc.) using:
+//   builder.Services.AddAuditStore<YourDurableAuditStore>();
+// ---------------------------------------------
+
+using Microsoft.Extensions.Logging;
+using SensitiveFlow.Anonymization.Extensions;
+using SensitiveFlow.Anonymization.Masking;
+using SensitiveFlow.Anonymization.Pseudonymizers;
+using SensitiveFlow.Anonymization.Stores;
+using SensitiveFlow.AspNetCore.Extensions;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
+using SensitiveFlow.Core.Interfaces;
+using SensitiveFlow.Core.Models;
+using SensitiveFlow.EFCore.Extensions;
+using SensitiveFlow.Logging.Extensions;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// --- SensitiveFlow: audit store (replace with a durable implementation in production) ---
+builder.Services.AddSingleton<IAuditStore, NullAuditStore>();
+
+// --- SensitiveFlow: EF Core interceptor + ASP.NET Core audit context ---
+builder.Services.AddSensitiveFlowEFCore();
+builder.Services.AddSensitiveFlowAspNetCore();
+
+// --- SensitiveFlow: structured log redaction ---
+builder.Services.AddSensitiveFlowLogging();
+
+// --- SensitiveFlow: pseudonymizer used by the audit middleware to tokenize IP addresses ---
+builder.Services.AddSingleton<ITokenStore, InMemoryTokenStore>();
+builder.Services.AddSingleton<IPseudonymizer>(sp =>
+    new TokenPseudonymizer(sp.GetRequiredService<ITokenStore>()));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,28 +55,115 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// UseSensitiveFlowAudit must come before UseAuthentication so the IP token
+// is available for every downstream middleware and handler.
+app.UseSensitiveFlowAudit();
 
-app.MapGet("/weatherforecast", () =>
+// -----------------------------------------------------------------------
+// GET /customers/{id}
+// Returns a masked view of the customer — raw PII never leaves the API.
+// -----------------------------------------------------------------------
+app.MapGet("/customers/{id}", async (
+    string id,
+    IAuditStore auditStore,
+    IAuditContext auditContext,
+    ILogger<Program> logger) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    // Simulate loading from a real store.
+    var customer = new Customer
+    {
+        Id            = id,
+        DataSubjectId = id,
+        Name          = "Joao da Silva",
+        Email         = "joao.silva@example.com",
+        TaxId         = "123.456.789-09",
+        Phone         = "+55 11 99999-8877",
+    };
+
+    // Emit an audit record — actor and IP token come from HttpAuditContext.
+    await auditStore.AppendAsync(new AuditRecord
+    {
+        DataSubjectId  = customer.DataSubjectId,
+        Entity         = nameof(Customer),
+        Field          = "*",
+        Operation      = AuditOperation.Access,
+        ActorId        = auditContext.ActorId,
+        IpAddressToken = auditContext.IpAddressToken,
+    });
+
+    // The redacting logger strips [PersonalData] values before they reach any sink.
+    // SF0001: this would trigger the analyzer if customer.Email were passed directly.
+    logger.LogInformation("Customer {Id} accessed — email masked: {Email}",
+        customer.Id,
+        customer.Email.MaskEmail());
+
+    // Return a masked DTO — raw PII never leaves the API boundary.
+    // SF0002: the analyzer would flag returning customer.Email directly.
+    return Results.Ok(new CustomerResponse(
+        customer.Id,
+        customer.Name.MaskName(),
+        customer.Email.MaskEmail(),
+        customer.Phone.MaskPhone()));
 })
-.WithName("GetWeatherForecast");
+.WithName("GetCustomer");
+
+// -----------------------------------------------------------------------
+// GET /customers/{id}/audit
+// Shows the audit trail for a data subject.
+// -----------------------------------------------------------------------
+app.MapGet("/customers/{id}/audit", async (string id, IAuditStore auditStore) =>
+{
+    var records = await auditStore.QueryByDataSubjectAsync(id);
+    return Results.Ok(records);
+})
+.WithName("GetCustomerAudit");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+// -----------------------------------------------------------------------
+// Model
+// -----------------------------------------------------------------------
+
+public sealed class Customer
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public string Id { get; set; } = string.Empty;
+    public string DataSubjectId { get; set; } = string.Empty;
+
+    [PersonalData(Category = DataCategory.Identification)]
+    public string Name { get; set; } = string.Empty;
+
+    [PersonalData(Category = DataCategory.Contact)]
+    public string Email { get; set; } = string.Empty;
+
+    [SensitiveData(Category = SensitiveDataCategory.Other)]
+    [RetentionData(Years = 5, Policy = RetentionPolicy.AnonymizeOnExpiration)]
+    public string TaxId { get; set; } = string.Empty;
+
+    [PersonalData(Category = DataCategory.Contact)]
+    public string Phone { get; set; } = string.Empty;
+}
+
+// Response DTO — contains only masked values, safe to serialize and log.
+public sealed record CustomerResponse(string Id, string Name, string Email, string Phone);
+
+// -----------------------------------------------------------------------
+// Stub audit store — records are discarded.
+// Replace with a durable implementation in production.
+// -----------------------------------------------------------------------
+
+public sealed class NullAuditStore : IAuditStore
+{
+    public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task<IReadOnlyList<AuditRecord>> QueryAsync(
+        DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+
+    public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
+        string dataSubjectId,
+        DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
 }

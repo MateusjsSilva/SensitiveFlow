@@ -2,17 +2,12 @@ using System.Collections.Concurrent;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 
-namespace SensitiveFlow.Audit.Stores;
+namespace SensitiveFlow.Integration.Tests.Stores;
 
-/// <summary>
-/// Thread-safe in-memory audit store. Suitable for tests and development only.
-/// For production, implement <see cref="IAuditStore"/> backed by a durable sink.
-/// </summary>
-public sealed class InMemoryAuditStore : IAuditStore
+internal sealed class InMemoryAuditStore : IAuditStore
 {
     private readonly ConcurrentBag<AuditRecord> _records = new();
 
-    /// <inheritdoc />
     public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(record);
@@ -20,7 +15,6 @@ public sealed class InMemoryAuditStore : IAuditStore
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
     public Task<IReadOnlyList<AuditRecord>> QueryAsync(
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
@@ -37,7 +31,6 @@ public sealed class InMemoryAuditStore : IAuditStore
         return Task.FromResult<IReadOnlyList<AuditRecord>>(result);
     }
 
-    /// <inheritdoc />
     public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
         string dataSubjectId,
         DateTimeOffset? from = null,
