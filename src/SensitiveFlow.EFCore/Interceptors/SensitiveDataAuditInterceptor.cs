@@ -45,11 +45,11 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
     /// <inheritdoc />
     /// <remarks>
-    /// <b>Deadlock warning:</b> this override blocks the calling thread via
-    /// <c>GetAwaiter().GetResult()</c>. In ASP.NET Core the thread-pool synchronization
-    /// context makes blocking on async code unsafe under high concurrency.
-    /// Prefer <see cref="SavingChangesAsync"/> — use <c>DbContext.SaveChangesAsync</c>
-    /// instead of <c>SaveChanges</c> in all application code.
+    /// <b>⚠ DEADLOCK RISK:</b> This override blocks the calling thread via <c>GetAwaiter().GetResult()</c>.
+    /// In ASP.NET Core the thread-pool synchronization context makes blocking on async code unsafe under high concurrency.
+    /// <b>DO NOT USE IN ASP.NET CORE.</b> Always use <c>DbContext.SaveChangesAsync</c> instead of <c>SaveChanges</c>.
+    /// This method is safe only in console apps or background jobs.
+    /// Consider using <see cref="SavingChangesAsync"/> instead for all production scenarios.
     /// </remarks>
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData,
@@ -202,7 +202,15 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
                   ?? entity.GetType().GetProperty("Id")
                   ?? entity.GetType().GetProperty("UserId");
 
-        return idProp?.GetValue(entity)?.ToString() ?? "unknown";
+        var value = idProp?.GetValue(entity)?.ToString();
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException(
+                $"Entity '{entity.GetType().Name}' has no resolvable DataSubjectId, Id, or UserId property, or all are null/empty. " +
+                "Add a public DataSubjectId property to the entity for reliable audit trail correlation.");
+        }
+
+        return value;
     }
 
     private sealed class PendingAuditRecords

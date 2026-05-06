@@ -30,7 +30,9 @@ public sealed class TokenPseudonymizer : IPseudonymizer
 
     /// <summary>
     /// Pseudonymizes <paramref name="value"/> synchronously by blocking on the store.
-    /// Prefer <see cref="PseudonymizeAsync"/> in async contexts to avoid thread-pool starvation.
+    /// <b>⚠ NOT SAFE IN ASP.NET CORE:</b> This method uses <c>GetAwaiter().GetResult()</c> which causes deadlocks
+    /// under high concurrency. Use <see cref="PseudonymizeAsync"/> in all async contexts.
+    /// Safe only in console apps, Windows services, or offline batch processing.
     /// </summary>
     public string Pseudonymize(string value)
     {
@@ -49,7 +51,9 @@ public sealed class TokenPseudonymizer : IPseudonymizer
 
     /// <summary>
     /// Reverses <paramref name="token"/> to the original value synchronously by blocking on the store.
-    /// Prefer <see cref="ReverseAsync"/> in async contexts to avoid thread-pool starvation.
+    /// <b>⚠ NOT SAFE IN ASP.NET CORE:</b> This method uses <c>GetAwaiter().GetResult()</c> which causes deadlocks
+    /// under high concurrency. Use <see cref="ReverseAsync"/> in all async contexts.
+    /// Safe only in console apps, Windows services, or offline batch processing.
     /// </summary>
     /// <exception cref="KeyNotFoundException">Thrown when the token is not found in the store.</exception>
     public string Reverse(string token)

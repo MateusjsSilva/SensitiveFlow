@@ -63,18 +63,28 @@ public class Customer
 `IAuditStore` is the persistence contract -- you own the implementation so audit records go
 exactly where your infrastructure requires (SQL, MongoDB, Azure Table Storage, etc.).
 
+**Performance tip:** Implement `IBatchAuditStore` to avoid N roundtrips when auditing N sensitive fields:
+
 ```csharp
-// Your implementation backed by a real database:
-public sealed class EfCoreAuditStore : IAuditStore
+// ⚠ IMPORTANT: Use IBatchAuditStore to batch multiple records in one operation
+public sealed class EfCoreAuditStore : IBatchAuditStore
 {
     private readonly AuditDbContext _db;
 
     public EfCoreAuditStore(AuditDbContext db) => _db = db;
 
+    // Called once per SaveChanges for all sensitive fields together
+    public async Task AppendRangeAsync(IReadOnlyCollection<AuditRecord> records, CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+        _db.AuditRecords.AddRange(records);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // Fallback for single-record append (if not batching)
     public async Task AppendAsync(AuditRecord record, CancellationToken ct = default)
     {
-        _db.AuditRecords.Add(record);
-        await _db.SaveChangesAsync(ct);
+        await AppendRangeAsync([record], ct);
     }
 
     public async Task<IReadOnlyList<AuditRecord>> QueryAsync(

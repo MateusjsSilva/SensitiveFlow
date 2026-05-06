@@ -1,6 +1,8 @@
 # Retention
 
-`SensitiveFlow.Retention` provides a lightweight mechanism for declaring and evaluating data retention periods without running background jobs or hidden timers.
+`SensitiveFlow.Retention` provides a lightweight mechanism for declaring and evaluating data retention periods **without automatic expiration**. You control when and how expired data is handled via scheduled jobs or request handlers.
+
+**Important:** Retention evaluation is *manual and explicit* — you must write and register `IRetentionExpirationHandler` implementations and call `RetentionEvaluator` on a schedule (e.g., nightly job). The library will not automatically delete or anonymize data; it only provides the evaluation contract.
 
 ## RetentionDataAttribute
 
@@ -72,6 +74,10 @@ Multiple handlers can be registered; all are called for each expired field.
 
 ## Running the evaluator
 
+**YOU are responsible for running the evaluator** — it does not run automatically. Options include:
+
+### Option 1: Background Service (Always Running)
+
 ```csharp
 // In a scheduled job or background service
 public sealed class RetentionJob : BackgroundService
@@ -86,11 +92,39 @@ public sealed class RetentionJob : BackgroundService
             var customers = await _db.Customers.ToListAsync(stoppingToken);
             foreach (var customer in customers)
             {
-                await _evaluator.EvaluateAsync(customer, customer.CreatedAt, stoppingToken);
+                try
+                {
+                    await _evaluator.EvaluateAsync(customer, customer.CreatedAt, stoppingToken);
+                }
+                catch (RetentionExpiredException ex)
+                {
+                    // Already logged; handlers are called before this exception
+                    // If no handler is registered, you can handle it here
+                }
             }
             await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
         }
     }
+}
+```
+
+### Option 2: On-Demand Trigger
+
+```csharp
+// On a specific endpoint or event
+public async Task<IResult> ExpireData([FromServices] RetentionEvaluator evaluator, 
+    [FromServices] AppDbContext db)
+{
+    var customers = await db.Customers
+        .Where(c => c.CreatedAt < DateTimeOffset.UtcNow.AddYears(-5))
+        .ToListAsync();
+    
+    foreach (var customer in customers)
+    {
+        await evaluator.EvaluateAsync(customer, customer.CreatedAt);
+    }
+    
+    return Results.Ok($"Evaluated {customers.Count} customers");
 }
 ```
 
@@ -102,3 +136,13 @@ Retention periods use `DateTimeOffset.AddYears` and `AddMonths` to avoid the dri
 5 years from 2020-02-29 = 2025-02-28   (not 2025-03-01)
 1 month from 2024-01-31 = 2024-02-29   (not 2024-03-02)
 ```
+
+## Compliance note
+
+Retention policies must be enforced **consistently** across all your data flows:
+
+- ✅ Data subject access: exclude expired data
+- ✅ Data export: exclude expired data
+- ✅ Batch jobs: run evaluator regularly to process expired records
+- ✅ Logging: ensure sensitive fields aren't logged past retention
+- ✅ Monitoring: track which records are evaluated and expired
