@@ -64,6 +64,8 @@ public interface IAuditStore
 `IAuditStore` has no built-in implementation — you own the persistence layer so audit records go exactly where your infrastructure requires.
 Audit records must survive process restarts. An in-memory store is not suitable for production.
 
+If you use EF Core, `SensitiveFlow.Audit.EFCore` ships a ready-made `EfCoreAuditStore<TContext>` plus an `AddEfCoreAuditStore()` DI extension.
+
 ```csharp
 public sealed class EfCoreAuditStore : IAuditStore
 {

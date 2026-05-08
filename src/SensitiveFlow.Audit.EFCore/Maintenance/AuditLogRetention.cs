@@ -34,9 +34,36 @@ public sealed class AuditLogRetention<TContext> where TContext : DbContext
     public async Task<int> PurgeOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        return await _setSelector(ctx)
-            .Where(r => r.Timestamp < olderThan)
-            .ExecuteDeleteAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var query = _setSelector(ctx)
+            .Where(r => r.Timestamp < olderThan);
+
+        try
+        {
+            return await query.ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            return await FallbackDeleteAsync(ctx, query, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NotSupportedException)
+        {
+            return await FallbackDeleteAsync(ctx, query, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<int> FallbackDeleteAsync(
+        DbContext ctx,
+        IQueryable<AuditRecordEntity> query,
+        CancellationToken cancellationToken)
+    {
+        var rows = await query.ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (rows.Count == 0)
+        {
+            return 0;
+        }
+
+        ctx.RemoveRange(rows);
+        await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return rows.Count;
     }
 }

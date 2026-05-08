@@ -86,6 +86,38 @@ return Results.Ok(new CustomerResponse(customer.Email.MaskEmail()));
 
 ---
 
+### SF0003 -- Entity missing DataSubjectId
+
+**Severity:** Warning
+
+Triggers when a class declares members annotated with `[PersonalData]` or `[SensitiveData]`
+but does not expose a public `DataSubjectId` (or legacy `UserId`) property. The EF Core
+interceptor requires a stable subject identifier and throws at runtime if it cannot resolve one.
+
+**Detected pattern:**
+
+```csharp
+public sealed class Customer
+{
+  [PersonalData]
+  public string Email { get; set; } = string.Empty;
+}
+```
+
+**Compliant pattern:**
+
+```csharp
+public sealed class Customer
+{
+  public string DataSubjectId { get; set; } = string.Empty;
+
+  [PersonalData]
+  public string Email { get; set; } = string.Empty;
+}
+```
+
+---
+
 ## How Suppression Works
 
 The analyzer considers a value safe when it passes through a method whose name contains
@@ -101,6 +133,7 @@ Use `.editorconfig` to adjust per-rule severity across the entire solution or pe
 [*.cs]
 dotnet_diagnostic.SF0001.severity = warning
 dotnet_diagnostic.SF0002.severity = warning
+dotnet_diagnostic.SF0003.severity = warning
 ```
 
 Available severities: `error`, `warning`, `suggestion`, `silent`, `none`.
@@ -111,6 +144,7 @@ Prefer `error` in new code to prevent regressions from being merged:
 [src/**/*.cs]
 dotnet_diagnostic.SF0001.severity = error
 dotnet_diagnostic.SF0002.severity = error
+dotnet_diagnostic.SF0003.severity = error
 ```
 
 ## Known Limitations

@@ -14,7 +14,7 @@ public class AuditDbContext : DbContext
     /// <summary>Initializes a new instance.</summary>
     public AuditDbContext(DbContextOptions<AuditDbContext> options) : base(options) { }
 
-    /// <summary>Audit records persisted by <see cref="EfCoreAuditStore"/>.</summary>
+    /// <summary>Audit records persisted by <see cref="Stores.EfCoreAuditStore{TContext}"/>.</summary>
     public DbSet<AuditRecordEntity> AuditRecords => Set<AuditRecordEntity>();
 
     /// <inheritdoc />

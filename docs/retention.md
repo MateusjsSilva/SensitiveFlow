@@ -1,8 +1,8 @@
 # Retention
 
-`SensitiveFlow.Retention` provides a lightweight mechanism for declaring and evaluating data retention periods **without automatic expiration**. You control when and how expired data is handled via scheduled jobs or request handlers.
+`SensitiveFlow.Retention` provides a lightweight mechanism for declaring and evaluating data retention periods. You control when and how expired data is handled via scheduled jobs or request handlers.
 
-**Important:** Retention evaluation is *manual and explicit* — you must write and register `IRetentionExpirationHandler` implementations and call `RetentionEvaluator` on a schedule (e.g., nightly job). The library will not automatically delete or anonymize data; it only provides the evaluation contract.
+**Important:** Retention evaluation is *manual and explicit* — you must call `RetentionEvaluator` or `RetentionExecutor` on a schedule (e.g., nightly job). The library will not automatically delete data; it only provides evaluation and execution helpers.
 
 ## RetentionDataAttribute
 
@@ -22,7 +22,7 @@ See [Attributes](attributes.md) for the full property reference.
 
 > **Scope.** `RetentionEvaluator` inspects only the **public instance properties** of the entity you pass in. Properties on nested objects (e.g. `Customer.Address.PostalCode`) are not traversed — call the evaluator on each owned object explicitly.
 
-> **Naming.** `RetentionPolicy.AnonymizeOnExpiration` describes intent; the evaluator does **not** anonymize for you. The handler you register decides what "anonymize" means and applies it.
+> **Naming.** `RetentionPolicy.AnonymizeOnExpiration` describes intent. Use `RetentionExecutor` if you want a built-in anonymization pass; otherwise, handlers decide what "anonymize" means and apply it.
 
 ## RetentionEvaluator
 
@@ -69,11 +69,26 @@ public sealed class AnonymizeOnExpirationHandler : IRetentionExpirationHandler
 }
 ```
 
+## RetentionExecutor
+
+`RetentionExecutor` is the imperative counterpart to `RetentionEvaluator`. It **mutates** expired fields in place when the policy is `AnonymizeOnExpiration` and returns a report describing the actions taken or required.
+
+```csharp
+var executor = new RetentionExecutor();
+var report = await executor.ExecuteAsync(customers, c => c.CreatedAt);
+
+Console.WriteLine($"Anonymized fields: {report.AnonymizedFieldCount}");
+Console.WriteLine($"Entities pending delete: {report.DeletePendingEntityCount}");
+```
+
+Use `RetentionExecutionReport.Entries` to delete or notify for policies the executor does not handle (delete/block/notify). The executor never deletes rows by itself.
+
 ## Registration
 
 ```csharp
 builder.Services.AddRetention();
 builder.Services.AddRetentionHandler<AnonymizeOnExpirationHandler>();
+builder.Services.AddRetentionExecutor();
 ```
 
 Multiple handlers can be registered; all are called for each expired field.

@@ -5,11 +5,17 @@ namespace SensitiveFlow.Retention.Services;
 /// <summary>Options that control <see cref="RetentionExecutor"/> behavior.</summary>
 public sealed class RetentionExecutorOptions
 {
+    private Func<object, PropertyInfo, object?>? _anonymousValueFactory;
+
     /// <summary>
     /// Resolver for the value used to overwrite an expired field when the policy is
     /// <c>AnonymizeOnExpiration</c>. Defaults to <see cref="DefaultAnonymousValue"/>.
     /// </summary>
-    public Func<object, PropertyInfo, object?> AnonymousValueFactory { get; init; } = DefaultAnonymousValue;
+    public Func<object, PropertyInfo, object?> AnonymousValueFactory
+    {
+        get => _anonymousValueFactory ?? DefaultAnonymousValue;
+        init => _anonymousValueFactory = value;
+    }
 
     /// <summary>
     /// Default placeholder used by <see cref="AnonymousValueFactory"/> for string properties.

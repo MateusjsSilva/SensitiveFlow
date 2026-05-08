@@ -39,6 +39,10 @@ public sealed class AuditRecordEntityTypeConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.ActorId).HasMaxLength(256);
         builder.Property(e => e.IpAddressToken).HasMaxLength(128);
         builder.Property(e => e.Details).HasMaxLength(2048);
+        builder.Property(e => e.Timestamp)
+            .HasConversion(
+                v => v.UtcDateTime,
+                v => new DateTimeOffset(DateTime.SpecifyKind(v, DateTimeKind.Utc)));
 
         builder.HasIndex(e => e.RecordId).IsUnique().HasDatabaseName("IX_SensitiveFlow_AuditRecords_RecordId");
         builder.HasIndex(e => e.Timestamp).HasDatabaseName("IX_SensitiveFlow_AuditRecords_Timestamp");

@@ -88,6 +88,15 @@ redactor.Redact("secret@example.com"); // returns "[REDACTED]"
 
 The marker must be a non-whitespace string; an empty or whitespace-only value throws `ArgumentException`.
 
+## OpenTelemetry metrics
+
+`RedactingLogger` emits the `sensitiveflow.redact.fields.count` counter via `System.Diagnostics.Metrics`. Pair it with `SensitiveFlow.Diagnostics` or register the `SensitiveFlow` meter directly:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(m => m.AddMeter(SensitiveFlow.Core.Diagnostics.SensitiveFlowDiagnostics.MeterName));
+```
+
 ## Redaction pattern reference
 
 | Input | Output (default marker) |

@@ -34,7 +34,7 @@ public sealed class EfCoreAuditStoreContractTests : AuditStoreContractTests, IAs
 
         var factory = new TestContextFactory(connection);
 
-        await using (var ctx = await factory.CreateDbContextAsync())
+        await using (var ctx = factory.CreateDbContext())
         {
             await ctx.Database.EnsureCreatedAsync();
         }
@@ -74,7 +74,7 @@ public sealed class AuditLogRetentionTests : IAsyncLifetime
     public async Task PurgeOlderThanAsync_DeletesOldRecords()
     {
         var factory = new ConnectionScopedFactory(_connection);
-        await using (var ctx = await factory.CreateDbContextAsync())
+        await using (var ctx = factory.CreateDbContext())
         {
             await ctx.Database.EnsureCreatedAsync();
         }

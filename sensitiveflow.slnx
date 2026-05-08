@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/Console.Sample/Console.Sample.csproj" />
     <Project Path="samples/MinimalApi.Sample/MinimalApi.Sample.csproj" />
+    <Project Path="samples/Redis.Sample/Redis.Sample.csproj" />
     <Project Path="samples/WebApi.Sample/WebApi.Sample.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -10,19 +11,24 @@
     <Project Path="src/SensitiveFlow.Anonymization/SensitiveFlow.Anonymization.csproj" />
     <Project Path="src/SensitiveFlow.AspNetCore/SensitiveFlow.AspNetCore.csproj" />
     <Project Path="src/SensitiveFlow.Audit/SensitiveFlow.Audit.csproj" />
+    <Project Path="src/SensitiveFlow.Audit.EFCore/SensitiveFlow.Audit.EFCore.csproj" />
     <Project Path="src/SensitiveFlow.Core/SensitiveFlow.Core.csproj" />
+    <Project Path="src/SensitiveFlow.Diagnostics/SensitiveFlow.Diagnostics.csproj" />
     <Project Path="src/SensitiveFlow.EFCore/SensitiveFlow.EFCore.csproj" />
     <Project Path="src/SensitiveFlow.Logging/SensitiveFlow.Logging.csproj" />
     <Project Path="src/SensitiveFlow.Retention/SensitiveFlow.Retention.csproj" />
+    <Project Path="src/SensitiveFlow.SourceGenerators/SensitiveFlow.SourceGenerators.csproj" />
     <Project Path="src/SensitiveFlow.TestKit/SensitiveFlow.TestKit.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SensitiveFlow.Analyzers.Tests/SensitiveFlow.Analyzers.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Anonymization.Tests/SensitiveFlow.Anonymization.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.AspNetCore.Tests/SensitiveFlow.AspNetCore.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.Audit.EFCore.Tests/SensitiveFlow.Audit.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.Tests/SensitiveFlow.Audit.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Benchmarks/SensitiveFlow.Benchmarks.csproj" />
     <Project Path="tests/SensitiveFlow.Core.Tests/SensitiveFlow.Core.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.Diagnostics.Tests/SensitiveFlow.Diagnostics.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.EFCore.Tests/SensitiveFlow.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Integration.Tests/SensitiveFlow.Integration.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Logging.Tests/SensitiveFlow.Logging.Tests.csproj" />

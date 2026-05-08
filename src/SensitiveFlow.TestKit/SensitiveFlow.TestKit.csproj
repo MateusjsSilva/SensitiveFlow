@@ -4,6 +4,7 @@
     <PackageDescription>Suite de testes de conformidade para implementacoes de IAuditStore e ITokenStore. Use em projetos de teste para validar contratos.</PackageDescription>
     <!-- Test method names are self-documenting and we don't want to require XML doc on each [Fact] method. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>

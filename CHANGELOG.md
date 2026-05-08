@@ -10,11 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `SensitiveFlow.Audit` — `RetryingAuditStore` decorator with bounded exponential backoff for transient append failures; opt-in via `AddAuditStoreRetry`.
+- `SensitiveFlow.Audit.EFCore` — durable EF Core implementation of `IAuditStore`/`IBatchAuditStore` with maintenance helper for audit log retention.
 - `SensitiveFlow.Anonymization` — `IDataSubjectErasureService` and `RedactionErasureStrategy` for right-to-be-forgotten flows; opt-in via `AddDataSubjectErasure`.
 - `SensitiveFlow.Analyzers.CodeFixes` — quick-fix providers for SF0001/SF0002 that wrap sensitive expressions with `.MaskEmail()` / `.MaskPhone()` / `.MaskName()` based on the member name.
+- `SensitiveFlow.Analyzers` — new SF0003 rule for entities with sensitive members missing `DataSubjectId`/`UserId`.
+- `SensitiveFlow.Diagnostics` — OpenTelemetry bridge emitting `ActivitySource` spans and `Meter` metrics for audit/log redaction.
+- `SensitiveFlow.Retention` — `RetentionExecutor` to auto-apply `AnonymizeOnExpiration` and report pending delete/notify/block actions.
+- `SensitiveFlow.SourceGenerators` — source generator for precomputing sensitive/retention member metadata.
 - `SensitiveFlow.TestKit` — xUnit conformance base classes (`AuditStoreContractTests`, `TokenStoreContractTests`) for validating custom store implementations.
 - `SensitiveFlow.Core` — `SensitiveMemberCache` shared reflection cache used by the EF Core interceptor and the retention evaluator (eliminates per-call `GetProperties` / `Attribute.IsDefined` cost).
 - `SensitiveFlow.Benchmarks` — real BenchmarkDotNet suites for masking, pseudonymization, and reflection caching.
+- Sample: Redis-backed `ITokenStore` implementation for distributed pseudonymization.
 
 ### Changed
 

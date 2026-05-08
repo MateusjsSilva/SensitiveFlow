@@ -11,7 +11,7 @@
 
 SensitiveFlow é uma biblioteca .NET (8/10) modular para **observabilidade e controle runtime de dados pessoais**: trilha de auditoria automática via interceptor EF Core, redação de logs por decoração de `ILogger`, mascaramento/anonimização/pseudonimização, retenção declarativa por atributos e analyzers Roslyn.
 
-**Maturidade observada:** preview (`1.0.0-preview.1`). Após a passagem de 2026-05-08, todos os bugs identificados (§4.1) e dívidas operacionais (§4.3) foram corrigidos. A biblioteca ganhou três pacotes novos (`SensitiveFlow.TestKit`, `SensitiveFlow.Analyzers.CodeFixes`, e o `RetryingAuditStore` decorator dentro de `SensitiveFlow.Audit`).
+**Maturidade observada:** preview (`1.0.0-preview.1`). Após a passagem de 2026-05-08, todos os bugs identificados (§4.1) e dívidas operacionais (§4.3) foram corrigidos. A biblioteca ganhou pacotes novos (`SensitiveFlow.Audit.EFCore`, `SensitiveFlow.Diagnostics`, `SensitiveFlow.SourceGenerators`, `SensitiveFlow.TestKit`, `SensitiveFlow.Analyzers.CodeFixes`) e o decorator `RetryingAuditStore` dentro de `SensitiveFlow.Audit`.
 
 **Cobertura de testes:** 219 testes (+18 vs baseline). Testes específicos foram adicionados para cada correção de bug e para as novidades.
 
@@ -22,13 +22,16 @@ SensitiveFlow é uma biblioteca .NET (8/10) modular para **observabilidade e con
 ```
 SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, SensitiveMemberCache)
    ├── SensitiveFlow.Audit          (extensão DI: AddAuditStore<T>; RetryingAuditStore)
+   ├── SensitiveFlow.Audit.EFCore   (IAuditStore durável via EF Core)
    ├── SensitiveFlow.Anonymization  (Maskers, Pseudonymizers, Strategies, Erasure)
    ├── SensitiveFlow.Logging        (RedactingLogger, redactor padrão)
+   ├── SensitiveFlow.Diagnostics    (OpenTelemetry bridge: ActivitySource + Meter)
    ├── SensitiveFlow.Retention      (RetentionEvaluator + handlers)
    ├── SensitiveFlow.AspNetCore     (HttpAuditContext, middleware IP-token)
    ├── SensitiveFlow.EFCore         (SaveChanges interceptor, NullAuditContext)
-   ├── SensitiveFlow.Analyzers      (SF0001/SF0002 — netstandard2.0)
+   ├── SensitiveFlow.Analyzers      (SF0001-SF0003 — netstandard2.0)
    ├── SensitiveFlow.Analyzers.CodeFixes (quick-fixes Wrap-with-Mask — netstandard2.0)
+   ├── SensitiveFlow.SourceGenerators (metadados de membros sensíveis em tempo de compilação)
    └── SensitiveFlow.TestKit        (xUnit conformance suites)
 ```
 
