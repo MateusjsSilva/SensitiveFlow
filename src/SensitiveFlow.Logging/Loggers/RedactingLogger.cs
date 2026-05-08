@@ -19,11 +19,18 @@ namespace SensitiveFlow.Logging.Loggers;
 /// </summary>
 public sealed class RedactingLogger : ILogger
 {
+    private const string OriginalFormatKey = "{OriginalFormat}";
+
     private static readonly Regex SensitiveKeyPattern =
         new(@"^\[Sensitive\]", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
     private static readonly Regex SensitiveTemplatePattern =
         new(@"\[Sensitive\][^\s,}]*", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+
+    // Matches {Name}, {Name:format} and {Name,align} placeholders. The name is
+    // captured to look up the resolved value from the structured state.
+    private static readonly Regex PlaceholderPattern =
+        new(@"\{(?<name>[^{}:,]+)(?:[:,][^{}]*)?\}", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
     private readonly ILogger _inner;
     private readonly ISensitiveValueRedactor _redactor;
@@ -62,10 +69,22 @@ public sealed class RedactingLogger : ILogger
         if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
         {
             var redacted = RedactPairs(pairs);
-            _inner.Log(logLevel, eventId, redacted, exception, (_, ex) =>
+            _inner.Log(logLevel, eventId, redacted, exception, (s, ex) =>
             {
+                // Prefer template-driven rendering: rebuild the message from {OriginalFormat}
+                // using the already-redacted values. This avoids substring corruption that
+                // a global string Replace would cause when a sensitive value happens to
+                // appear inside another field.
+                var template = FindOriginalFormat(s);
+                if (template is not null)
+                {
+                    return RenderTemplate(template, s);
+                }
+
+                // No template available — render with the original formatter and redact
+                // any [Sensitive]<token> patterns left in the output.
                 var message = formatter(state, ex);
-                return RedactSensitiveValues(message, pairs);
+                return RedactTemplate(message);
             });
             return;
         }
@@ -81,25 +100,31 @@ public sealed class RedactingLogger : ILogger
     internal string RedactTemplate(string message)
         => SensitiveTemplatePattern.Replace(message, _ => _redactor.Redact(string.Empty));
 
-    private string RedactSensitiveValues(string message, IEnumerable<KeyValuePair<string, object?>> pairs)
+    private static string? FindOriginalFormat(IEnumerable<KeyValuePair<string, object?>> pairs)
     {
-        var redacted = RedactTemplate(message);
         foreach (var pair in pairs)
         {
-            if (!SensitiveKeyPattern.IsMatch(pair.Key) || pair.Value is null)
+            if (pair.Key == OriginalFormatKey && pair.Value is string template)
             {
-                continue;
-            }
-
-            var value = pair.Value.ToString();
-            if (!string.IsNullOrEmpty(value))
-            {
-                redacted = redacted.Replace(value, _redactor.Redact(string.Empty), StringComparison.Ordinal);
+                return template;
             }
         }
-
-        return redacted;
+        return null;
     }
+
+    private static string RenderTemplate(string template, IEnumerable<KeyValuePair<string, object?>> pairs)
+        => PlaceholderPattern.Replace(template, m =>
+        {
+            var name = m.Groups["name"].Value;
+            foreach (var pair in pairs)
+            {
+                if (pair.Key == name)
+                {
+                    return pair.Value?.ToString() ?? string.Empty;
+                }
+            }
+            return m.Value;
+        });
 
     private List<KeyValuePair<string, object?>> RedactPairs(IEnumerable<KeyValuePair<string, object?>> pairs)
     {

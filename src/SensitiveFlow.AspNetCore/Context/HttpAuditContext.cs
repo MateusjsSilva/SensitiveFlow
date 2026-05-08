@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using SensitiveFlow.Core.Interfaces;
 
@@ -20,9 +21,27 @@ public class HttpAuditContext : IAuditContext
     }
 
     /// <inheritdoc />
-    public virtual string? ActorId =>
-        _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-        ?? _httpContextAccessor.HttpContext?.User?.Identity?.Name;
+    /// <remarks>
+    /// Resolution order: raw <c>sub</c> claim → <see cref="ClaimTypes.NameIdentifier"/>
+    /// (Microsoft's default mapping for OIDC <c>sub</c>) → <see cref="System.Security.Principal.IIdentity.Name"/>.
+    /// This double-check exists because <c>JwtBearerOptions.MapInboundClaims</c> defaults to <see langword="true"/>,
+    /// which renames <c>sub</c> to <see cref="ClaimTypes.NameIdentifier"/> before claims reach the principal.
+    /// </remarks>
+    public virtual string? ActorId
+    {
+        get
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user is null)
+            {
+                return null;
+            }
+
+            return user.FindFirst("sub")?.Value
+                ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user.Identity?.Name;
+        }
+    }
 
     /// <inheritdoc />
     public virtual string? IpAddressToken =>

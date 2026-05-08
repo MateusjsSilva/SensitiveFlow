@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using SensitiveFlow.Anonymization.Erasure;
 using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Core.Interfaces;
 
@@ -35,6 +37,19 @@ public static class AnonymizationServiceCollectionExtensions
     {
         services.AddScoped<ITokenStore, TStore>();
         services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="DataSubjectErasureService"/> with the default
+    /// <see cref="RedactionErasureStrategy"/> so application code can satisfy "right to be
+    /// forgotten" requests by overwriting annotated properties on an entity. Replace the
+    /// strategy registration to customize the replacement value.
+    /// </summary>
+    public static IServiceCollection AddDataSubjectErasure(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IErasureStrategy>(new RedactionErasureStrategy());
+        services.TryAddSingleton<IDataSubjectErasureService, DataSubjectErasureService>();
         return services;
     }
 }

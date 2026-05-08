@@ -8,11 +8,40 @@ namespace SensitiveFlow.Core.Attributes;
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public sealed class RetentionDataAttribute : Attribute
 {
-    /// <summary>Retention period in years.</summary>
-    public int Years { get; set; }
+    private int _years;
+    private int _months;
 
-    /// <summary>Retention period in months (added to Years).</summary>
-    public int Months { get; set; }
+    /// <summary>Retention period in years. Must be zero or positive.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when set to a negative value.</exception>
+    public int Years
+    {
+        get => _years;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    "Retention period (Years) must be zero or positive.");
+            }
+            _years = value;
+        }
+    }
+
+    /// <summary>Retention period in months (added to Years). Must be zero or positive.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when set to a negative value.</exception>
+    public int Months
+    {
+        get => _months;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    "Retention period (Months) must be zero or positive.");
+            }
+            _months = value;
+        }
+    }
 
     /// <summary>Action executed when the period expires.</summary>
     public RetentionPolicy Policy { get; set; } = RetentionPolicy.AnonymizeOnExpiration;
@@ -29,7 +58,7 @@ public sealed class RetentionDataAttribute : Attribute
     /// beyond the legally declared period.
     /// </remarks>
     public DateTimeOffset GetExpirationDate(DateTimeOffset from) =>
-        from.AddYears(Years).AddMonths(Months);
+        from.AddYears(_years).AddMonths(_months);
 }
 
 

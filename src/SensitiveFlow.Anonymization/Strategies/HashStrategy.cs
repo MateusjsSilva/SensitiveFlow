@@ -32,11 +32,30 @@ public sealed class HashStrategy : IMaskStrategy
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// When salted, this implementation uses HMAC-SHA256 with the salt as the key — this
+    /// removes the ambiguity of plain string concatenation, where (<c>"salt", "value"</c>)
+    /// and (<c>"saltv", "alue"</c>) would otherwise hash to the same input.
+    /// </remarks>
     public string Apply(string value)
     {
-        var input = _salt is null ? value : _salt + value;
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+        var data = Encoding.UTF8.GetBytes(value);
+        Span<byte> hash = stackalloc byte[32];
+
+        if (_salt is null)
+        {
+            SHA256.HashData(data, hash);
+        }
+        else
+        {
+            HMACSHA256.HashData(Encoding.UTF8.GetBytes(_salt), data, hash);
+        }
+
+#if NET9_0_OR_GREATER
+        return Convert.ToHexStringLower(hash);
+#else
+        return Convert.ToHexString(hash).ToLowerInvariant();
+#endif
     }
 }
 

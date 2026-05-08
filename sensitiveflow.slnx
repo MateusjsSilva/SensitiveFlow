@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/SensitiveFlow.Analyzers/SensitiveFlow.Analyzers.csproj" />
+    <Project Path="src/SensitiveFlow.Analyzers.CodeFixes/SensitiveFlow.Analyzers.CodeFixes.csproj" />
     <Project Path="src/SensitiveFlow.Anonymization/SensitiveFlow.Anonymization.csproj" />
     <Project Path="src/SensitiveFlow.AspNetCore/SensitiveFlow.AspNetCore.csproj" />
     <Project Path="src/SensitiveFlow.Audit/SensitiveFlow.Audit.csproj" />
@@ -13,6 +14,7 @@
     <Project Path="src/SensitiveFlow.EFCore/SensitiveFlow.EFCore.csproj" />
     <Project Path="src/SensitiveFlow.Logging/SensitiveFlow.Logging.csproj" />
     <Project Path="src/SensitiveFlow.Retention/SensitiveFlow.Retention.csproj" />
+    <Project Path="src/SensitiveFlow.TestKit/SensitiveFlow.TestKit.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SensitiveFlow.Analyzers.Tests/SensitiveFlow.Analyzers.Tests.csproj" />

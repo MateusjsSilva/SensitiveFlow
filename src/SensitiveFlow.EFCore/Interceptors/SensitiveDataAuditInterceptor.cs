@@ -6,6 +6,7 @@ using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Core.Reflection;
 
 namespace SensitiveFlow.EFCore.Interceptors;
 
@@ -125,21 +126,18 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         foreach (var entry in entries)
         {
             var entityType = entry.Entity.GetType();
+            var sensitiveProperties = SensitiveMemberCache.GetSensitiveProperties(entityType);
+            if (sensitiveProperties.Count == 0)
+            {
+                continue;
+            }
+
             var entityName = entityType.Name;
             var operation = MapOperation(entry.State);
-
             var dataSubjectId = ResolveDataSubjectId(entry.Entity);
 
-            foreach (var property in entityType.GetProperties())
+            foreach (var property in sensitiveProperties)
             {
-                var isPersonal = Attribute.IsDefined(property, typeof(PersonalDataAttribute));
-                var isSensitive = Attribute.IsDefined(property, typeof(SensitiveDataAttribute));
-
-                if (!isPersonal && !isSensitive)
-                {
-                    continue;
-                }
-
                 if (entry.State == EntityState.Modified)
                 {
                     var propEntry = entry.Property(property.Name);
@@ -198,20 +196,48 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
     private static string ResolveDataSubjectId(object entity)
     {
-        var idProp = entity.GetType().GetProperty("DataSubjectId")
-                  ?? entity.GetType().GetProperty("Id")
-                  ?? entity.GetType().GetProperty("UserId");
+        var type = entity.GetType();
 
-        var value = idProp?.GetValue(entity)?.ToString();
-        if (string.IsNullOrEmpty(value))
+        var explicitProp = type.GetProperty("DataSubjectId");
+        if (explicitProp is not null)
         {
-            throw new InvalidOperationException(
-                $"Entity '{entity.GetType().Name}' has no resolvable DataSubjectId, Id, or UserId property, or all are null/empty. " +
-                "Add a public DataSubjectId property to the entity for reliable audit trail correlation.");
+            var value = explicitProp.GetValue(entity)?.ToString();
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new InvalidOperationException(
+                    $"Entity '{type.Name}' declares 'DataSubjectId' but its value is null or empty at SaveChanges time. " +
+                    "Audit records require a stable subject identifier — set DataSubjectId before persisting.");
+            }
+            return value;
         }
 
-        return value;
+        // Fallback to Id / UserId only when no explicit DataSubjectId exists.
+        // Reject the database-generated default value (0/empty Guid) that EF assigns before insert,
+        // which would otherwise group unrelated rows under the same fake subject.
+        var fallbackProp = type.GetProperty("Id") ?? type.GetProperty("UserId");
+        var fallbackValue = fallbackProp?.GetValue(entity);
+        var stringValue = fallbackValue?.ToString();
+
+        if (string.IsNullOrEmpty(stringValue) || IsUnsetIdentifier(fallbackValue))
+        {
+            throw new InvalidOperationException(
+                $"Entity '{type.Name}' has no resolvable DataSubjectId, and the fallback Id/UserId is unset (null/0/empty Guid). " +
+                "Add a public DataSubjectId property and assign it before SaveChanges so the audit trail can correlate rows reliably.");
+        }
+
+        return stringValue;
     }
+
+    private static bool IsUnsetIdentifier(object? value) => value switch
+    {
+        null      => true,
+        int i     => i == 0,
+        long l    => l == 0L,
+        short s   => s == 0,
+        byte b    => b == 0,
+        Guid g    => g == Guid.Empty,
+        _         => false,
+    };
 
     private sealed class PendingAuditRecords
     {

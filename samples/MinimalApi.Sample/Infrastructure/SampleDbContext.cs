@@ -57,6 +57,17 @@ public sealed class SampleDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<AuditRecordEntity> AuditEntries => Set<AuditRecordEntity>();
     public DbSet<TokenMappingEntity> TokenMappings => Set<TokenMappingEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Unique index — concurrent GetOrCreateToken inserts surface as DbUpdateException
+        // and the store recovers by re-reading the row that won.
+        modelBuilder.Entity<TokenMappingEntity>()
+            .HasIndex(t => t.Value)
+            .IsUnique();
+    }
 }
 
 public sealed class EfCoreAuditStore : IAuditStore
@@ -138,8 +149,21 @@ public sealed class EfCoreTokenStore : ITokenStore
 
         var token = Guid.NewGuid().ToString();
         _db.TokenMappings.Add(new TokenMappingEntity { Value = value, Token = token });
-        await _db.SaveChangesAsync(cancellationToken);
-        return token;
+
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return token;
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(_db.TokenMappings.Local.First(t => t.Value == value)).State = EntityState.Detached;
+
+            var winner = await _db.TokenMappings
+                .AsNoTracking()
+                .FirstAsync(t => t.Value == value, cancellationToken);
+            return winner.Token;
+        }
     }
 
     public async Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)

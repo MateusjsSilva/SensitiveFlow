@@ -1,6 +1,6 @@
-using System.Reflection;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Exceptions;
+using SensitiveFlow.Core.Reflection;
 using SensitiveFlow.Retention.Contracts;
 
 namespace SensitiveFlow.Retention.Services;
@@ -36,17 +36,11 @@ public sealed class RetentionEvaluator
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        var properties = entity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var retentionProperties = SensitiveMemberCache.GetRetentionProperties(entity.GetType());
 
-        foreach (var property in properties)
+        foreach (var pair in retentionProperties)
         {
-            var attr = property.GetCustomAttribute<RetentionDataAttribute>();
-            if (attr is null)
-            {
-                continue;
-            }
-
-            var expiration = attr.GetExpirationDate(referenceDate);
+            var expiration = pair.Attribute.GetExpirationDate(referenceDate);
             if (DateTimeOffset.UtcNow <= expiration)
             {
                 continue;
@@ -56,12 +50,12 @@ public sealed class RetentionEvaluator
             {
                 foreach (var handler in _handlers)
                 {
-                    await handler.HandleAsync(entity, property.Name, expiration, cancellationToken);
+                    await handler.HandleAsync(entity, pair.Property.Name, expiration, cancellationToken);
                 }
             }
             else
             {
-                throw new RetentionExpiredException(entity.GetType().Name, property.Name, expiration);
+                throw new RetentionExpiredException(entity.GetType().Name, pair.Property.Name, expiration);
             }
         }
     }

@@ -10,9 +10,10 @@ namespace SensitiveFlow.Anonymization.Anonymizers;
 /// </summary>
 public sealed class BrazilianTaxIdAnonymizer : IAnonymizer
 {
-    private static readonly Regex CpfPattern  = new(@"^\d{3}\.\d{3}\.\d{3}-\d{2}$", RegexOptions.Compiled);
-    private static readonly Regex CnpjPattern = new(@"^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$", RegexOptions.Compiled);
-    private static readonly Regex RawPattern  = new(@"^\d{11}$|^\d{14}$", RegexOptions.Compiled);
+    private static readonly Regex CpfPattern    = new(@"^\d{3}\.\d{3}\.\d{3}-\d{2}$", RegexOptions.Compiled);
+    private static readonly Regex CnpjPattern   = new(@"^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$", RegexOptions.Compiled);
+    private static readonly Regex RawPattern    = new(@"^\d{11}$|^\d{14}$", RegexOptions.Compiled);
+    private static readonly Regex DigitPattern  = new(@"\d", RegexOptions.Compiled);
 
     /// <inheritdoc />
     public bool CanAnonymize(string value) =>
@@ -27,8 +28,8 @@ public sealed class BrazilianTaxIdAnonymizer : IAnonymizer
             return value;
         }
 
-        // Preserve punctuation, replace only digits
-        return Regex.Replace(value, @"\d", "*");
+        // Preserve punctuation, replace only digits.
+        return DigitPattern.Replace(value, "*");
     }
 }
 

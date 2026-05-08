@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using SensitiveFlow.Anonymization.Anonymizers;
 using SensitiveFlow.Anonymization.Masking;
 using SensitiveFlow.Anonymization.Pseudonymizers;
@@ -31,6 +32,8 @@ public static class StringAnonymizationExtensions
     private static readonly EmailMasker              EmailMasker     = new();
     private static readonly PhoneMasker              PhoneMasker     = new();
     private static readonly NameMasker               NameMasker      = new();
+
+    private static readonly ConcurrentDictionary<string, HmacPseudonymizer> HmacPseudonymizerCache = new();
 
     // ── Anonymization (data may leave personal-data scope) ─────────────────────
 
@@ -80,11 +83,14 @@ public static class StringAnonymizationExtensions
 
     /// <summary>
     /// Pseudonymizes a value using HMAC-SHA256 with the provided secret key (deterministic, non-reversible).
+    /// The <see cref="HmacPseudonymizer"/> instance is cached per <paramref name="secretKey"/> to avoid
+    /// re-validating and re-allocating the key on every call in hot paths.
     /// </summary>
     /// <param name="value">Value to pseudonymize.</param>
-    /// <param name="secretKey">Secret key for HMAC. Must be at least 32 characters.</param>
+    /// <param name="secretKey">Secret key for HMAC. Must encode to at least 32 UTF-8 bytes.</param>
     public static string PseudonymizeHmac(this string value, string secretKey) =>
-        new HmacPseudonymizer(secretKey).Pseudonymize(value);
+        HmacPseudonymizerCache.GetOrAdd(secretKey, static key => new HmacPseudonymizer(key))
+            .Pseudonymize(value);
 }
 
 

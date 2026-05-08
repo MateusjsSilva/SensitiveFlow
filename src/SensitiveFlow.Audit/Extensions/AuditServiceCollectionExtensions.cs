@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using SensitiveFlow.Audit.Decorators;
 using SensitiveFlow.Core.Interfaces;
 
 namespace SensitiveFlow.Audit.Extensions;
@@ -30,6 +32,58 @@ public static class AuditServiceCollectionExtensions
         where TStore : class, IAuditStore
     {
         services.AddScoped<IAuditStore, TStore>();
+        return services;
+    }
+
+    /// <summary>
+    /// Wraps the registered <see cref="IAuditStore"/> with <see cref="RetryingAuditStore"/>
+    /// so transient append failures (lock contention, network blip) are retried with bounded
+    /// exponential backoff before bubbling out to <c>SaveChanges</c>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration callback for retry options.</param>
+    /// <remarks>
+    /// Call this <b>after</b> <see cref="AddAuditStore{TStore}"/>. The original registration is
+    /// replaced — only the retrying decorator is resolved as <see cref="IAuditStore"/>.
+    /// </remarks>
+    public static IServiceCollection AddAuditStoreRetry(
+        this IServiceCollection services,
+        Action<RetryingAuditStoreOptions>? configure = null)
+    {
+        var options = new RetryingAuditStoreOptions();
+        configure?.Invoke(options);
+
+        var existing = services.FirstOrDefault(d => d.ServiceType == typeof(IAuditStore))
+            ?? throw new InvalidOperationException(
+                $"No {nameof(IAuditStore)} registration was found. Call AddAuditStore<T>() before AddAuditStoreRetry().");
+
+        services.Remove(existing);
+
+        // Re-register the inner store under its own concrete type so the decorator can resolve it.
+        if (existing.ImplementationType is not null)
+        {
+            services.Add(new ServiceDescriptor(existing.ImplementationType, existing.ImplementationType, existing.Lifetime));
+            services.AddScoped<IAuditStore>(sp => new RetryingAuditStore(
+                (IAuditStore)sp.GetRequiredService(existing.ImplementationType),
+                options,
+                sp.GetService<ILogger<RetryingAuditStore>>()));
+        }
+        else if (existing.ImplementationFactory is not null)
+        {
+            var factory = existing.ImplementationFactory;
+            services.AddScoped<IAuditStore>(sp => new RetryingAuditStore(
+                (IAuditStore)factory(sp),
+                options,
+                sp.GetService<ILogger<RetryingAuditStore>>()));
+        }
+        else if (existing.ImplementationInstance is IAuditStore instance)
+        {
+            services.AddSingleton<IAuditStore>(sp => new RetryingAuditStore(
+                instance,
+                options,
+                sp.GetService<ILogger<RetryingAuditStore>>()));
+        }
+
         return services;
     }
 }

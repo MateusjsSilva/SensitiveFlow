@@ -61,6 +61,17 @@ public sealed class SampleDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<AuditRecordEntity> AuditEntries => Set<AuditRecordEntity>();
     public DbSet<TokenMappingEntity> TokenMappings => Set<TokenMappingEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Enforce uniqueness so concurrent GetOrCreateToken inserts surface as
+        // DbUpdateException instead of producing duplicate token mappings for the same value.
+        modelBuilder.Entity<TokenMappingEntity>()
+            .HasIndex(t => t.Value)
+            .IsUnique();
+    }
 }
 
 // ── Durable IAuditStore backed by EF Core / SQLite ────────────────────────
@@ -146,8 +157,24 @@ public sealed class EfCoreTokenStore : ITokenStore
 
         var token = Guid.NewGuid().ToString();
         _db.TokenMappings.Add(new TokenMappingEntity { Value = value, Token = token });
-        await _db.SaveChangesAsync(cancellationToken);
-        return token;
+
+        // Concurrent callers for the same value will both reach this point. The unique index
+        // on Value (see SampleDbContext.OnModelCreating) makes one of the inserts fail; we
+        // recover by re-reading the row that the winning insert created.
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return token;
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(_db.TokenMappings.Local.First(t => t.Value == value)).State = EntityState.Detached;
+
+            var winner = await _db.TokenMappings
+                .AsNoTracking()
+                .FirstAsync(t => t.Value == value, cancellationToken);
+            return winner.Token;
+        }
     }
 
     public async Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
