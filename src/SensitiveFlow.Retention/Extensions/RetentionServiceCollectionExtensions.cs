@@ -27,4 +27,23 @@ public static class RetentionServiceCollectionExtensions
         services.AddTransient<IRetentionExpirationHandler, THandler>();
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="RetentionExecutor"/> — the imperative variant of
+    /// <see cref="RetentionEvaluator"/> that mutates expired fields in place when their
+    /// <see cref="SensitiveFlow.Core.Enums.RetentionPolicy"/> is <c>AnonymizeOnExpiration</c>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration callback for executor options.</param>
+    public static IServiceCollection AddRetentionExecutor(
+        this IServiceCollection services,
+        Action<RetentionExecutorOptions>? configure = null)
+    {
+        var options = new RetentionExecutorOptions();
+        configure?.Invoke(options);
+
+        services.AddSingleton(options);
+        services.AddSingleton<RetentionExecutor>(sp => new RetentionExecutor(options));
+        return services;
+    }
 }

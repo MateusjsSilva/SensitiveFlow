@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Implementacao de IAuditStore baseada em EF Core: indices otimizados, retencao do proprio audit log e suporte a appends em batch.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

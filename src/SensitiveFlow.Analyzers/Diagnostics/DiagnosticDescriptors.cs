@@ -21,4 +21,13 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Avoid returning values annotated with [PersonalData] or [SensitiveData] directly from API endpoints.");
+
+    public static readonly DiagnosticDescriptor MissingDataSubjectId = new(
+        id: "SF0003",
+        title: "Entity with sensitive data must expose a DataSubjectId",
+        messageFormat: "Entity '{0}' has [PersonalData]/[SensitiveData] members but no 'DataSubjectId' (or legacy 'UserId') property — SensitiveDataAuditInterceptor will throw at SaveChanges",
+        category: "Privacy",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "SensitiveDataAuditInterceptor requires a stable subject identifier. Without it, every SaveChanges that touches a sensitive field throws InvalidOperationException at runtime.");
 }

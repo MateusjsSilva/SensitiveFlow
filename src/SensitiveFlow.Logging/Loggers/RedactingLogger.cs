@@ -1,5 +1,7 @@
+using System.Diagnostics.Metrics;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using SensitiveFlow.Core.Diagnostics;
 using SensitiveFlow.Logging.Redaction;
 
 namespace SensitiveFlow.Logging.Loggers;
@@ -31,6 +33,13 @@ public sealed class RedactingLogger : ILogger
     // captured to look up the resolved value from the structured state.
     private static readonly Regex PlaceholderPattern =
         new(@"\{(?<name>[^{}:,]+)(?:[:,][^{}]*)?\}", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+
+    private static readonly Meter Meter = new(SensitiveFlowDiagnostics.MeterName);
+
+    private static readonly Counter<long> RedactedFieldsCounter = Meter.CreateCounter<long>(
+        name: SensitiveFlowDiagnostics.RedactFieldsCountName,
+        unit: "fields",
+        description: "Sensitive fields replaced before reaching a log sink.");
 
     private readonly ILogger _inner;
     private readonly ISensitiveValueRedactor _redactor;
@@ -129,16 +138,23 @@ public sealed class RedactingLogger : ILogger
     private List<KeyValuePair<string, object?>> RedactPairs(IEnumerable<KeyValuePair<string, object?>> pairs)
     {
         var result = new List<KeyValuePair<string, object?>>();
+        var redactedCount = 0;
         foreach (var pair in pairs)
         {
             if (SensitiveKeyPattern.IsMatch(pair.Key))
             {
                 result.Add(new KeyValuePair<string, object?>(pair.Key, _redactor.Redact(string.Empty)));
+                redactedCount++;
             }
             else
             {
                 result.Add(pair);
             }
+        }
+
+        if (redactedCount > 0)
+        {
+            RedactedFieldsCounter.Add(redactedCount);
         }
 
         return result;
