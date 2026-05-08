@@ -64,6 +64,18 @@ public sealed class HmacPseudonymizerTests
     }
 
     [Fact]
+    public async Task ReverseAsync_ReturnsFaultedTask_NotSyncThrow()
+    {
+        // §4.1.2: the failure must travel via the Task (faulted), not as a synchronous throw
+        // from the call site. Build a Task<string> reference WITHOUT awaiting and assert
+        // it is already faulted before any await happens.
+        var task = _sut.ReverseAsync("any-token");
+
+        task.IsFaulted.Should().BeTrue("the async API must return a faulted task instead of throwing inline");
+        await task.Awaiting(t => t).Should().ThrowAsync<NotSupportedException>();
+    }
+
+    [Fact]
     public void Constructor_ShortKey_ThrowsArgumentException()
     {
         var act = () => new HmacPseudonymizer("short-key");

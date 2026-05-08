@@ -115,6 +115,28 @@ public sealed class RedactingLoggerStructuredTests
     }
 
     [Fact]
+    public void Log_StructuredState_DoesNotCorruptOtherFieldsWhenSensitiveValueIsSubstring()
+    {
+        // §4.1.3: a sensitive value that happened to be a substring of another value
+        // would be globally string-replaced — corrupting the unrelated field. With the
+        // template-based renderer, only the sensitive placeholder is redacted.
+        var spy = new SpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        var state = new List<KeyValuePair<string, object?>>
+        {
+            new("[Sensitive]Email", "a@x"),     // short value that appears as substring elsewhere
+            new("Note", "user a@x said hi"),    // unrelated field whose value contains the sensitive substring
+            new("{OriginalFormat}", "Email={[Sensitive]Email}, Note={Note}"),
+        };
+
+        logger.Log(LogLevel.Information, new EventId(0), state, null,
+            (s, _) => string.Join(", ", s.Where(kv => kv.Key != "{OriginalFormat}").Select(kv => $"{kv.Key}={kv.Value}")));
+
+        spy.LastMessage.Should().Be("Email=[REDACTED], Note=user a@x said hi");
+    }
+
+    [Fact]
     public void Log_StructuredState_FormatterIsInvokedWithRedactedState()
     {
         // Uses a real spy logger so the formatter lambda inside RedactingLogger

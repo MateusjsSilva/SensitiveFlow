@@ -29,6 +29,21 @@ public sealed class HttpAuditContextTests
     }
 
     [Fact]
+    public void ActorId_FallsBackToNameIdentifier_WhenSubMappedToNameIdentifier()
+    {
+        // §4.3.6: JwtBearer's default MapInboundClaims=true renames "sub" to NameIdentifier.
+        // The context must still resolve the actor in that case.
+        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, "user-456") };
+        var identity = new ClaimsIdentity(claims, "test");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContext = new DefaultHttpContext { User = principal };
+        var context = MakeContext(httpContext);
+
+        context.ActorId.Should().Be("user-456");
+    }
+
+    [Fact]
     public void ActorId_FallsBackToIdentityName_WhenNoSubClaim()
     {
         var identity = new ClaimsIdentity([], "test");

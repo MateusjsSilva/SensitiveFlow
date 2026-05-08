@@ -78,6 +78,22 @@ public sealed class CoreContractTests
     }
 
     [Fact]
+    public void RetentionDataAttribute_NegativeYears_Throws()
+    {
+        // §4.1.5: a negative retention silently produced an expiration in the past,
+        // making the evaluator believe every annotated field was already expired.
+        var act = () => new RetentionDataAttribute { Years = -1 };
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void RetentionDataAttribute_NegativeMonths_Throws()
+    {
+        var act = () => new RetentionDataAttribute { Months = -3 };
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
     public void RetentionPolicy_UsesExpirationNaming()
     {
         Enum.GetNames<RetentionPolicy>().Should().Contain(

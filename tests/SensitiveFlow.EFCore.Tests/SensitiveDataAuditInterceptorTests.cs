@@ -177,4 +177,54 @@ public sealed class SensitiveDataAuditInterceptorTests
         var records = await store.QueryByDataSubjectAsync("subject-xyz");
         records.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task AuditRecord_EmptyDataSubjectId_ThrowsAtSaveChanges()
+    {
+        var (db, _) = BuildContext();
+        db.Users.Add(new UserEntity { DataSubjectId = string.Empty });
+
+        // Empty DataSubjectId on Add must fail loudly: an audit record without a stable
+        // subject identifier corrupts the trail.
+        await db.Invoking(c => c.SaveChangesAsync())
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*DataSubjectId*null or empty*");
+    }
+
+    private sealed class FallbackOnlyEntity
+    {
+        public int Id { get; set; }
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = "fallback@example.com";
+    }
+
+    private sealed class FallbackOnlyDbContext : DbContext
+    {
+        public FallbackOnlyDbContext(SensitiveDataAuditInterceptor interceptor)
+            : base(new DbContextOptionsBuilder()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .AddInterceptors(interceptor)
+                .Options) { }
+
+        public DbSet<FallbackOnlyEntity> Items => Set<FallbackOnlyEntity>();
+    }
+
+    [Fact]
+    public async Task AuditRecord_FallbackId_ZeroOrUnset_ThrowsAtSaveChanges()
+    {
+        // Reproduces §4.1.1: an entity without DataSubjectId, where the only fallback
+        // is an EF-managed int Id (still 0 at SaveChanges time). Old behavior would
+        // have written DataSubjectId="0" silently.
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+        var db = new FallbackOnlyDbContext(interceptor);
+        db.Database.EnsureCreated();
+
+        db.Items.Add(new FallbackOnlyEntity());
+
+        await db.Invoking(c => c.SaveChangesAsync())
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Id/UserId is unset*");
+    }
 }
