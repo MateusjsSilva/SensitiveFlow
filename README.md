@@ -16,13 +16,15 @@ Sensitive data flows through your application on every request: EF Core saves, H
 | Package | Description | Status |
 |---------|-------------|--------|
 | `SensitiveFlow.Core` | Attributes, enums, interfaces, models, exceptions | Preview |
-| `SensitiveFlow.Audit` | Immutable audit trail -- bring your own durable store | Preview |
+| `SensitiveFlow.Audit` | Immutable audit trail -- bring your own durable store; `RetryingAuditStore` decorator included | Preview |
 | `SensitiveFlow.EFCore` | SaveChanges interceptor for automatic auditing | Preview |
 | `SensitiveFlow.AspNetCore` | Middleware for actor/IP context enrichment | Preview |
 | `SensitiveFlow.Logging` | ILogger decorator for PII redaction in logs | Preview |
-| `SensitiveFlow.Anonymization` | Masking, anonymization, and pseudonymization | Preview |
+| `SensitiveFlow.Anonymization` | Masking, anonymization, pseudonymization, and erasure (right-to-be-forgotten) | Preview |
 | `SensitiveFlow.Retention` | Retention metadata and expiration hook contracts | Preview |
 | `SensitiveFlow.Analyzers` | Roslyn analyzers for privacy anti-patterns | Preview |
+| `SensitiveFlow.Analyzers.CodeFixes` | Quick-fix providers for SF0001/SF0002 (wrap with `.MaskEmail()` / `.MaskPhone()` / `.MaskName()`) | Preview |
+| `SensitiveFlow.TestKit` | xUnit conformance base classes for `IAuditStore` / `ITokenStore` implementations | Preview |
 
 ## Quick Start
 

@@ -36,10 +36,27 @@ app.UseAuthorization();
 
 | Property | Source |
 |----------|--------|
-| `ActorId` | `User.FindFirst("sub")?.Value`, falls back to `User.Identity.Name` |
+| `ActorId` | `User.FindFirst("sub")?.Value` → `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` → `User.Identity.Name` |
 | `IpAddressToken` | `HttpContext.Items["SensitiveFlow.IpToken"]` (set by the middleware) |
 
 Both properties return `null` when no HTTP context is active (e.g., background jobs).
+
+> **JWT `sub` claim mapping.** `JwtBearerOptions.MapInboundClaims` defaults to `true`, which renames the `sub` claim to `ClaimTypes.NameIdentifier` before it reaches the principal. The double-check above means `ActorId` resolves correctly under both default and `MapInboundClaims = false` configurations — you do not have to disable claim mapping to use this library.
+
+## Behind a reverse proxy / load balancer
+
+The middleware reads `HttpContext.Connection.RemoteIpAddress`, which by default is the IP of the immediate caller — typically your load balancer or reverse proxy, not the real client. Configure ASP.NET Core's [forwarded headers middleware](https://learn.microsoft.com/aspnet/core/host-and-deploy/proxy-load-balancer) **before** `UseSensitiveFlowAudit` so the original client IP is restored:
+
+```csharp
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+});
+
+app.UseSensitiveFlowAudit();
+```
+
+Without this, every audit record's `IpAddressToken` will resolve back to the proxy's address.
 
 ## IP pseudonymization
 

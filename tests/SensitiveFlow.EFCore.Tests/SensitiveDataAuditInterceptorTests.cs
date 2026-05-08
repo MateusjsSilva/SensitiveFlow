@@ -211,11 +211,12 @@ public sealed class SensitiveDataAuditInterceptorTests
     }
 
     [Fact]
-    public async Task AuditRecord_FallbackId_ZeroOrUnset_ThrowsAtSaveChanges()
+    public async Task AuditRecord_NoDataSubjectIdProperty_ThrowsAtSaveChanges()
     {
-        // Reproduces §4.1.1: an entity without DataSubjectId, where the only fallback
-        // is an EF-managed int Id (still 0 at SaveChanges time). Old behavior would
-        // have written DataSubjectId="0" silently.
+        // §4.1.1 (revised): falling back to 'Id' was unsafe because the EF provider can
+        // assign auto-increment keys before SaveChangesAsync. The interceptor now
+        // requires an explicit DataSubjectId (or UserId alias) and refuses to fall
+        // back to the database-generated 'Id'.
         var store = new InMemoryAuditStore();
         var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
         var db = new FallbackOnlyDbContext(interceptor);
@@ -225,6 +226,42 @@ public sealed class SensitiveDataAuditInterceptorTests
 
         await db.Invoking(c => c.SaveChangesAsync())
             .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Id/UserId is unset*");
+            .WithMessage("*no 'DataSubjectId'*");
+    }
+
+    private sealed class UserIdAliasEntity
+    {
+        public int Id { get; set; }
+        public string UserId { get; set; } = "user-alias-1";
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = "alias@example.com";
+    }
+
+    private sealed class UserIdAliasDbContext : DbContext
+    {
+        public UserIdAliasDbContext(SensitiveDataAuditInterceptor interceptor)
+            : base(new DbContextOptionsBuilder()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .AddInterceptors(interceptor)
+                .Options) { }
+
+        public DbSet<UserIdAliasEntity> Items => Set<UserIdAliasEntity>();
+    }
+
+    [Fact]
+    public async Task AuditRecord_UsesUserId_AsLegacyAlias()
+    {
+        // UserId is supported as a legacy alias for DataSubjectId.
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+        var db = new UserIdAliasDbContext(interceptor);
+        db.Database.EnsureCreated();
+
+        db.Items.Add(new UserIdAliasEntity());
+        await db.SaveChangesAsync();
+
+        var records = await store.QueryByDataSubjectAsync("user-alias-1");
+        records.Should().NotBeEmpty();
     }
 }

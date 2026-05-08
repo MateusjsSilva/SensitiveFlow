@@ -124,21 +124,39 @@ If your audit store can persist multiple records in one logical operation, imple
 
 `SensitiveDataAuditInterceptor` will call `AppendRangeAsync` once per `SaveChanges` when the store supports batching. That keeps the audit write path closer to the entity save and avoids one roundtrip per sensitive field.
 
-### Tests
+## Retrying transient failures
 
-For tests, implement `IAuditStore` inline or use a local in-memory stub:
+Audit appends sit in the hot path of `SaveChanges`. A brief network blip or lock contention against the audit store would otherwise cascade into a `SaveChangesAsync` failure. Wrap your store with the bundled `RetryingAuditStore`:
 
 ```csharp
-var store = new InMemoryAuditStore(); // defined locally in your test project
-services.AddSingleton<IAuditStore>(store);
+builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddAuditStoreRetry(options =>
+{
+    options.MaxAttempts       = 3;
+    options.InitialDelay      = TimeSpan.FromMilliseconds(100);
+    options.BackoffMultiplier = 2.0;
+});
+```
+
+The decorator only retries appends — `QueryAsync` is left alone. `ArgumentException` and `OperationCanceledException` are treated as terminal (input or cancellation, not transient) and never retried.
+
+### Tests
+
+For tests, implement `IAuditStore` inline or use the `SensitiveFlow.TestKit` conformance suite, which exercises the public contract for any custom store:
+
+```csharp
+public sealed class MyAuditStoreTests : AuditStoreContractTests
+{
+    protected override Task<IAuditStore> CreateStoreAsync()
+        => Task.FromResult<IAuditStore>(new MyAuditStore(/*...*/));
+}
 ```
 
 ## DataSubjectId resolution
 
-The EF Core interceptor resolves `DataSubjectId` from the entity by convention, checking the following property names in order:
+The EF Core interceptor requires the entity to expose a stable subject identifier in one of these properties (checked in order):
 
 1. `DataSubjectId`
-2. `Id`
-3. `UserId`
+2. `UserId` (legacy alias)
 
-If none is found, the value defaults to `"unknown"`. For reliable correlation, add a `DataSubjectId` property to every audited entity.
+If neither exists, or if the value is null/empty, the interceptor throws `InvalidOperationException` at `SaveChanges` time. Falling back to a database-generated `Id` was removed because EF providers can assign auto-increment keys before the interceptor runs — the resulting audit row would be tagged with a value that has no meaning to the data subject.

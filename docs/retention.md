@@ -16,7 +16,13 @@ public string TaxId { get; set; }
 public string SessionToken { get; set; }
 ```
 
+`Years` and `Months` must be zero or positive. Negative values throw `ArgumentOutOfRangeException` at attribute construction — a negative period would silently produce an expiration in the past, marking every record as already expired.
+
 See [Attributes](attributes.md) for the full property reference.
+
+> **Scope.** `RetentionEvaluator` inspects only the **public instance properties** of the entity you pass in. Properties on nested objects (e.g. `Customer.Address.PostalCode`) are not traversed — call the evaluator on each owned object explicitly.
+
+> **Naming.** `RetentionPolicy.AnonymizeOnExpiration` describes intent; the evaluator does **not** anonymize for you. The handler you register decides what "anonymize" means and applies it.
 
 ## RetentionEvaluator
 

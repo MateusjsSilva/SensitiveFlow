@@ -196,48 +196,33 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
     private static string ResolveDataSubjectId(object entity)
     {
+        // The previous implementation also fell back to a property called "Id". That
+        // turned out to be unsafe: EF-managed auto-increment keys can be assigned by the
+        // provider (e.g. InMemory) before the interceptor runs, so the audit row would be
+        // tagged with whatever the database happened to allocate — a value that has no
+        // meaning to the data subject the row is supposed to be about. We now require
+        // a property explicitly named DataSubjectId (or UserId as a legacy alias).
         var type = entity.GetType();
+        var prop = type.GetProperty("DataSubjectId") ?? type.GetProperty("UserId");
 
-        var explicitProp = type.GetProperty("DataSubjectId");
-        if (explicitProp is not null)
-        {
-            var value = explicitProp.GetValue(entity)?.ToString();
-            if (string.IsNullOrEmpty(value))
-            {
-                throw new InvalidOperationException(
-                    $"Entity '{type.Name}' declares 'DataSubjectId' but its value is null or empty at SaveChanges time. " +
-                    "Audit records require a stable subject identifier — set DataSubjectId before persisting.");
-            }
-            return value;
-        }
-
-        // Fallback to Id / UserId only when no explicit DataSubjectId exists.
-        // Reject the database-generated default value (0/empty Guid) that EF assigns before insert,
-        // which would otherwise group unrelated rows under the same fake subject.
-        var fallbackProp = type.GetProperty("Id") ?? type.GetProperty("UserId");
-        var fallbackValue = fallbackProp?.GetValue(entity);
-        var stringValue = fallbackValue?.ToString();
-
-        if (string.IsNullOrEmpty(stringValue) || IsUnsetIdentifier(fallbackValue))
+        if (prop is null)
         {
             throw new InvalidOperationException(
-                $"Entity '{type.Name}' has no resolvable DataSubjectId, and the fallback Id/UserId is unset (null/0/empty Guid). " +
-                "Add a public DataSubjectId property and assign it before SaveChanges so the audit trail can correlate rows reliably.");
+                $"Entity '{type.Name}' has no 'DataSubjectId' (or 'UserId') property. " +
+                "Add a stable subject identifier so the audit trail can correlate rows reliably; " +
+                "the database-generated 'Id' is not used because it is not under the application's control at SaveChanges time.");
         }
 
-        return stringValue;
-    }
+        var value = prop.GetValue(entity)?.ToString();
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException(
+                $"Entity '{type.Name}' declares '{prop.Name}' but its value is null or empty at SaveChanges time. " +
+                "Audit records require a stable subject identifier — set it before persisting.");
+        }
 
-    private static bool IsUnsetIdentifier(object? value) => value switch
-    {
-        null      => true,
-        int i     => i == 0,
-        long l    => l == 0L,
-        short s   => s == 0,
-        byte b    => b == 0,
-        Guid g    => g == Guid.Empty,
-        _         => false,
-    };
+        return value;
+    }
 
     private sealed class PendingAuditRecords
     {
