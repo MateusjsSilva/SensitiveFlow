@@ -4,6 +4,8 @@
 > **Propósito:** servir de linha de base para futuras análises. Pontos marcados em **VALIDADO** ou **RESOLVIDO** já foram considerados aceitáveis e **não devem ser re-litigados** sem mudança de contexto. Pontos em **ABERTO** continuam pendentes.
 >
 > **Como atualizar:** ao revisitar, mover itens de "Aberto" para "Resolvidos" (§3.1) ou "Validados" (§3) com nota da resolução. Não apague o histórico.
+>
+> **Análise de 2026-05-08 (pós-sprint):** Source generator analisado em profundidade. Genéricos aninhados funcionam corretamente (`SymbolDisplayFormat.FullyQualifiedFormat` produz `typeof()` válido). Interfaces não são percorridas — limitação documentada em §4.2.9, fallback de reflection cobre. Predicate do generator otimizado para filtrar apenas atributos relevantes (§4.5.14).
 
 ---
 
@@ -13,7 +15,7 @@ SensitiveFlow é uma biblioteca .NET (8/10) modular para **observabilidade e con
 
 **Maturidade observada:** preview (`1.0.0-preview.1`). Após a passagem de 2026-05-08, todos os bugs identificados (§4.1) e dívidas operacionais (§4.3) foram corrigidos. A biblioteca ganhou pacotes novos (`SensitiveFlow.Audit.EFCore`, `SensitiveFlow.Diagnostics`, `SensitiveFlow.SourceGenerators`, `SensitiveFlow.TestKit`, `SensitiveFlow.Analyzers.CodeFixes`) e o decorator `RetryingAuditStore` dentro de `SensitiveFlow.Audit`.
 
-**Cobertura de testes:** 219 testes (+18 vs baseline). Testes específicos foram adicionados para cada correção de bug e para as novidades.
+**Cobertura de testes:** 239 testes (+38 vs baseline). Testes específicos foram adicionados para cada correção de bug e para as novidades.
 
 ---
 
@@ -138,6 +140,11 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 **Status:** Aberto (limitação documentada).
 **Resolução parcial:** `docs/retention.md` agora documenta a limitação ("inspeciona apenas propriedades públicas do tipo top-level"). Implementação recursiva fica pendente.
 
+#### 4.2.9 Source generator não descobre propriedades de interface
+**Status:** Aberto (limitação documentada, baixo risco).
+**Detalhe:** `EnumeratePublicInstanceProperties` walka apenas `BaseType`, ignorando propriedades declaradas em interfaces. Na prática, atributos em propriedades de interface são raros, e a propriedade concreta na classe é detectada. Reflection fallback (`type.GetProperties()`) cobre interfaces corretamente.
+**Severidade:** Baixa (generator é otimização; fallback garante correção).
+
 ### 4.3 Problemas operacionais e de robustez
 *Todos os itens originais foram resolvidos em §3.1.*
 
@@ -169,6 +176,8 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 | 4.5.11 | Aberto | `RetentionEvaluator.EvaluateAsync` fail-fast. Documentar. |
 | 4.5.12 | Aberto | `Directory.Packages.props` versões. Verificar quando sair de preview. |
 | 4.5.13 | Aberto | TFM `net8.0;net10.0` (sem net9.0). Aceitável se net10 GA. |
+| 4.5.14 | **Resolvido** (§3.1) | Source generator predicate ineficiente — capturava TODAS propriedades com qualquer atributo (ex.: `[Required]`), causando trabalho extra em compilação. Otimizado para filtrar apenas `PersonalData`/`SensitiveData`/`RetentionData`. | [SensitiveMemberGenerator.cs:28-33](../src/SensitiveFlow.SourceGenerators/SensitiveMemberGenerator.cs#L28-L33) |
+| 4.5.15 | **Resolvido** (§3.1) | Source generator não descobre propriedades de interfaces — walka apenas `BaseType`. Reflection fallback cobre. Documentado como limitação conhecida. | [SensitiveMemberGenerator.cs:107-128](../src/SensitiveFlow.SourceGenerators/SensitiveMemberGenerator.cs#L107-L128) |
 
 ---
 
@@ -202,13 +211,14 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 ## 7. Roteiro sugerido (priorização atualizada)
 
 ### Concluídos em 2026-05-08
-P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit + benchmarks + samples race fix.
+P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit + benchmarks + samples race fix + source generator predicate optimization + interface limitation documentation.
 
 ### Restantes
 | Prioridade | Item | Esforço |
 |------------|------|---------|
 | P3 | 4.4.3 (analyzer para PII não anotada) | Médio |
 | P3 | 4.2.7 (RetentionEvaluator recursivo) | Médio |
+| P3 | 4.2.9 (source generator + interfaces) | Baixo |
 | P3 | 4.5.* itens cosméticos | Baixo |
 
 ---
@@ -229,3 +239,4 @@ P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit +
 |------|-----------------|---------|-------|
 | 2026-05-08 | `feat/initial-infrastructure` @ `de2c705` | Claude (Opus 4.7) | Análise inicial — linha de base. |
 | 2026-05-08 | `feat/initial-infrastructure` (ajustes) | Claude (Opus 4.7) | Resolveu 21 itens (todos P0/P1/P2 + perf + DX). Adicionou pacotes `TestKit`, `Analyzers.CodeFixes`. Adicionou `RetryingAuditStore` decorator e erasure namespace. **Breaking:** interceptor agora exige `DataSubjectId`/`UserId`. 18 novos testes; total 219 verde em net10. |
+| 2026-05-08 | `feat/initial-infrastructure` (source generator analysis) | Claude (Opus 4.7) | Análise aprofundada do source generator: genéricos aninhados validados (funcionam), interfaces não percorridas (documentado §4.2.9). Predicate otimizado para filtrar apenas atributos relevantes (§4.5.14). 20 novos testes (SF0003 + RetentionExecutor + Audit.EFCore); total 239 verde em net10. |

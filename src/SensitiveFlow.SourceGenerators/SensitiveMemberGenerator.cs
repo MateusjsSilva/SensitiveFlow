@@ -23,7 +23,11 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
 
         var candidateTypes = context.SyntaxProvider
             .CreateSyntaxProvider(
-                static (node, _) => node is PropertyDeclarationSyntax prop && prop.AttributeLists.Count > 0,
+                static (node, _) => node is PropertyDeclarationSyntax prop
+                    && prop.AttributeLists.Count > 0
+                    && prop.AttributeLists
+                        .SelectMany(static al => al.Attributes)
+                        .Any(static a => a.Name.ToString() is "PersonalData" or "SensitiveData" or "RetentionData"),
                 static (ctx, _) => GetAnnotatedType(ctx))
             .Where(static symbol => symbol is not null)
             .Select(static (symbol, _) => symbol!)
