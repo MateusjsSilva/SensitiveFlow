@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SensitiveFlow.Anonymization.Erasure;
+using SensitiveFlow.Anonymization.Export;
 using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Core.Interfaces;
 
@@ -49,6 +50,17 @@ public static class AnonymizationServiceCollectionExtensions
     {
         services.TryAddSingleton<IErasureStrategy>(new RedactionErasureStrategy());
         services.TryAddSingleton<IDataSubjectErasureService, DataSubjectErasureService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="DataSubjectExporter"/> as the singleton <see cref="IDataSubjectExporter"/>
+    /// so application code can satisfy data-portability requests by extracting annotated
+    /// properties from any entity into a portable dictionary.
+    /// </summary>
+    public static IServiceCollection AddDataSubjectExport(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IDataSubjectExporter, DataSubjectExporter>();
         return services;
     }
 }

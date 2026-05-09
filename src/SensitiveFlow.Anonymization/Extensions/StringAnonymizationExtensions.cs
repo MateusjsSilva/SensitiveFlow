@@ -21,9 +21,9 @@ namespace SensitiveFlow.Anonymization.Extensions;
 /// personal data and all privacy obligations apply.
 /// </para>
 /// <para>
-/// IP addresses are not covered here. IP truncation does not constitute anonymization under applicable privacy regulations
-/// under applicable privacy regulations. IP addresses must be pseudonymized using <see cref="TokenPseudonymizer"/> before
-/// being stored in audit logs.
+/// IP addresses are not covered here. IP truncation does not constitute true anonymization — a truncated
+/// IP combined with other metadata can still single out an individual. Pseudonymize IPs with
+/// <see cref="TokenPseudonymizer"/> before storing them in audit logs.
 /// </para>
 /// </remarks>
 public static class StringAnonymizationExtensions

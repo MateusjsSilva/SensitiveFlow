@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>System.Text.Json converter that automatically redacts properties annotated with [PersonalData] / [SensitiveData] in serialized output.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
+  </ItemGroup>
+
+</Project>

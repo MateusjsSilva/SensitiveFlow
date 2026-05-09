@@ -15,6 +15,7 @@
     <Project Path="src/SensitiveFlow.Core/SensitiveFlow.Core.csproj" />
     <Project Path="src/SensitiveFlow.Diagnostics/SensitiveFlow.Diagnostics.csproj" />
     <Project Path="src/SensitiveFlow.EFCore/SensitiveFlow.EFCore.csproj" />
+    <Project Path="src/SensitiveFlow.Json/SensitiveFlow.Json.csproj" />
     <Project Path="src/SensitiveFlow.Logging/SensitiveFlow.Logging.csproj" />
     <Project Path="src/SensitiveFlow.Retention/SensitiveFlow.Retention.csproj" />
     <Project Path="src/SensitiveFlow.SourceGenerators/SensitiveFlow.SourceGenerators.csproj" />
