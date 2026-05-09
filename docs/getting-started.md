@@ -96,7 +96,7 @@ Every call to `SaveChanges` or `SaveChangesAsync` on your `DbContext` triggers t
 
 ```
 AuditRecord {
-  Id            = "...",
+  Id            = 3fa85f64-5717-4562-b3fc-2c963f66afa6,  // Guid, auto-generated
   DataSubjectId = "customer-42",
   Entity        = "Customer",
   Field         = "Email",

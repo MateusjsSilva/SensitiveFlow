@@ -6,6 +6,8 @@
 > **Como atualizar:** ao revisitar, mover itens de "Aberto" para "Resolvidos" (§3.1) ou "Validados" (§3) com nota da resolução. Não apague o histórico.
 >
 > **Análise de 2026-05-08 (pós-sprint):** Source generator analisado em profundidade. Genéricos aninhados funcionam corretamente (`SymbolDisplayFormat.FullyQualifiedFormat` produz `typeof()` válido). Interfaces não são percorridas — limitação documentada em §4.2.9, fallback de reflection cobre. Predicate do generator otimizado para filtrar apenas atributos relevantes (§4.5.14).
+>
+> **Análise de 2026-05-09 (pós-sprint):** Correções aplicadas com base na análise externa: A1 (lifetime decorator), A2 (msg erro), A4 (AuditRecord.Id→Guid), A5 (remarks Operation), D1 (Scoped), D3 (IAuditLogRetention), L1 (namespace check), P1-P3 (perf), S1-S3 (generator incremental+interface walk), X1-X3 (docs+csproj). Build: 0 erros, 0 avisos. Testes: todos aprovados.
 
 ---
 
@@ -75,6 +77,26 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 | **4.4.7** Race no sample `EfCoreTokenStore` | **Resolvido.** Unique index em `TokenMappingEntity.Value` em ambos samples (Web/Minimal API). `GetOrCreateTokenAsync` recupera o token vencedor em `DbUpdateException`. | [WebApi sample](../samples/WebApi.Sample/Infrastructure/SampleDbContext.cs), [MinimalApi sample](../samples/MinimalApi.Sample/Infrastructure/SampleDbContext.cs) |
 | **4.5.1** TaxId regex duplicado | **Resolvido.** `DigitPattern` cached e reusado. | [BrazilianTaxIdAnonymizer.cs](../src/SensitiveFlow.Anonymization/Anonymizers/BrazilianTaxIdAnonymizer.cs) |
 | **4.5.2** Hex via `BitConverter` | **Resolvido.** `Convert.ToHexStringLower` em .NET 9+ (com fallback `Convert.ToHexString().ToLowerInvariant()` em net8). Aplicado em `HmacPseudonymizer` e `HashStrategy`. | [HmacPseudonymizer.cs](../src/SensitiveFlow.Anonymization/Pseudonymizers/HmacPseudonymizer.cs), [HashStrategy.cs](../src/SensitiveFlow.Anonymization/Strategies/HashStrategy.cs) |
+
+### 3.3 Resolvidos em 2026-05-09 (análise externa)
+
+| Item | Resolução | Arquivos |
+|------|-----------|----------|
+| **A1** Inconsistência de lifetime decorator Retry | **Resolvido.** `AddAuditStoreRetry` preserva o lifetime do descriptor original (`existing.Lifetime`) em vez de forçar `Scoped`. Eliminado risco de captive-dependency DI exception em produção (`ValidateScopes=true`). | [AuditServiceCollectionExtensions.cs](../src/SensitiveFlow.Audit/Extensions/AuditServiceCollectionExtensions.cs) |
+| **A2** Mensagem de erro de decorator insuficiente | **Resolvido.** `AddSensitiveFlowDiagnostics` agora explica a ordem correta e o efeito de invertê-la (spans por tentativa vs. span por ciclo). | [DiagnosticsServiceCollectionExtensions.cs](../src/SensitiveFlow.Diagnostics/Extensions/DiagnosticsServiceCollectionExtensions.cs) |
+| **A4** `AuditRecord.Id` string aloca sempre | **Resolvido.** `Id` mudou de `string` para `Guid`. `Guid.NewGuid()` não aloca string intermediária. Entity mapper converte com `.ToString()` na persitência. Docs e samples atualizados. | [AuditRecord.cs](../src/SensitiveFlow.Core/Models/AuditRecord.cs), [AuditRecordEntity.cs](../src/SensitiveFlow.Audit.EFCore/Entities/AuditRecordEntity.cs) |
+| **A5** `AuditRecord.Operation` default sem documentação | **Resolvido.** `<remarks>` adicionado explicando o default `Access` e quando sobrescrever. | [AuditRecord.cs](../src/SensitiveFlow.Core/Models/AuditRecord.cs) |
+| **D1** `RetentionEvaluator` como `Transient` | **Resolvido.** Mudado para `Scoped` (idiomático para serviço de avaliação por request). Teste de conformidade atualizado. | [RetentionServiceCollectionExtensions.cs](../src/SensitiveFlow.Retention/Extensions/RetentionServiceCollectionExtensions.cs) |
+| **D3** `AuditLogRetention<T>` sem interface | **Resolvido.** `IAuditLogRetention` extraída. Registrada via `TryAddSingleton<IAuditLogRetention>` nos dois overloads. Background jobs podem injetar a interface sem depender do tipo concreto genérico. | [IAuditLogRetention.cs](../src/SensitiveFlow.Audit.EFCore/Maintenance/IAuditLogRetention.cs) |
+| **L1** `IsLoggingCall` sem checar namespace | **Resolvido.** `LoggerExtensions` verificado com namespace `Microsoft.Extensions.Logging` — elimina falso positivo com classes homônimas em outros namespaces. | [SensitiveDataLoggingAnalyzer.cs](../src/SensitiveFlow.Analyzers/Analyzers/SensitiveDataLoggingAnalyzer.cs) |
+| **P1** `RedactingLogger` executa regex sempre | **Resolvido.** Fast-path `string.Contains("[Sensitive]", Ordinal)` antes do regex. Logs sem marcadores não tocam o regex. | [RedactingLogger.cs](../src/SensitiveFlow.Logging/Loggers/RedactingLogger.cs) |
+| **P2** `AppendRangeAsync` loop `Add()` individual | **Resolvido.** Substituído por `set.AddRange(records.Select(...))`. | [EfCoreAuditStore.cs](../src/SensitiveFlow.Audit.EFCore/Stores/EfCoreAuditStore.cs) |
+| **P3** `ChangeTracker.Entries().ToList()` sem pré-filtro | **Resolvido.** Filtro por `SensitiveMemberCache` adicionado dentro do LINQ antes do `.ToList()`. Entidades não-sensíveis não alocam entrada na lista. | [SensitiveDataAuditInterceptor.cs](../src/SensitiveFlow.EFCore/Interceptors/SensitiveDataAuditInterceptor.cs) |
+| **S1/S3** Generator sem cache incremental em `AttributeSymbols` | **Resolvido.** `AttributeSymbols` separado em pipeline `candidateTypes.Combine(attributeSymbols)` e `IEquatable` implementado — o pipeline incremental detecta igualdade e evita reemissão desnecessária. | [SensitiveMemberGenerator.cs](../src/SensitiveFlow.SourceGenerators/SensitiveMemberGenerator.cs) |
+| **S2** Generator não percorre interfaces | **Resolvido.** `EnumeratePublicInstanceProperties` agora percorre `type.AllInterfaces` após a hierarquia de classes. Propriedades de interfaces são incluídas no mapa gerado. | [SensitiveMemberGenerator.cs](../src/SensitiveFlow.SourceGenerators/SensitiveMemberGenerator.cs) |
+| **X1** XML doc exemplo com `EfCoreAuditStore` não-genérico | **Resolvido.** Exemplo corrigido para usar `AddEfCoreAuditStore()` e `AddEfCoreAuditStore<T>()`. | [AuditServiceCollectionExtensions.cs](../src/SensitiveFlow.Audit/Extensions/AuditServiceCollectionExtensions.cs) |
+| **X2** XML doc exemplo com `TokenDbContext` fictício | **Resolvido.** Exemplo atualizado para referenciar o padrão real de implementação custom. | [AnonymizationServiceCollectionExtensions.cs](../src/SensitiveFlow.Anonymization/Extensions/AnonymizationServiceCollectionExtensions.cs) |
+| **X3** `PackageDescription` em português | **Resolvido.** Todos os 9 `.csproj` com descrição em inglês. | todos os `.csproj` em `src/` |
 
 ### 3.2 Decisões originais (intencionais — não re-litigar)
 

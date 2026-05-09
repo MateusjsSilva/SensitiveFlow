@@ -9,17 +9,21 @@ An `AuditRecord` captures a single interaction with a sensitive field:
 ```csharp
 public sealed class AuditRecord
 {
-    public string Id { get; init; }               // unique identifier (auto-generated)
-    public string DataSubjectId { get; set; }     // whose data this is
-    public string Entity { get; set; }            // entity/table name
-    public string Field { get; set; }             // field/column name
-    public AuditOperation Operation { get; set; } // what happened
-    public DateTimeOffset Timestamp { get; set; } // when it happened
-    public string? ActorId { get; set; }          // who did it (null if anonymous)
-    public string? IpAddressToken { get; set; }   // pseudonymized IP (never raw)
-    public string? Details { get; set; }          // optional free-text context
+    public Guid Id { get; init; }                 // unique identifier (auto-generated)
+    public required string DataSubjectId { get; init; } // whose data this is
+    public required string Entity { get; init; }        // entity/table name
+    public required string Field { get; init; }         // field/column name
+    public AuditOperation Operation { get; init; }      // what happened (defaults to Access)
+    public DateTimeOffset Timestamp { get; init; }      // when it happened
+    public string? ActorId { get; init; }               // who did it (null if anonymous)
+    public string? IpAddressToken { get; init; }        // pseudonymized IP (never raw)
+    public string? Details { get; init; }               // optional free-text context
 }
 ```
+
+> **`Id` is a `Guid`**, not a string. When you persist it (e.g. in a custom store), call `.ToString()` to convert. `EfCoreAuditStore` does this automatically.
+>
+> **`Operation` defaults to `AuditOperation.Access`** so that read-only audit records can omit it. Set it explicitly for write, delete, or export events.
 
 ### AuditOperation
 
@@ -149,6 +153,24 @@ builder.Services.AddAuditStoreRetry(options =>
 
 The decorator only retries appends — `QueryAsync` is left alone. `ArgumentException` and `OperationCanceledException` are treated as terminal (input or cancellation, not transient) and never retried.
 
+### Combining Retry and Diagnostics
+
+Both `AddAuditStoreRetry` and `AddSensitiveFlowDiagnostics` are decorators that wrap the registered `IAuditStore`. **Order matters:**
+
+```csharp
+// One span covers the entire retry cycle (retry is invisible to the trace):
+builder.Services.AddEfCoreAuditStore<MyDbContext>();
+builder.Services.AddSensitiveFlowDiagnostics();  // outer: one span per logical operation
+builder.Services.AddAuditStoreRetry();           // inner: retries before bubbling
+
+// One span per attempt (each retry shows as a separate child span):
+builder.Services.AddEfCoreAuditStore<MyDbContext>();
+builder.Services.AddAuditStoreRetry();           // inner: retries
+builder.Services.AddSensitiveFlowDiagnostics();  // outer: one span wraps each attempt
+```
+
+> **DI lifetime:** both decorators preserve the lifetime of the original `IAuditStore` registration. Mixing `AddAuditStore<T>()` (Scoped) with `AddEfCoreAuditStore()` (Singleton) in the same container is not recommended — pick one registration path per application.
+
 ### Tests
 
 For tests, implement `IAuditStore` inline or use the `SensitiveFlow.TestKit` conformance suite, which exercises the public contract for any custom store:
@@ -169,3 +191,21 @@ The EF Core interceptor requires the entity to expose a stable subject identifie
 2. `UserId` (legacy alias)
 
 If neither exists, or if the value is null/empty, the interceptor throws `InvalidOperationException` at `SaveChanges` time. Falling back to a database-generated `Id` was removed because EF providers can assign auto-increment keys before the interceptor runs — the resulting audit row would be tagged with a value that has no meaning to the data subject.
+
+## Purging old audit records (IAuditLogRetention)
+
+The audit log itself accumulates personal data (subject IDs, actor IDs) and falls under the same retention obligations as the data it records. `SensitiveFlow.Audit.EFCore` registers `IAuditLogRetention` alongside the store:
+
+```csharp
+// Registered automatically by AddEfCoreAuditStore:
+// services.TryAddSingleton<IAuditLogRetention>(...);
+
+// Inject it in a background job or hosted service:
+public class AuditPurgeJob(IAuditLogRetention retention)
+{
+    public Task RunAsync(CancellationToken ct)
+        => retention.PurgeOlderThanAsync(DateTimeOffset.UtcNow.AddYears(-2), ct);
+}
+```
+
+`PurgeOlderThanAsync` uses `ExecuteDeleteAsync` (a single SQL `DELETE` statement) on relational providers, falling back to a materialise-and-remove approach on providers that do not support bulk deletes (e.g. InMemory in tests).

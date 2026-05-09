@@ -6,10 +6,10 @@
 
 `SensitiveDataAuditInterceptor` hooks into `SavingChangesAsync` (and its synchronous counterpart). Before EF Core commits the changes, it:
 
-1. Iterates over all entities in `Added`, `Modified`, or `Deleted` state.
-2. For each entity, scans its properties for `[PersonalData]` or `[SensitiveData]` attributes via reflection.
+1. Filters `ChangeTracker.Entries()` to only entities in `Added`, `Modified`, or `Deleted` state **that have at least one sensitive property** — non-sensitive entities are skipped without allocating a list entry.
+2. For each remaining entity, retrieves the cached sensitive property list from `SensitiveMemberCache` (no reflection scan per call).
 3. For `Modified` entities, skips properties that were not actually changed (`IsModified == false`).
-4. Creates one `AuditRecord` per sensitive field and appends it to `IAuditStore`.
+4. Creates one `AuditRecord` per sensitive field and appends it to `IAuditStore` after `SaveChanges` succeeds.
 
 ## Registration
 
