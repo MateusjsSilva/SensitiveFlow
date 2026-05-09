@@ -194,20 +194,20 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 **Severidade:** Média/Baixa.
 
 #### 4.4.8 Ausência de implementação oficial durável para `ITokenStore` (`SensitiveFlow.TokenStore.EFCore`)
-**Status:** Aberto. `SensitiveFlow.Audit.EFCore` facilita a adoção de auditoria durável sem necessidade de implementação manual, mas não há um pacote equivalente `SensitiveFlow.TokenStore.EFCore`. A pseudonimização reversível (um recurso central da biblioteca) hoje obriga cada aplicação a reinventar a roda implementando tabela própria, tratamento de `DbUpdateException` para concorrência e índices únicos, prejudicando muito a DX e adoção geral.
+**Status:** **Resolvido (2026-05-09).** Novo projeto `SensitiveFlow.TokenStore.EFCore`: `EfCoreTokenStore<TContext>` com `IDbContextFactory<TContext>`, índice único em `Value` para concorrência segura, `TokenDbContext` dedicado e `AddEfCoreTokenStore()` / `AddEfCoreTokenStore<TContext>()` que também registram `TokenPseudonymizer` como `IPseudonymizer`.
 **Severidade:** Alta.
 
 #### 4.4.9 Limitada instrumentação de observabilidade subjacente no `BufferedAuditStore`
-**Status:** Aberto. Ainda falta instrumentar o estado em nível interno do `BufferedAuditStore` com metrics reais (e.g., fila cheia, falhas no momento do flush periódico, itens descartados e contagem de itens pendentes no buffer).
+**Status:** **Resolvido (2026-05-09).** `BufferedAuditStore` agora expõe: `GetHealth()` retornando `BufferedAuditStoreHealth` (pending/dropped/flush failures/isFaulted); métricas OpenTelemetry: `sensitiveflow.audit.buffer.pending` (gauge), `sensitiveflow.audit.buffer.dropped` (counter), `sensitiveflow.audit.buffer.flush_failures` (counter). Constantes em `SensitiveFlowDiagnostics`.
 
 #### 4.4.10 Cobertura de TestContainers restrita ao PostgreSQL
-**Status:** Aberto. Testes de container hoje servem só como cobertura do Audit com PostgreSQL. Mas ainda não há equivalentes validando com SQL Server e Redis (especialmente vital quando `TokenStore.EFCore` for introduzido e para atestar os decorators contra race/concurrency conditions fora do driver PostgreSQL).
+**Status:** **Resolvido (2026-05-09).** Adicionados `SqlServerAuditStoreContainerTests` (append, batch, retention, retry decorator sobre SQL Server) e `RedisTokenStoreContainerTests` (GetOrCreate com atomicidade Lua, Resolve, KeyNotFound, valores distintos). Pacotes `Testcontainers.MsSql`, `Testcontainers.Redis`, `Microsoft.EntityFrameworkCore.SqlServer` e `StackExchange.Redis` adicionados.
 
 #### 4.4.11 Limitação do JSON redaction
 **Status:** Validado (design intent). Atualmente cobre apenas `System.Text.Json`. Se houver necessidade para `Newtonsoft.Json`, requererá um pacote separado adaptado (`SensitiveFlow.Json.Newtonsoft`).
 
 #### 4.4.12 Falta de persistência durável no AuditSnapshot
-**Status:** Aberto. `AuditSnapshot` atualmente sendo in-memory funciona local para demos. Contudo, em prod exigirá um backend permanente, potencialmente com o lançamento de `SensitiveFlow.Audit.Snapshots.EFCore` no futuro.
+**Status:** **Resolvido (2026-05-09).** Novo projeto `SensitiveFlow.Audit.Snapshots.EFCore`: `EfCoreAuditSnapshotStore<TContext>` com `IDbContextFactory<TContext>`, `SnapshotDbContext` dedicado, índices otimizados para aggregate/data-subject/timestamp, e `AddEfCoreAuditSnapshotStore()` / `AddEfCoreAuditSnapshotStore<TContext>()`.
 
 ### 4.5 Correção/qualidade menores
 
@@ -290,3 +290,4 @@ P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit +
 | 2026-05-08 | `feat/initial-infrastructure` @ `de2c705` | Claude (Opus 4.7) | Análise inicial — linha de base. |
 | 2026-05-08 | `feat/initial-infrastructure` (ajustes) | Claude (Opus 4.7) | Resolveu 21 itens (todos P0/P1/P2 + perf + DX). Adicionou pacotes `TestKit`, `Analyzers.CodeFixes`. Adicionou `RetryingAuditStore` decorator e erasure namespace. **Breaking:** interceptor agora exige `DataSubjectId`/`UserId`. 18 novos testes; total 219 verde em net10. |
 | 2026-05-08 | `feat/initial-infrastructure` (source generator analysis) | Claude (Opus 4.7) | Análise aprofundada do source generator: genéricos aninhados validados (funcionam), interfaces não percorridas (documentado §4.2.9). Predicate otimizado para filtrar apenas atributos relevantes (§4.5.14). 20 novos testes (SF0003 + RetentionExecutor + Audit.EFCore); total 239 verde em net10. |
+| 2026-05-09 | `feat/initial-infrastructure` (backend gaps) | GitHub Copilot (DeepSeek v4) | Resolveu 4 gaps arquiteturais (§4.4.8–§4.4.12): (1) `SensitiveFlow.TokenStore.EFCore` — `EfCoreTokenStore<TContext>` com índice único e concorrência segura; (2) Health checks + métricas OpenTelemetry no `BufferedAuditStore` (`GetHealth()`, gauges/counters de pending/dropped/flush failures); (3) Container tests para SQL Server (`SqlServerAuditStoreContainerTests`) e Redis (`RedisTokenStoreContainerTests` com atomicidade Lua); (4) `SensitiveFlow.Audit.Snapshots.EFCore` — `EfCoreAuditSnapshotStore<TContext>` com `SnapshotDbContext` dedicado. Novas constantes em `SensitiveFlowDiagnostics` para métricas de buffer. |

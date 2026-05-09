@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SensitiveFlow.Core` — `SensitiveMemberCache` shared reflection cache used by the EF Core interceptor and the retention evaluator (eliminates per-call `GetProperties` / `Attribute.IsDefined` cost).
 - `SensitiveFlow.Benchmarks` — real BenchmarkDotNet suites for masking, pseudonymization, and reflection caching.
 - Sample: Redis-backed `ITokenStore` implementation for distributed pseudonymization.
+- `SensitiveFlow.TokenStore.EFCore` — durable EF Core implementation of `ITokenStore` with unique index for concurrency-safe `GetOrCreateTokenAsync`; registers `TokenPseudonymizer` as `IPseudonymizer` automatically.
+- `SensitiveFlow.Audit.Snapshots.EFCore` — durable EF Core implementation of `IAuditSnapshotStore` with `SnapshotDbContext` and indexes optimized for aggregate and data-subject queries.
+- `BufferedAuditStore` — health checks via `GetHealth()` returning `BufferedAuditStoreHealth` (pending/dropped/flush failures/isFaulted); OpenTelemetry metrics: `sensitiveflow.audit.buffer.pending` (gauge), `.dropped` (counter), `.flush_failures` (counter).
+- Container tests: SQL Server (`SqlServerAuditStoreContainerTests`) and Redis (`RedisTokenStoreContainerTests` with atomic Lua scripts) added alongside existing PostgreSQL coverage.
 
 ### Changed
 

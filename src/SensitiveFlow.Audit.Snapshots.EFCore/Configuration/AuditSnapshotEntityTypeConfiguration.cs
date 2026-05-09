@@ -36,8 +36,8 @@ public sealed class AuditSnapshotEntityTypeConfiguration : IEntityTypeConfigurat
         builder.Property(e => e.AggregateId).IsRequired().HasMaxLength(256);
         builder.Property(e => e.ActorId).HasMaxLength(256);
         builder.Property(e => e.IpAddressToken).HasMaxLength(128);
-        builder.Property(e => e.BeforeJson).HasColumnType("nvarchar(max)");
-        builder.Property(e => e.AfterJson).HasColumnType("nvarchar(max)");
+        builder.Property(e => e.BeforeJson);
+        builder.Property(e => e.AfterJson);
         builder.Property(e => e.Timestamp)
             .HasConversion(
                 v => v.UtcDateTime,

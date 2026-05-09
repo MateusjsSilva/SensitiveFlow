@@ -194,6 +194,26 @@ builder.Services.AddBufferedAuditStore();        // outer: enqueue quickly, flus
 
 > **DI lifetime:** `AddAuditStoreRetry` preserves the original `IAuditStore` lifetime. `AddBufferedAuditStore` requires a Singleton store because the buffer owns a background worker. Use `AddEfCoreAuditStore(...)` or another Singleton durable store before enabling buffering.
 
+### Buffer health checks
+
+`BufferedAuditStore` exposes `GetHealth()` for monitoring and health-check endpoints:
+
+```csharp
+var health = bufferedStore.GetHealth();
+// health.PendingItems      — records still waiting in the buffer
+// health.DroppedItems      — total records dropped (overflow or channel closure)
+// health.FlushFailures     — total flush failures in the background worker
+// health.IsFaulted         — whether the background worker has failed permanently
+// health.BackgroundFailure — exception message if faulted
+```
+
+OpenTelemetry metrics are emitted automatically:
+- `sensitiveflow.audit.buffer.pending` (gauge) — current queue depth
+- `sensitiveflow.audit.buffer.dropped` (counter) — records dropped
+- `sensitiveflow.audit.buffer.flush_failures` (counter) — flush failures
+
+Wire them into your OpenTelemetry setup with `AddMeter("SensitiveFlow")`.
+
 ### Tests
 
 For tests, implement `IAuditStore` inline or use the `SensitiveFlow.TestKit` conformance suite, which exercises the public contract for any custom store:
@@ -273,4 +293,11 @@ var snapshot = new AuditSnapshot
 await snapshotStore.AppendAsync(snapshot);
 ```
 
-`SensitiveFlow.Audit` ships an `InMemoryAuditSnapshotStore` for tests and samples. Production use needs a durable backing — implement `IAuditSnapshotStore` against your database of choice (a dedicated EF-backed implementation may follow in a future preview).
+`SensitiveFlow.Audit` ships an `InMemoryAuditSnapshotStore` for tests and samples. For production, use `SensitiveFlow.Audit.Snapshots.EFCore`:
+
+```csharp
+builder.Services.AddEfCoreAuditSnapshotStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Snapshots")));
+```
+
+This registers `EfCoreAuditSnapshotStore<TContext>` backed by a dedicated `SnapshotDbContext` with indexes optimized for aggregate and data-subject queries.

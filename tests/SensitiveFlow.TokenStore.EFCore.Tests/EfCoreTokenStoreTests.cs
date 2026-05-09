@@ -131,10 +131,11 @@ public sealed class EfCoreTokenStoreTests : IAsyncLifetime
 
         _provider = services.BuildServiceProvider(validateScopes: true);
 
-        var tokenStore = _provider.GetRequiredService<ITokenStore>();
+        using var scope = _provider.CreateScope();
+        var tokenStore = scope.ServiceProvider.GetRequiredService<ITokenStore>();
         tokenStore.Should().BeOfType<EfCoreTokenStore<TokenDbContext>>();
 
-        var pseudonymizer = _provider.GetRequiredService<IPseudonymizer>();
+        var pseudonymizer = scope.ServiceProvider.GetRequiredService<IPseudonymizer>();
         pseudonymizer.Should().NotBeNull();
     }
 
@@ -152,10 +153,11 @@ public sealed class EfCoreTokenStoreTests : IAsyncLifetime
         await using var db = await factory.CreateDbContextAsync();
         await db.Database.EnsureCreatedAsync();
 
-        var tokenStore = _provider.GetRequiredService<ITokenStore>();
+        using var scope = _provider.CreateScope();
+        var tokenStore = scope.ServiceProvider.GetRequiredService<ITokenStore>();
         tokenStore.Should().BeOfType<EfCoreTokenStore<TokenDbContext>>();
 
-        var pseudonymizer = _provider.GetRequiredService<IPseudonymizer>();
+        var pseudonymizer = scope.ServiceProvider.GetRequiredService<IPseudonymizer>();
         pseudonymizer.Should().NotBeNull();
     }
 }

@@ -54,8 +54,8 @@ builder.Services.AddEfCoreAuditStore(options =>
 builder.Services.AddAuditStoreRetry();
 builder.Services.AddSensitiveFlowDiagnostics();
 
-builder.Services.AddScoped<ITokenStore, MySqlOrRedisTokenStore>();
-builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+builder.Services.AddEfCoreTokenStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")));
 builder.Services.AddCachingTokenStore();
 
 builder.Services.AddSensitiveFlowEFCore();

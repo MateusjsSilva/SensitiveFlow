@@ -18,6 +18,8 @@ Sensitive data flows through your application on every request: EF Core saves, H
 | `SensitiveFlow.Core` | Attributes, enums, interfaces, models, exceptions | Preview |
 | `SensitiveFlow.Audit` | Immutable audit trail -- bring your own durable store; retry and buffered decorators included | Preview |
 | `SensitiveFlow.Audit.EFCore` | Durable EF Core-backed audit store (`IAuditStore` + `IBatchAuditStore`) | Preview |
+| `SensitiveFlow.Audit.Snapshots.EFCore` | Durable EF Core-backed aggregate snapshot store (`IAuditSnapshotStore`) | Preview |
+| `SensitiveFlow.TokenStore.EFCore` | Durable EF Core-backed token store for reversible pseudonymization (`ITokenStore` + `IPseudonymizer`) | Preview |
 | `SensitiveFlow.EFCore` | SaveChanges interceptor for automatic auditing | Preview |
 | `SensitiveFlow.AspNetCore` | Middleware for actor/IP context enrichment | Preview |
 | `SensitiveFlow.Logging` | ILogger decorator for PII redaction in logs | Preview |

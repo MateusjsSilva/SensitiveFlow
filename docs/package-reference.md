@@ -9,6 +9,8 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.Core` | You annotate models or implement contracts. | Add attributes to models. | None by itself; it does not enforce behavior. |
 | `SensitiveFlow.Audit` | You register custom audit stores or decorators. | `AddAuditStore<T>()` or first-party EF store plus optional retry/buffer. | In-memory/buffered data can be lost before durable write. |
 | `SensitiveFlow.Audit.EFCore` | You want first-party SQL audit storage. | `AddEfCoreAuditStore(...)`; create/migrate audit table. | Audit DB must be durable and backed up independently. |
+| `SensitiveFlow.Audit.Snapshots.EFCore` | You want durable aggregate-level audit snapshots. | `AddEfCoreAuditSnapshotStore(...)`; create/migrate snapshot table. | Snapshots can be large; monitor storage growth. |
+| `SensitiveFlow.TokenStore.EFCore` | You want first-party SQL token storage for reversible pseudonymization. | `AddEfCoreTokenStore(...)`; create/migrate token table. | Losing token mappings makes pseudonymized data irrecoverable. |
 | `SensitiveFlow.EFCore` | You want automatic audit on `SaveChanges`. | `AddSensitiveFlowEFCore()` and `AddInterceptors(...)`. | Missing interceptor means no automatic audit. |
 | `SensitiveFlow.AspNetCore` | You need actor/IP context from HTTP requests. | `AddSensitiveFlowAspNetCore()` and `UseSensitiveFlowAudit()`. | Requires a durable `IPseudonymizer`/`ITokenStore` for reversible IP tokens. |
 | `SensitiveFlow.Anonymization` | You mask, pseudonymize, export, erase, or fingerprint values. | Register an `ITokenStore` for reversible tokens; use services/extensions. | Masking/pseudonymization are still personal data. |
@@ -108,7 +110,69 @@ Operational notes:
 
 - Uses `IDbContextFactory<TContext>` so audit writes do not piggyback on the application `DbContext`.
 - Implements `IBatchAuditStore`.
-- PostgreSQL container coverage lives in `tests/SensitiveFlow.Audit.EFCore.ContainerTests`.
+- PostgreSQL and SQL Server container coverage lives in `tests/SensitiveFlow.Audit.EFCore.ContainerTests`.
+
+## SensitiveFlow.Audit.Snapshots.EFCore
+
+Purpose:
+
+- First-party EF Core-backed durable aggregate audit snapshot store.
+
+Primary APIs:
+
+- `AddEfCoreAuditSnapshotStore(options => ...)`
+- `AddEfCoreAuditSnapshotStore<TContext>()`
+- `EfCoreAuditSnapshotStore<TContext>`
+- `SnapshotDbContext`
+- `AuditSnapshotEntityTypeConfiguration`
+
+Install when:
+
+- You want aggregate-level audit snapshots persisted through EF Core (instead of per-field `AuditRecord`).
+
+Recommended setup:
+
+```csharp
+builder.Services.AddEfCoreAuditSnapshotStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Snapshots")));
+```
+
+Operational notes:
+
+- Uses `IDbContextFactory<TContext>` so snapshot writes do not piggyback on the application `DbContext`.
+- Snapshots carry serialized "before" and "after" JSON — monitor storage growth.
+- Indexes optimized for aggregate lookups (`Aggregate + AggregateId + Timestamp`) and data-subject queries.
+
+## SensitiveFlow.TokenStore.EFCore
+
+Purpose:
+
+- First-party EF Core-backed durable token store for reversible pseudonymization.
+
+Primary APIs:
+
+- `AddEfCoreTokenStore(options => ...)`
+- `AddEfCoreTokenStore<TContext>()`
+- `EfCoreTokenStore<TContext>`
+- `TokenDbContext`
+- `TokenMappingEntityTypeConfiguration`
+
+Install when:
+
+- You want `TokenPseudonymizer` backed by a durable SQL store without writing your own `ITokenStore`.
+
+Recommended setup:
+
+```csharp
+builder.Services.AddEfCoreTokenStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")));
+```
+
+Operational notes:
+
+- Registers both `ITokenStore` (Singleton) and `IPseudonymizer` (Scoped, via `TokenPseudonymizer`).
+- Unique index on `Value` enables concurrency-safe `GetOrCreateTokenAsync` — concurrent callers racing for the same value recover via `DbUpdateException` catch and read the winner's token.
+- **Critical:** losing token mappings makes previously pseudonymized data irrecoverable. Back up the token database independently.
 
 ## SensitiveFlow.EFCore
 
