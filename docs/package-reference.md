@@ -2,6 +2,24 @@
 
 This document summarizes each SensitiveFlow package individually: purpose, primary APIs, dependencies, setup, and operational notes.
 
+## Setup matrix
+
+| Package | Use when | Minimum setup | Main risk |
+| --- | --- | --- | --- |
+| `SensitiveFlow.Core` | You annotate models or implement contracts. | Add attributes to models. | None by itself; it does not enforce behavior. |
+| `SensitiveFlow.Audit` | You register custom audit stores or decorators. | `AddAuditStore<T>()` or first-party EF store plus optional retry/buffer. | In-memory/buffered data can be lost before durable write. |
+| `SensitiveFlow.Audit.EFCore` | You want first-party SQL audit storage. | `AddEfCoreAuditStore(...)`; create/migrate audit table. | Audit DB must be durable and backed up independently. |
+| `SensitiveFlow.EFCore` | You want automatic audit on `SaveChanges`. | `AddSensitiveFlowEFCore()` and `AddInterceptors(...)`. | Missing interceptor means no automatic audit. |
+| `SensitiveFlow.AspNetCore` | You need actor/IP context from HTTP requests. | `AddSensitiveFlowAspNetCore()` and `UseSensitiveFlowAudit()`. | Requires a durable `IPseudonymizer`/`ITokenStore` for reversible IP tokens. |
+| `SensitiveFlow.Anonymization` | You mask, pseudonymize, export, erase, or fingerprint values. | Register an `ITokenStore` for reversible tokens; use services/extensions. | Masking/pseudonymization are still personal data. |
+| `SensitiveFlow.Json` | You need automatic response serialization redaction. | `WithSensitiveDataRedaction()` on `System.Text.Json`. | Does not cover Newtonsoft.Json. |
+| `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; values must flow through known redaction paths. |
+| `SensitiveFlow.Diagnostics` | You want OpenTelemetry spans/metrics. | `AddSensitiveFlowDiagnostics()` after audit store/decorators. | Decorator order changes what latency is measured. |
+| `SensitiveFlow.Retention` | You evaluate retention policies. | `AddRetention()` / `AddRetentionExecutor()` and run a scheduled job. | It will not delete database rows automatically. |
+| `SensitiveFlow.Analyzers` | You want compile-time guardrails. | Add analyzer package to application projects. | Warnings still require engineering judgment. |
+| `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
+| `SensitiveFlow.TestKit` | You implement custom stores or leak tests. | Inherit contract tests. | Contract tests need isolated fresh stores. |
+
 ## SensitiveFlow.Core
 
 Purpose:

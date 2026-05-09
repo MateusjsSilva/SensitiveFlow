@@ -1,6 +1,42 @@
 @MinimalApi.Sample_HostAddress = http://localhost:5247
+@CustomerId = replace-with-created-data-subject-id
 
-GET {{MinimalApi.Sample_HostAddress}}/weatherforecast/
+POST {{MinimalApi.Sample_HostAddress}}/customers
+Content-Type: application/json
+
+{
+  "name": "Joao da Silva",
+  "email": "joao.silva@example.com",
+  "taxId": "123.456.789-09",
+  "phone": "+55 11 99999-8877"
+}
+
+###
+
+GET {{MinimalApi.Sample_HostAddress}}/customers/{{CustomerId}}
 Accept: application/json
 
 ###
+
+GET {{MinimalApi.Sample_HostAddress}}/customers/{{CustomerId}}/json
+Accept: application/json
+
+###
+
+GET {{MinimalApi.Sample_HostAddress}}/customers/{{CustomerId}}/export
+Accept: application/json
+
+###
+
+GET {{MinimalApi.Sample_HostAddress}}/customers/{{CustomerId}}/audit
+Accept: application/json
+
+###
+
+POST {{MinimalApi.Sample_HostAddress}}/customers/{{CustomerId}}/erase
+Accept: application/json
+
+###
+
+POST {{MinimalApi.Sample_HostAddress}}/retention/run
+Accept: application/json

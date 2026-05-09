@@ -26,8 +26,11 @@
     <ProjectReference Include="..\..\src\SensitiveFlow.Audit.EFCore\SensitiveFlow.Audit.EFCore.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.EFCore\SensitiveFlow.EFCore.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore\SensitiveFlow.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Diagnostics\SensitiveFlow.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Json\SensitiveFlow.Json.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Logging\SensitiveFlow.Logging.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Retention\SensitiveFlow.Retention.csproj" />
   </ItemGroup>
 
 </Project>

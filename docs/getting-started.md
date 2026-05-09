@@ -1,25 +1,25 @@
 # Getting Started with SensitiveFlow
 
-SensitiveFlow is a .NET library that brings observability and control to sensitive data at runtime. It automatically audits data access and mutations, redacts PII from logs, and provides masking and pseudonymization utilities — without requiring manual instrumentation.
+SensitiveFlow is a .NET library that brings observability and control to sensitive data at runtime. It audits EF Core changes, redacts sensitive JSON/log output, and provides masking, pseudonymization, retention, export, and erasure utilities.
 
 ## Installation
 
-Install the packages you need:
+Install only the packages used by the app:
 
 ```bash
 dotnet add package SensitiveFlow.Core
 dotnet add package SensitiveFlow.Audit
+dotnet add package SensitiveFlow.Audit.EFCore
 dotnet add package SensitiveFlow.EFCore
 dotnet add package SensitiveFlow.AspNetCore
-dotnet add package SensitiveFlow.Logging
 dotnet add package SensitiveFlow.Anonymization
+dotnet add package SensitiveFlow.Json
+dotnet add package SensitiveFlow.Logging
 dotnet add package SensitiveFlow.Retention
-dotnet add package SensitiveFlow.Json    # optional: redact System.Text.Json output
+dotnet add package SensitiveFlow.Diagnostics
 ```
 
-## Step 1 — Annotate your model
-
-Use `[PersonalData]` and `[SensitiveData]` to classify fields. These attributes drive automatic auditing and masking.
+## Step 1 - Annotate your model
 
 ```csharp
 using SensitiveFlow.Core.Attributes;
@@ -28,8 +28,6 @@ using SensitiveFlow.Core.Enums;
 public class Customer
 {
     public Guid Id { get; set; }
-
-    // Required for audit record correlation
     public string DataSubjectId { get; set; } = string.Empty;
 
     [PersonalData(Category = DataCategory.Identification)]
@@ -44,25 +42,48 @@ public class Customer
 }
 ```
 
-## Step 2 — Register services
+`DataSubjectId` or `UserId` is required for EF Core audit correlation.
+
+## Step 2 - Register the recommended web stack
+
+This is the full ASP.NET Core + EF Core setup. For a smaller app, remove the packages you do not need.
 
 ```csharp
-// Program.cs
+builder.Services.AddEfCoreAuditStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Audit")));
+builder.Services.AddAuditStoreRetry();
+builder.Services.AddSensitiveFlowDiagnostics();
 
-// Register your durable IAuditStore and ITokenStore implementations.
-// Audit records must survive process restarts — there is no built-in in-memory store for production.
-builder.Services.AddEfCoreAuditStore<MyDbContext>();  // your IAuditStore backed by SQL via EF Core
-builder.Services.AddTokenStore<EfCoreTokenStore>();   // your ITokenStore backed by SQL, Redis, etc.
+builder.Services.AddScoped<ITokenStore, MySqlOrRedisTokenStore>();
+builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+builder.Services.AddCachingTokenStore();
 
-builder.Services.AddSensitiveFlowEFCore();       // registers SensitiveDataAuditInterceptor
-builder.Services.AddSensitiveFlowAspNetCore();   // registers HttpAuditContext
-builder.Services.AddSensitiveFlowLogging();      // registers DefaultSensitiveValueRedactor
-builder.Services.AddRetention();                 // registers RetentionEvaluator
+builder.Services.AddSensitiveFlowEFCore();
+builder.Services.AddSensitiveFlowAspNetCore();
+builder.Services.AddSensitiveFlowLogging();
+builder.Services.AddDataSubjectExport();
+builder.Services.AddDataSubjectErasure();
+builder.Services.AddRetention();
+builder.Services.AddRetentionExecutor();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.WithSensitiveDataRedaction());
 ```
 
-## Step 3 — Add the middleware
+The token store is the one piece you still provide today. It must be durable because losing token mappings makes reversible pseudonymization impossible.
 
-Place `UseSensitiveFlowAudit` before `UseAuthentication` so the pseudonymized IP token is available for all downstream middleware:
+## Step 3 - Wire your DbContext
+
+```csharp
+builder.Services.AddDbContext<AppDbContext>((provider, options) =>
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("App"));
+    options.AddInterceptors(provider.GetRequiredService<SensitiveDataAuditInterceptor>());
+});
+```
+
+## Step 4 - Add the middleware
 
 ```csharp
 app.UseSensitiveFlowAudit();
@@ -70,50 +91,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-## Step 4 — Wire the EF Core interceptor
+Configure forwarded headers before `UseSensitiveFlowAudit` when the app runs behind a proxy/load balancer.
 
-Register the interceptor when configuring your `DbContext`:
+## Runtime behavior
 
-```csharp
-builder.Services.AddDbContext<AppDbContext>((provider, options) =>
-{
-    options.UseSqlServer(connectionString);
-    options.AddInterceptors(provider.GetRequiredService<SensitiveDataAuditInterceptor>());
-});
-```
-
-## Step 5 — Replace the audit context (optional)
-
-By default the interceptor uses `NullAuditContext` (no actor, no IP). To enrich audit records with the HTTP request context, replace it:
-
-```csharp
-builder.Services.AddSensitiveFlowEFCore();
-builder.Services.AddSensitiveFlowAspNetCore(); // registers HttpAuditContext as IAuditContext
-```
-
-## What happens at runtime
-
-Every call to `SaveChanges` or `SaveChangesAsync` on your `DbContext` triggers the interceptor. For each entity in an `Added`, `Modified`, or `Deleted` state, it scans the properties for `[PersonalData]` or `[SensitiveData]` attributes and emits an `AuditRecord` per sensitive field:
-
-```
-AuditRecord {
-  Id            = 3fa85f64-5717-4562-b3fc-2c963f66afa6,  // Guid, auto-generated
-  DataSubjectId = "customer-42",
-  Entity        = "Customer",
-  Field         = "Email",
-  Operation     = Update,
-  Timestamp     = 2026-05-05T12:00:00Z,
-  ActorId       = "operator-1",
-  IpAddressToken = "pseudonymized-token"
-}
-```
+Every `SaveChangesAsync` call scans changed entities for `[PersonalData]` or `[SensitiveData]` and writes audit records through `IAuditStore`. HTTP middleware fills `ActorId`/`IpAddressToken`, JSON redaction protects serialized output, and retention/export/erasure services are called explicitly by your jobs or endpoints.
 
 ## Next Steps
 
-- [Attributes](attributes.md) — full reference for all attributes
-- [Audit](audit.md) — querying and replacing the audit store
-- [EF Core](efcore.md) — interceptor details
-- [ASP.NET Core](aspnetcore.md) — middleware and HTTP context
-- [Logging](logging.md) — PII redaction in structured logs
-- [Retention](retention.md) — retention periods and expiration hooks
-- [Anonymization](anonymization.md) — masking and pseudonymization utilities
+- [Package reference](package-reference.md): package-by-package setup matrix.
+- [Audit](audit.md): retry, buffering, query, retention, and snapshot concepts.
+- [EF Core](efcore.md): interceptor behavior and entity requirements.
+- [ASP.NET Core](aspnetcore.md): request context and IP pseudonymization.
+- [JSON redaction](json.md): `System.Text.Json` output protection.
+- [Anonymization](anonymization.md): token stores, masking, export, erasure, fingerprints.
+- [Retention](retention.md): scheduled retention evaluation and execution.

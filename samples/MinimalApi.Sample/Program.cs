@@ -1,20 +1,31 @@
 using Microsoft.EntityFrameworkCore;
 using MinimalApi.Sample.Infrastructure;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
+using SensitiveFlow.Anonymization.Erasure;
 using SensitiveFlow.Anonymization.Extensions;
+using SensitiveFlow.Anonymization.Export;
 using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Audit.EFCore;
 using SensitiveFlow.Audit.EFCore.Extensions;
+using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
+using SensitiveFlow.Core.Diagnostics;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Diagnostics.Extensions;
 using SensitiveFlow.EFCore.Extensions;
 using SensitiveFlow.EFCore.Interceptors;
+using SensitiveFlow.Json.Configuration;
+using SensitiveFlow.Json.Enums;
+using SensitiveFlow.Json.Extensions;
 using SensitiveFlow.Logging.Extensions;
+using SensitiveFlow.Retention.Extensions;
+using SensitiveFlow.Retention.Services;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
@@ -47,19 +58,35 @@ try
             .AddInterceptors(sp.GetRequiredService<SensitiveDataAuditInterceptor>()));
 
     builder.Services.AddEfCoreAuditStore(options => options.UseSqlite(auditConnection));
+    builder.Services.AddAuditStoreRetry();
+    builder.Services.AddSensitiveFlowDiagnostics();
+
     builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
     builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+    builder.Services.AddCachingTokenStore();
+    builder.Services.AddDataSubjectExport();
+    builder.Services.AddDataSubjectErasure();
 
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
+    builder.Services.AddSensitiveFlowJsonRedaction(options => options.DefaultMode = JsonRedactionMode.Mask);
+    builder.Services.AddRetention();
+    builder.Services.AddRetentionExecutor();
+    builder.Services.ConfigureHttpJsonOptions(options =>
+        options.SerializerOptions.WithSensitiveDataRedaction(
+            new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
 
     builder.Services.AddOpenTelemetry()
         .WithTracing(tracing => tracing
             .SetResourceBuilder(ResourceBuilder.CreateDefault()
                 .AddService("SensitiveFlow.MinimalApi.Sample"))
+            .AddSource(SensitiveFlowDiagnostics.ActivitySourceName)
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
+            .AddConsoleExporter())
+        .WithMetrics(metrics => metrics
+            .AddMeter(SensitiveFlowDiagnostics.MeterName)
             .AddConsoleExporter());
 
     builder.Services.AddOpenApi();
@@ -154,6 +181,93 @@ try
         return Results.Ok(records);
     })
     .WithName("GetCustomerAudit");
+
+    app.MapGet("/customers/{id}/json", async (
+        string id,
+        SampleDbContext db,
+        CancellationToken ct) =>
+    {
+        var customer = await db.Customers
+            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+
+        return customer is null ? Results.NotFound() : Results.Ok(customer);
+    })
+    .WithName("GetCustomerWithJsonRedaction");
+
+    app.MapGet("/customers/{id}/export", async (
+        string id,
+        SampleDbContext db,
+        IDataSubjectExporter exporter,
+        CancellationToken ct) =>
+    {
+        var customer = await db.Customers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+
+        return customer is null ? Results.NotFound() : Results.Ok(exporter.Export(customer));
+    })
+    .WithName("ExportCustomerData");
+
+    app.MapPost("/customers/{id}/erase", async (
+        string id,
+        SampleDbContext db,
+        IDataSubjectErasureService erasure,
+        IAuditStore auditStore,
+        IAuditContext auditContext,
+        CancellationToken ct) =>
+    {
+        var customer = await db.Customers
+            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+
+        if (customer is null)
+        {
+            return Results.NotFound();
+        }
+
+        var changed = erasure.Erase(customer);
+        await db.SaveChangesAsync(ct);
+
+        await auditStore.AppendAsync(new AuditRecord
+        {
+            DataSubjectId = customer.DataSubjectId,
+            Entity = nameof(Customer),
+            Field = "*",
+            Operation = AuditOperation.Anonymize,
+            ActorId = auditContext.ActorId,
+            IpAddressToken = auditContext.IpAddressToken,
+            Details = $"Erased {changed} annotated fields.",
+        }, ct);
+
+        return Results.Ok(new { changed });
+    })
+    .WithName("EraseCustomerData");
+
+    app.MapPost("/retention/run", async (
+        SampleDbContext db,
+        RetentionExecutor retention,
+        CancellationToken ct) =>
+    {
+        var customers = await db.Customers.ToListAsync(ct);
+        var report = await retention.ExecuteAsync(
+            customers,
+            entity => ((Customer)entity).CreatedAt,
+            ct);
+
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(new
+        {
+            report.AnonymizedFieldCount,
+            report.DeletePendingEntityCount,
+            Entries = report.Entries.Select(e => new
+            {
+                e.FieldName,
+                e.ExpiredAt,
+                Action = e.Action.ToString(),
+            }),
+        });
+    })
+    .WithName("RunRetention");
 
     app.Run();
 }
