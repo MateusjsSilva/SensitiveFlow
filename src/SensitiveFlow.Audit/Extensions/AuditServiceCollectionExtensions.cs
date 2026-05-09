@@ -96,4 +96,60 @@ public static class AuditServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Wraps the registered <see cref="IAuditStore"/> with <see cref="BufferedAuditStore"/>
+    /// so append calls enqueue records into a bounded in-process buffer and a background
+    /// worker flushes them to the durable store.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration callback for buffer options.</param>
+    /// <remarks>
+    /// Call this <b>after</b> <see cref="AddAuditStore{TStore}"/>. The original registration is
+    /// replaced. Because records are accepted before the durable write completes, a process crash
+    /// can lose records that are still in memory.
+    /// </remarks>
+    public static IServiceCollection AddBufferedAuditStore(
+        this IServiceCollection services,
+        Action<BufferedAuditStoreOptions>? configure = null)
+    {
+        var options = new BufferedAuditStoreOptions();
+        configure?.Invoke(options);
+
+        var existing = services.FirstOrDefault(d => d.ServiceType == typeof(IAuditStore))
+            ?? throw new InvalidOperationException(
+                $"No {nameof(IAuditStore)} registration was found. Call AddAuditStore<T>() before AddBufferedAuditStore().");
+
+        services.Remove(existing);
+
+        if (existing.ImplementationType is not null)
+        {
+            services.Add(new ServiceDescriptor(existing.ImplementationType, existing.ImplementationType, existing.Lifetime));
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new BufferedAuditStore(
+                    (IAuditStore)sp.GetRequiredService(existing.ImplementationType),
+                    options,
+                    sp.GetService<ILogger<BufferedAuditStore>>()),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationFactory is not null)
+        {
+            var factory = existing.ImplementationFactory;
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new BufferedAuditStore(
+                    (IAuditStore)factory(sp),
+                    options,
+                    sp.GetService<ILogger<BufferedAuditStore>>()),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationInstance is IAuditStore instance)
+        {
+            services.AddSingleton<IAuditStore>(new BufferedAuditStore(
+                instance,
+                options,
+                logger: null));
+        }
+
+        return services;
+    }
 }

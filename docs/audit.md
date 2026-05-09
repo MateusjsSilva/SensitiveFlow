@@ -153,9 +153,27 @@ builder.Services.AddAuditStoreRetry(options =>
 
 The decorator only retries appends — `QueryAsync` is left alone. `ArgumentException` and `OperationCanceledException` are treated as terminal (input or cancellation, not transient) and never retried.
 
+## Buffered high-volume appends
+
+For workloads where audit writes are too expensive to keep directly on the `SaveChanges` path, wrap the durable store with `BufferedAuditStore`:
+
+```csharp
+builder.Services.AddEfCoreAuditStore<MyDbContext>();
+builder.Services.AddAuditStoreRetry();
+builder.Services.AddBufferedAuditStore(options =>
+{
+    options.Capacity = 10_000;
+    options.MaxBatchSize = 250;
+});
+```
+
+The buffer is bounded. When it fills, appends wait until the background worker drains space instead of dropping audit records. The worker flushes via `IBatchAuditStore.AppendRangeAsync` when the inner store supports batching, otherwise it falls back to one append per record.
+
+> **Trade-off:** this is an in-process buffer. A crash can lose records accepted into memory but not yet flushed to the durable store, and queries may not see records still waiting in the queue. Use it only when that latency/throughput trade-off is explicit for the application.
+
 ### Combining Retry and Diagnostics
 
-Both `AddAuditStoreRetry` and `AddSensitiveFlowDiagnostics` are decorators that wrap the registered `IAuditStore`. **Order matters:**
+`AddAuditStoreRetry`, `AddBufferedAuditStore`, and `AddSensitiveFlowDiagnostics` are decorators that wrap the registered `IAuditStore`. **Order matters:**
 
 ```csharp
 // One span covers the entire retry cycle (retry is invisible to the trace):
@@ -167,6 +185,11 @@ builder.Services.AddAuditStoreRetry();           // inner: retries before bubbli
 builder.Services.AddEfCoreAuditStore<MyDbContext>();
 builder.Services.AddAuditStoreRetry();           // inner: retries
 builder.Services.AddSensitiveFlowDiagnostics();  // outer: one span wraps each attempt
+
+// Buffered appends with retries applied to the durable flush:
+builder.Services.AddEfCoreAuditStore<MyDbContext>();
+builder.Services.AddAuditStoreRetry();           // inner: retry durable writes
+builder.Services.AddBufferedAuditStore();        // outer: enqueue quickly, flush in background
 ```
 
 > **DI lifetime:** both decorators preserve the lifetime of the original `IAuditStore` registration. Mixing `AddAuditStore<T>()` (Scoped) with `AddEfCoreAuditStore()` (Singleton) in the same container is not recommended — pick one registration path per application.

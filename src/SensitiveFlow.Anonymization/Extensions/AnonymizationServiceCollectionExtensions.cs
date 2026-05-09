@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SensitiveFlow.Anonymization.Decorators;
 using SensitiveFlow.Anonymization.Erasure;
 using SensitiveFlow.Anonymization.Export;
 using SensitiveFlow.Anonymization.Pseudonymizers;
@@ -37,6 +38,54 @@ public static class AnonymizationServiceCollectionExtensions
     {
         services.AddScoped<ITokenStore, TStore>();
         services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+        return services;
+    }
+
+    /// <summary>
+    /// Wraps the registered <see cref="ITokenStore"/> with <see cref="CachingTokenStore"/>
+    /// to avoid repeated roundtrips for hot pseudonymization mappings.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration callback for cache options.</param>
+    /// <remarks>
+    /// Call this <b>after</b> <see cref="AddTokenStore{TStore}"/>. The cache is in-process and
+    /// stores original values in memory, so choose the size according to the application's
+    /// memory exposure requirements.
+    /// </remarks>
+    public static IServiceCollection AddCachingTokenStore(
+        this IServiceCollection services,
+        Action<CachingTokenStoreOptions>? configure = null)
+    {
+        var options = new CachingTokenStoreOptions();
+        configure?.Invoke(options);
+
+        var existing = services.FirstOrDefault(d => d.ServiceType == typeof(ITokenStore))
+            ?? throw new InvalidOperationException(
+                $"No {nameof(ITokenStore)} registration was found. Call AddTokenStore<T>() before AddCachingTokenStore().");
+
+        services.Remove(existing);
+
+        if (existing.ImplementationType is not null)
+        {
+            services.Add(new ServiceDescriptor(existing.ImplementationType, existing.ImplementationType, existing.Lifetime));
+            services.Add(new ServiceDescriptor(typeof(ITokenStore),
+                sp => new CachingTokenStore(
+                    (ITokenStore)sp.GetRequiredService(existing.ImplementationType),
+                    options),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationFactory is not null)
+        {
+            var factory = existing.ImplementationFactory;
+            services.Add(new ServiceDescriptor(typeof(ITokenStore),
+                sp => new CachingTokenStore((ITokenStore)factory(sp), options),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationInstance is ITokenStore instance)
+        {
+            services.AddSingleton<ITokenStore>(new CachingTokenStore(instance, options));
+        }
+
         return services;
     }
 

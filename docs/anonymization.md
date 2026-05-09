@@ -152,6 +152,22 @@ var recovered = pseudo.Reverse(token);
 
 > **Important:** `InMemoryTokenStore` loses all mappings when the process exits. In production, implement `ITokenStore` backed by a durable store (SQL Server, Redis, etc.). Losing the store makes pseudonymized data irrecoverable.
 
+#### Caching token mappings
+
+If the durable token store is remote (SQL, Redis, etc.) and the same values are pseudonymized repeatedly, wrap it with the bounded in-process cache:
+
+```csharp
+builder.Services.AddTokenStore<SqlTokenStore>();
+builder.Services.AddCachingTokenStore(options =>
+{
+    options.MaxEntries = 10_000;
+});
+```
+
+`CachingTokenStore` caches both directions (`value -> token` and `token -> value`) to reduce repeated store roundtrips. It is only a performance layer: the inner `ITokenStore` must still be durable and authoritative.
+
+> **Trade-off:** the cache stores original values in process memory. Size it deliberately, and use a custom distributed or encrypted decorator if your threat model does not allow this.
+
 #### Implementing ITokenStore
 
 ```csharp

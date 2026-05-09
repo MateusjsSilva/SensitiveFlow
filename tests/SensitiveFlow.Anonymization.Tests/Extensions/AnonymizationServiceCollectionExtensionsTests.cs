@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using SensitiveFlow.Anonymization.Decorators;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Core.Interfaces;
@@ -61,6 +62,20 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var result = services.AddTokenStore<FakeTokenStore>();
         result.Should().BeSameAs(services);
+    }
+
+    [Fact]
+    public void AddCachingTokenStore_WrapsRegisteredTokenStore()
+    {
+        var services = new ServiceCollection();
+        services.AddTokenStore<FakeTokenStore>();
+        services.AddCachingTokenStore(options => options.MaxEntries = 10);
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<ITokenStore>()
+            .Should().BeOfType<CachingTokenStore>();
     }
 
     private sealed class FakeTokenStore : ITokenStore
