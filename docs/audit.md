@@ -192,7 +192,7 @@ builder.Services.AddAuditStoreRetry();           // inner: retry durable writes
 builder.Services.AddBufferedAuditStore();        // outer: enqueue quickly, flush in background
 ```
 
-> **DI lifetime:** both decorators preserve the lifetime of the original `IAuditStore` registration. Mixing `AddAuditStore<T>()` (Scoped) with `AddEfCoreAuditStore()` (Singleton) in the same container is not recommended — pick one registration path per application.
+> **DI lifetime:** `AddAuditStoreRetry` preserves the original `IAuditStore` lifetime. `AddBufferedAuditStore` requires a Singleton store because the buffer owns a background worker. Use `AddEfCoreAuditStore(...)` or another Singleton durable store before enabling buffering.
 
 ### Tests
 

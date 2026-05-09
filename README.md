@@ -1,4 +1,4 @@
-# SensitiveFlow
+﻿# SensitiveFlow
 
 [![CI](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/codeql.yml)
@@ -16,7 +16,7 @@ Sensitive data flows through your application on every request: EF Core saves, H
 | Package | Description | Status |
 |---------|-------------|--------|
 | `SensitiveFlow.Core` | Attributes, enums, interfaces, models, exceptions | Preview |
-| `SensitiveFlow.Audit` | Immutable audit trail -- bring your own durable store; `RetryingAuditStore` decorator included | Preview |
+| `SensitiveFlow.Audit` | Immutable audit trail -- bring your own durable store; retry and buffered decorators included | Preview |
 | `SensitiveFlow.Audit.EFCore` | Durable EF Core-backed audit store (`IAuditStore` + `IBatchAuditStore`) | Preview |
 | `SensitiveFlow.EFCore` | SaveChanges interceptor for automatic auditing | Preview |
 | `SensitiveFlow.AspNetCore` | Middleware for actor/IP context enrichment | Preview |
@@ -37,6 +37,7 @@ Sensitive data flows through your application on every request: EF Core saves, H
 ```bash
 dotnet add package SensitiveFlow.Core
 dotnet add package SensitiveFlow.Audit
+dotnet add package SensitiveFlow.Audit.EFCore
 dotnet add package SensitiveFlow.EFCore
 dotnet add package SensitiveFlow.AspNetCore
 ```
@@ -64,61 +65,19 @@ public class Customer
 }
 ```
 
-### 3. Implement and register a durable audit store
+### 3. Register a durable audit store
 
 `IAuditStore` is the persistence contract -- you own the implementation so audit records go
 exactly where your infrastructure requires (SQL, MongoDB, Azure Table Storage, etc.).
 
-**Performance tip:** Implement `IBatchAuditStore` to avoid N roundtrips when auditing N sensitive fields:
+For EF Core-backed audit storage, use `SensitiveFlow.Audit.EFCore`. It registers an
+`IAuditStore` that also implements `IBatchAuditStore`, avoiding one database roundtrip
+per sensitive field.
 
 ```csharp
-// ⚠ IMPORTANT: Use IBatchAuditStore to batch multiple records in one operation
-public sealed class EfCoreAuditStore : IBatchAuditStore
-{
-    private readonly AuditDbContext _db;
-
-    public EfCoreAuditStore(AuditDbContext db) => _db = db;
-
-    // Called once per SaveChanges for all sensitive fields together
-    public async Task AppendRangeAsync(IReadOnlyCollection<AuditRecord> records, CancellationToken ct = default)
-    {
-        if (records.Count == 0) return;
-        _db.AuditRecords.AddRange(records);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    // Fallback for single-record append (if not batching)
-    public async Task AppendAsync(AuditRecord record, CancellationToken ct = default)
-    {
-        await AppendRangeAsync([record], ct);
-    }
-
-    public async Task<IReadOnlyList<AuditRecord>> QueryAsync(
-        DateTimeOffset? from = null, DateTimeOffset? to = null,
-        int skip = 0, int take = 100, CancellationToken ct = default)
-    {
-        var query = _db.AuditRecords.AsQueryable();
-        if (from.HasValue) query = query.Where(r => r.Timestamp >= from.Value);
-        if (to.HasValue)   query = query.Where(r => r.Timestamp <= to.Value);
-        return await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
-        string dataSubjectId,
-        DateTimeOffset? from = null, DateTimeOffset? to = null,
-        int skip = 0, int take = 100, CancellationToken ct = default)
-    {
-        var query = _db.AuditRecords.Where(r => r.DataSubjectId == dataSubjectId);
-        if (from.HasValue) query = query.Where(r => r.Timestamp >= from.Value);
-        if (to.HasValue)   query = query.Where(r => r.Timestamp <= to.Value);
-        return await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
-    }
-}
-```
-
-```csharp
-// Program.cs
-builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddEfCoreAuditStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AuditStorage")));
+builder.Services.AddAuditStoreRetry();
 ```
 
 > **Do not use an in-memory store in production.** Audit records must survive process
@@ -128,7 +87,9 @@ builder.Services.AddAuditStore<EfCoreAuditStore>();
 ### 4. Register services
 
 ```csharp
-builder.Services.AddAuditStore<EfCoreAuditStore>();  // your durable store
+builder.Services.AddEfCoreAuditStore(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AuditStorage")));
+builder.Services.AddAuditStoreRetry();
 builder.Services.AddSensitiveFlowEFCore();           // SensitiveFlow.EFCore
 builder.Services.AddSensitiveFlowAspNetCore();       // SensitiveFlow.AspNetCore
 builder.Services.AddSensitiveFlowLogging();          // SensitiveFlow.Logging
@@ -152,16 +113,10 @@ produces an `AuditRecord` automatically.
 
 ## Documentation
 
+- [Documentation index](docs/README.md)
 - [Getting Started](docs/getting-started.md)
-- [Attributes](docs/attributes.md)
-- [Audit](docs/audit.md)
-- [EF Core](docs/efcore.md)
-- [ASP.NET Core](docs/aspnetcore.md)
-- [Logging](docs/logging.md)
-- [Diagnostics](docs/diagnostics.md)
-- [Retention](docs/retention.md)
-- [Anonymization](docs/anonymization.md)
-- [Analyzers](docs/analyzers.md)
+- [Package reference](docs/package-reference.md)
+- [AI skill guide](docs/ai-skill-sensitiveflow.md)
 
 ## Design Principles
 
