@@ -120,6 +120,13 @@ public static class AuditServiceCollectionExtensions
             ?? throw new InvalidOperationException(
                 $"No {nameof(IAuditStore)} registration was found. Call AddAuditStore<T>() before AddBufferedAuditStore().");
 
+        if (existing.Lifetime != ServiceLifetime.Singleton)
+        {
+            throw new InvalidOperationException(
+                $"{nameof(AddBufferedAuditStore)} requires a Singleton {nameof(IAuditStore)} registration because the buffer owns a background worker. " +
+                "Use AddEfCoreAuditStore(...) or register a Singleton store before adding the buffered decorator.");
+        }
+
         services.Remove(existing);
 
         if (existing.ImplementationType is not null)

@@ -90,7 +90,7 @@ Operational notes:
 
 - Uses `IDbContextFactory<TContext>` so audit writes do not piggyback on the application `DbContext`.
 - Implements `IBatchAuditStore`.
-- Needs provider-real tests through Testcontainers.
+- PostgreSQL container coverage lives in `tests/SensitiveFlow.Audit.EFCore.ContainerTests`.
 
 ## SensitiveFlow.EFCore
 

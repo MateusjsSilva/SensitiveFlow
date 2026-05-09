@@ -56,7 +56,7 @@ public sealed class BufferedAuditStoreTests
     public void AddBufferedAuditStore_WrapsRegisteredAuditStore()
     {
         var services = new ServiceCollection();
-        services.AddAuditStore<InMemoryAuditStore>();
+        services.AddSingleton<IAuditStore, InMemoryAuditStore>();
         services.AddBufferedAuditStore(options =>
         {
             options.Capacity = 10;
@@ -68,6 +68,18 @@ public sealed class BufferedAuditStoreTests
 
         scope.ServiceProvider.GetRequiredService<IAuditStore>()
             .Should().BeOfType<BufferedAuditStore>();
+    }
+
+    [Fact]
+    public void AddBufferedAuditStore_WithScopedAuditStore_ThrowsHelpfulException()
+    {
+        var services = new ServiceCollection();
+        services.AddAuditStore<InMemoryAuditStore>();
+
+        var act = () => services.AddBufferedAuditStore();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Singleton*IAuditStore*background worker*");
     }
 
     private sealed class RecordingBatchAuditStore : IBatchAuditStore

@@ -110,23 +110,23 @@ public sealed class RetryingAuditStore : IBatchAuditStore
 public sealed class RetryingAuditStoreOptions
 {
     /// <summary>Total number of attempts (initial + retries). Default <c>3</c>.</summary>
-    public int MaxAttempts { get; init; } = 3;
+    public int MaxAttempts { get; set; } = 3;
 
     /// <summary>Initial delay before the first retry. Default <c>100ms</c>.</summary>
-    public TimeSpan InitialDelay { get; init; } = TimeSpan.FromMilliseconds(100);
+    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromMilliseconds(100);
 
     /// <summary>Maximum delay between retries. Default <c>2s</c>.</summary>
-    public TimeSpan MaxDelay { get; init; } = TimeSpan.FromSeconds(2);
+    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(2);
 
     /// <summary>Multiplier applied to the delay after each failed attempt. Default <c>2.0</c>.</summary>
-    public double BackoffMultiplier { get; init; } = 2.0;
+    public double BackoffMultiplier { get; set; } = 2.0;
 
     /// <summary>
     /// Predicate that decides whether a thrown exception should trigger a retry.
     /// Defaults to retrying on any exception that is not a <see cref="OperationCanceledException"/>
     /// or <see cref="ArgumentException"/> (input errors are not transient).
     /// </summary>
-    public Func<Exception, bool> ShouldRetry { get; init; } = static ex =>
+    public Func<Exception, bool> ShouldRetry { get; set; } = static ex =>
         ex is not OperationCanceledException &&
         ex is not ArgumentException;
 }

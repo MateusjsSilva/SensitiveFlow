@@ -26,6 +26,7 @@
     <Project Path="tests/SensitiveFlow.Anonymization.Tests/SensitiveFlow.Anonymization.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.AspNetCore.Tests/SensitiveFlow.AspNetCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.EFCore.Tests/SensitiveFlow.Audit.EFCore.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.Audit.EFCore.ContainerTests/SensitiveFlow.Audit.EFCore.ContainerTests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.Tests/SensitiveFlow.Audit.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Benchmarks/SensitiveFlow.Benchmarks.csproj" />
     <Project Path="tests/SensitiveFlow.Core.Tests/SensitiveFlow.Core.Tests.csproj" />

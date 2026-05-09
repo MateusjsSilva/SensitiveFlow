@@ -1,0 +1,37 @@
+name: Container Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  audit-efcore-postgres:
+    name: Audit EFCore PostgreSQL
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore tests/SensitiveFlow.Audit.EFCore.ContainerTests/SensitiveFlow.Audit.EFCore.ContainerTests.csproj
+
+      - name: Test
+        run: >
+          dotnet test
+          tests/SensitiveFlow.Audit.EFCore.ContainerTests/SensitiveFlow.Audit.EFCore.ContainerTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=container-tests.trx"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-test-results
+          path: tests/**/TestResults/**/*.trx
