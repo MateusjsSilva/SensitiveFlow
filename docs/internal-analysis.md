@@ -173,7 +173,7 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 ### 4.4 Lacunas / DX
 
 #### 4.4.3 Sem analyzer para detecção de propriedades não-anotadas que parecem ser PII
-**Status:** Aberto (nice-to-have, severidade Info).
+**Status:** **Resolvido (2026-05-09).** Novo analyzer `PossibleUnannotatedPiiAnalyzer` (SF0004, severidade Info). Detecta propriedades públicas cujo nome casa com padrões PII conhecidos (Email, Phone, Name, TaxId, Cpf, Ssn, Passport, Address, BirthDate, IpAddress, etc.) e não estão anotadas com `[PersonalData]` ou `[SensitiveData]`. 13 testes.
 
 #### 4.4.5 README e docs mostram `EfCoreAuditStore` de forma errônea
 **Status:** Resolvido. Os guias principais usam `AddEfCoreAuditStore(...)` / `AddEfCoreAuditStore<TContext>()`; o README agora aponta para a referência por pacote.
@@ -256,9 +256,7 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit + benchmarks + samples race fix + source generator predicate optimization + interface limitation documentation.
 
 ### Restantes
-| Prioridade | Item | Esforço |
-|------------|------|---------|
-| P3 | 4.4.3 (analyzer para PII não anotada) | Médio |
+*Todos os itens foram resolvidos.*
 
 ---
 

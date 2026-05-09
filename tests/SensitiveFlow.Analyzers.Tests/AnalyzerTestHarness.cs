@@ -21,6 +21,10 @@ internal static class AnalyzerTestHarness
         references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location));
 
+        // Add SensitiveFlow.Core so attributes like [PersonalData] / [SensitiveData] are resolvable.
+        var coreAssembly = typeof(SensitiveFlow.Core.Attributes.PersonalDataAttribute).Assembly;
+        references.Add(MetadataReference.CreateFromFile(coreAssembly.Location));
+
         var compilation = CSharpCompilation.Create(
             assemblyName: "AnalyzerTests",
             syntaxTrees: [syntaxTree],

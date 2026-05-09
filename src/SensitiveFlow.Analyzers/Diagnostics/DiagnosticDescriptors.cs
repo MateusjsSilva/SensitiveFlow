@@ -30,4 +30,13 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "SensitiveDataAuditInterceptor requires a stable subject identifier. Without it, every SaveChanges that touches a sensitive field throws InvalidOperationException at runtime.");
+
+    public static readonly DiagnosticDescriptor PossibleUnannotatedPii = new(
+        id: "SF0004",
+        title: "Property name suggests personal data but is not annotated",
+        messageFormat: "Property '{0}' on type '{1}' may contain personal data but is not annotated with [PersonalData] or [SensitiveData]",
+        category: "Privacy",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "Properties whose names match common PII patterns (Email, Phone, Name, TaxId, Cpf, Ssn, Passport, Address, BirthDate, etc.) should be annotated so the library can audit, mask, and redact them.");
 }
