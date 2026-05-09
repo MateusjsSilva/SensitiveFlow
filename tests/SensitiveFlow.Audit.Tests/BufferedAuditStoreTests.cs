@@ -82,6 +82,97 @@ public sealed class BufferedAuditStoreTests
             .WithMessage("*Singleton*IAuditStore*background worker*");
     }
 
+    [Fact]
+    public async Task GetHealth_ReturnsPendingItemsCount()
+    {
+        var inner = new RecordingBatchAuditStore();
+        var sut = new BufferedAuditStore(inner, new BufferedAuditStoreOptions
+        {
+            Capacity = 100,
+            MaxBatchSize = 10,
+        });
+
+        await sut.AppendAsync(SampleRecord("A"));
+        await sut.AppendAsync(SampleRecord("B"));
+
+        // Give the background worker a moment to pick up items
+        await Task.Delay(50);
+
+        var health = sut.GetHealth();
+
+        health.PendingItems.Should().BeGreaterOrEqualTo(0);
+        health.IsFaulted.Should().BeFalse();
+        health.BackgroundFailure.Should().BeNull();
+        health.DroppedItems.Should().Be(0);
+        health.FlushFailures.Should().Be(0);
+
+        await sut.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetHealth_AfterDispose_ShowsZeroPending()
+    {
+        var inner = new RecordingBatchAuditStore();
+        var sut = new BufferedAuditStore(inner, new BufferedAuditStoreOptions
+        {
+            Capacity = 10,
+            MaxBatchSize = 10,
+        });
+
+        await sut.AppendAsync(SampleRecord("X"));
+        await sut.DisposeAsync();
+
+        var health = sut.GetHealth();
+        health.PendingItems.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetHealth_AfterBackgroundFailure_ReportsFaulted()
+    {
+        var failingInner = Substitute.For<IAuditStore>();
+        failingInner
+            .When(x => x.AppendAsync(Arg.Any<AuditRecord>(), Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("Simulated failure"));
+
+        var sut = new BufferedAuditStore(failingInner, new BufferedAuditStoreOptions
+        {
+            Capacity = 10,
+            MaxBatchSize = 1,
+        });
+
+        await sut.AppendAsync(SampleRecord("Fail"));
+
+        // Wait for background worker to process and fail
+        await Task.Delay(200);
+
+        var health = sut.GetHealth();
+        health.IsFaulted.Should().BeTrue();
+        health.FlushFailures.Should().BeGreaterThan(0);
+        health.BackgroundFailure.Should().Contain("Simulated failure");
+    }
+
+    [Fact]
+    public async Task AppendAsync_AfterBackgroundFailure_ThrowsInvalidOperation()
+    {
+        var failingInner = Substitute.For<IAuditStore>();
+        failingInner
+            .When(x => x.AppendAsync(Arg.Any<AuditRecord>(), Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("Simulated failure"));
+
+        var sut = new BufferedAuditStore(failingInner, new BufferedAuditStoreOptions
+        {
+            Capacity = 10,
+            MaxBatchSize = 1,
+        });
+
+        await sut.AppendAsync(SampleRecord("Fail"));
+        await Task.Delay(200);
+
+        var act = () => sut.AppendAsync(SampleRecord("AfterFail"));
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Buffered audit store background flush has failed*");
+    }
+
     private sealed class RecordingBatchAuditStore : IBatchAuditStore
     {
         public List<AuditRecord> Appended { get; } = [];

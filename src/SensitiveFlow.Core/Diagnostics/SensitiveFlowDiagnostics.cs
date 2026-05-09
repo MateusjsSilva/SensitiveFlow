@@ -40,4 +40,13 @@ public static class SensitiveFlowDiagnostics
 
     /// <summary>Counter instrument name for fields redacted by the logger.</summary>
     public const string RedactFieldsCountName = "sensitiveflow.redact.fields.count";
+
+    /// <summary>Gauge instrument name for items currently pending in the buffer.</summary>
+    public const string BufferPendingItemsName = "sensitiveflow.audit.buffer.pending";
+
+    /// <summary>Counter instrument name for items dropped due to buffer overflow or failure.</summary>
+    public const string BufferDroppedItemsName = "sensitiveflow.audit.buffer.dropped";
+
+    /// <summary>Counter instrument name for flush failures in the background worker.</summary>
+    public const string BufferFlushFailuresName = "sensitiveflow.audit.buffer.flush_failures";
 }

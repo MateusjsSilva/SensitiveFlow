@@ -12,6 +12,7 @@
     <Project Path="src/SensitiveFlow.AspNetCore/SensitiveFlow.AspNetCore.csproj" />
     <Project Path="src/SensitiveFlow.Audit/SensitiveFlow.Audit.csproj" />
     <Project Path="src/SensitiveFlow.Audit.EFCore/SensitiveFlow.Audit.EFCore.csproj" />
+    <Project Path="src/SensitiveFlow.Audit.Snapshots.EFCore/SensitiveFlow.Audit.Snapshots.EFCore.csproj" />
     <Project Path="src/SensitiveFlow.Core/SensitiveFlow.Core.csproj" />
     <Project Path="src/SensitiveFlow.Diagnostics/SensitiveFlow.Diagnostics.csproj" />
     <Project Path="src/SensitiveFlow.EFCore/SensitiveFlow.EFCore.csproj" />
@@ -20,6 +21,7 @@
     <Project Path="src/SensitiveFlow.Retention/SensitiveFlow.Retention.csproj" />
     <Project Path="src/SensitiveFlow.SourceGenerators/SensitiveFlow.SourceGenerators.csproj" />
     <Project Path="src/SensitiveFlow.TestKit/SensitiveFlow.TestKit.csproj" />
+    <Project Path="src/SensitiveFlow.TokenStore.EFCore/SensitiveFlow.TokenStore.EFCore.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SensitiveFlow.Analyzers.Tests/SensitiveFlow.Analyzers.Tests.csproj" />
@@ -27,6 +29,7 @@
     <Project Path="tests/SensitiveFlow.AspNetCore.Tests/SensitiveFlow.AspNetCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.EFCore.Tests/SensitiveFlow.Audit.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.EFCore.ContainerTests/SensitiveFlow.Audit.EFCore.ContainerTests.csproj" />
+    <Project Path="tests/SensitiveFlow.Audit.Snapshots.EFCore.Tests/SensitiveFlow.Audit.Snapshots.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.Tests/SensitiveFlow.Audit.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Benchmarks/SensitiveFlow.Benchmarks.csproj" />
     <Project Path="tests/SensitiveFlow.Core.Tests/SensitiveFlow.Core.Tests.csproj" />
@@ -38,5 +41,6 @@
     <Project Path="tests/SensitiveFlow.Retention.Tests/SensitiveFlow.Retention.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.SourceGenerators.Tests/SensitiveFlow.SourceGenerators.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.TestKit.Tests/SensitiveFlow.TestKit.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.TokenStore.EFCore.Tests/SensitiveFlow.TokenStore.EFCore.Tests.csproj" />
   </Folder>
 </Solution>

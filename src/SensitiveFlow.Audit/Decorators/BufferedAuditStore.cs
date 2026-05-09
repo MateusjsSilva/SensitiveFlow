@@ -1,5 +1,7 @@
+using System.Diagnostics.Metrics;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using SensitiveFlow.Core.Diagnostics;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 
@@ -16,12 +18,26 @@ namespace SensitiveFlow.Audit.Decorators;
 /// </remarks>
 public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDisposable
 {
+    private static readonly Meter Meter = new(SensitiveFlowDiagnostics.MeterName);
+
+    private static readonly Counter<long> DroppedItemsCounter = Meter.CreateCounter<long>(
+        name: SensitiveFlowDiagnostics.BufferDroppedItemsName,
+        unit: "items",
+        description: "Audit records dropped due to buffer overflow or failure.");
+
+    private static readonly Counter<long> FlushFailuresCounter = Meter.CreateCounter<long>(
+        name: SensitiveFlowDiagnostics.BufferFlushFailuresName,
+        unit: "failures",
+        description: "Flush failures in the background worker.");
+
     private readonly IAuditStore _inner;
     private readonly BufferedAuditStoreOptions _options;
     private readonly ILogger<BufferedAuditStore>? _logger;
     private readonly Channel<AuditRecord> _channel;
     private readonly Task _worker;
     private Exception? _backgroundFailure;
+    private long _droppedCount;
+    private long _flushFailureCount;
 
     /// <summary>Initializes a new instance of <see cref="BufferedAuditStore"/>.</summary>
     public BufferedAuditStore(
@@ -50,8 +66,27 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
         });
+
+        // Register the observable gauge callback so OpenTelemetry can poll pending count.
+        Meter.CreateObservableGauge(
+            name: SensitiveFlowDiagnostics.BufferPendingItemsName,
+            observeValue: () => new Measurement<long>(_channel.Reader.Count),
+            unit: "items",
+            description: "Audit records currently waiting in the buffer.");
+
         _worker = Task.Run(ProcessAsync);
     }
+
+    /// <summary>
+    /// Returns a snapshot of the buffer's health: pending items, dropped count, flush failure count,
+    /// and whether the background worker has failed.
+    /// </summary>
+    public BufferedAuditStoreHealth GetHealth() => new(
+        PendingItems: _channel.Reader.Count,
+        DroppedItems: Interlocked.Read(ref _droppedCount),
+        FlushFailures: Interlocked.Read(ref _flushFailureCount),
+        IsFaulted: _backgroundFailure is not null,
+        BackgroundFailure: _backgroundFailure?.Message);
 
     /// <inheritdoc />
     public async Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
@@ -59,7 +94,16 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
         ArgumentNullException.ThrowIfNull(record);
         ThrowIfBackgroundFailed();
 
-        await _channel.Writer.WriteAsync(record, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _channel.Writer.WriteAsync(record, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ChannelClosedException)
+        {
+            Interlocked.Increment(ref _droppedCount);
+            DroppedItemsCounter.Add(1);
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -70,7 +114,16 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
 
         foreach (var record in records)
         {
-            await _channel.Writer.WriteAsync(record, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await _channel.Writer.WriteAsync(record, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ChannelClosedException)
+            {
+                Interlocked.Increment(ref _droppedCount);
+                DroppedItemsCounter.Add(1);
+                throw;
+            }
         }
     }
 
@@ -131,6 +184,8 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
         catch (Exception ex)
         {
             _backgroundFailure = ex;
+            Interlocked.Increment(ref _flushFailureCount);
+            FlushFailuresCounter.Add(1);
             _logger?.LogError(ex, "Buffered audit store background flush failed.");
             _channel.Writer.TryComplete(ex);
         }
@@ -171,3 +226,19 @@ public sealed class BufferedAuditStoreOptions
     /// <summary>Maximum number of queued audit records flushed to the inner store at once. Default <c>100</c>.</summary>
     public int MaxBatchSize { get; set; } = 100;
 }
+
+/// <summary>
+/// Snapshot of the <see cref="BufferedAuditStore"/>'s health, suitable for health-check endpoints
+/// and dashboards.
+/// </summary>
+/// <param name="PendingItems">Number of audit records currently waiting in the buffer.</param>
+/// <param name="DroppedItems">Total records dropped due to buffer overflow or channel closure.</param>
+/// <param name="FlushFailures">Total flush failures in the background worker.</param>
+/// <param name="IsFaulted">Whether the background worker has failed permanently.</param>
+/// <param name="BackgroundFailure">Message from the exception that faulted the worker, if any.</param>
+public sealed record BufferedAuditStoreHealth(
+    int PendingItems,
+    long DroppedItems,
+    long FlushFailures,
+    bool IsFaulted,
+    string? BackgroundFailure);
