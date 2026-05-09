@@ -116,7 +116,7 @@ public sealed class RedisTokenStore : ITokenStore
     public RedisTokenStore(IConnectionMultiplexer redis, TimeSpan? ttl = null)
     {
         _db = redis.GetDatabase();
-        // Tokens live for a year by default (GDPR retention)
+        // Tokens live for a year by default — pick a TTL that matches your retention policy.
         _ttl = ttl ?? TimeSpan.FromDays(365);
     }
 
@@ -352,7 +352,7 @@ builder.Services.AddSensitiveFlowEFCore();
 - Ensures compliance with retention policies
 
 ### 4. **Partition by DataSubjectId (Optional)**
-- Improves query performance for GDPR access requests
+- Improves query performance for data-subject access and erasure requests
 - Enables data erasure by partition in some stores
 
 ### 5. **Audit Store Transactions**

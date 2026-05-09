@@ -64,13 +64,18 @@ public static class SensitiveMemberCache
 
         foreach (var property in properties)
         {
-            if (Attribute.IsDefined(property, typeof(PersonalDataAttribute)) ||
-                Attribute.IsDefined(property, typeof(SensitiveDataAttribute)))
+            var hasPersonal = Attribute.IsDefined(property, typeof(PersonalDataAttribute))
+                || HasInterfaceAttribute(type, property, typeof(PersonalDataAttribute));
+            var hasSensitive = Attribute.IsDefined(property, typeof(SensitiveDataAttribute))
+                || HasInterfaceAttribute(type, property, typeof(SensitiveDataAttribute));
+
+            if (hasPersonal || hasSensitive)
             {
                 sensitive.Add(property);
             }
 
-            var retentionAttr = property.GetCustomAttribute<RetentionDataAttribute>();
+            var retentionAttr = property.GetCustomAttribute<RetentionDataAttribute>()
+                ?? GetInterfaceAttribute<RetentionDataAttribute>(type, property);
             if (retentionAttr is not null)
             {
                 retention.Add(new RetentionProperty(property, retentionAttr));
@@ -78,6 +83,33 @@ public static class SensitiveMemberCache
         }
 
         return new AnnotatedProperties(sensitive, retention);
+    }
+
+    private static bool HasInterfaceAttribute(Type type, PropertyInfo property, Type attributeType)
+    {
+        foreach (var iface in type.GetInterfaces())
+        {
+            var ifaceProp = iface.GetProperty(property.Name, BindingFlags.Public | BindingFlags.Instance);
+            if (ifaceProp is not null && Attribute.IsDefined(ifaceProp, attributeType))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static T? GetInterfaceAttribute<T>(Type type, PropertyInfo property) where T : Attribute
+    {
+        foreach (var iface in type.GetInterfaces())
+        {
+            var ifaceProp = iface.GetProperty(property.Name, BindingFlags.Public | BindingFlags.Instance);
+            var attr = ifaceProp?.GetCustomAttribute<T>();
+            if (attr is not null)
+            {
+                return attr;
+            }
+        }
+        return null;
     }
 
     private static AnnotatedProperties BuildEntryFromGenerated(Type type, GeneratedSensitiveType generated)

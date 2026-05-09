@@ -41,11 +41,11 @@ public sealed class GeneratedMetadataTests
         names.Should().Contain("InterfaceEmail");
     }
 
-    [Fact(Skip = "Documented limitation: attributes declared on an interface property do not propagate to the implementing class. Annotate the property on the implementation instead.")]
-    public void Sensitive_PropertyAnnotatedOnlyOnInterface_NotDiscoveredOnImplementer()
+    [Fact]
+    public void Sensitive_PropertyAnnotatedOnlyOnInterface_IsDiscoveredOnImplementer()
     {
-        // Documented in internal-analysis.md §4.2.9. Kept as a Skip'd test so the limitation
-        // is visible and we get an immediate signal if it ever changes.
+        // Both the source generator and the reflection fallback merge attributes from
+        // implemented interfaces into the implementing class.
         var properties = SensitiveMemberCache.GetSensitiveProperties(typeof(ImplementsInterface));
         properties.Select(p => p.Name).Should().Contain("InterfaceEmail");
     }

@@ -121,8 +121,8 @@ builder.Services.AddAuditStore<EfCoreAuditStore>();
 ```
 
 > **Do not use an in-memory store in production.** Audit records must survive process
-> restarts. Losing audit history violates the accountability principle under LGPD Art. 37
-> and GDPR Art. 5(2).
+> restarts. Losing audit history defeats the accountability the audit trail is meant
+> to provide.
 
 ### 4. Register services
 

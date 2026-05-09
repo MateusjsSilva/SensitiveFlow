@@ -29,7 +29,7 @@ public string Email { get; set; }
 
 ## SensitiveDataAttribute
 
-Marks a property as sensitive personal data (dados sensíveis under LGPD / special category under GDPR). Implies additional obligations compared to regular personal data.
+Marks a property as sensitive personal data — a category that typically requires stricter handling than regular personal data (e.g. health, biometric, financial credentials). The distinction from `PersonalData` is semantic: it lets your code, audit trail, and analyzers treat these fields with extra care.
 
 ```csharp
 [SensitiveData(Category = SensitiveDataCategory.Health)]

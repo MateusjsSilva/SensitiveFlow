@@ -256,7 +256,7 @@ P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit +
 
 ## 8. Itens explicitamente fora do escopo
 
-- Conformidade jurídica detalhada com LGPD/GDPR Article-by-article — biblioteca foca em runtime.
+- Conformidade jurídica artigo-por-artigo com qualquer regulação específica — a biblioteca fornece primitivas técnicas; a conformidade depende de como a aplicação as usa.
 - Compatibilidade ABI entre versões preview.
 - Geração de pacotes NuGet além do `Directory.Build.props`.
 - CI/CD workflows.

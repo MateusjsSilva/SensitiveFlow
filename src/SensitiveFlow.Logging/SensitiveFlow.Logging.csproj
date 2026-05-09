@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Automatic redaction of personal data in logs for privacy regulation compliance.</PackageDescription>
+    <PackageDescription>ILogger decorator that automatically redacts personal data values from log messages.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

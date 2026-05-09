@@ -40,8 +40,8 @@ public sealed record AuditRecord
     /// <summary>
     /// Pseudonymized token representing the IP address associated with the operation.
     /// <para>
-    /// <b>Never store the raw IP address here.</b> An IP address is personal data under applicable privacy regulations
-    /// under privacy regulations and GDPR Recital 49. Before assigning this field, pseudonymize the IP using
+    /// <b>Never store the raw IP address here.</b> An IP address can identify an individual when combined with
+    /// other metadata, so it should be treated as personal data. Before assigning this field, pseudonymize the IP using
     /// <c>TokenPseudonymizer</c> backed by a durable store so that it can be resolved during
     /// a security investigation while remaining opaque in the audit log itself.
     /// </para>

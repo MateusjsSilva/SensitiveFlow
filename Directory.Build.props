@@ -14,7 +14,7 @@
     <PackageProjectUrl>https://github.com/MateusjsSilva/SensitiveFlow</PackageProjectUrl>
     <RepositoryUrl>https://github.com/MateusjsSilva/SensitiveFlow</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>privacy;data-protection;personal-data;dotnet;csharp;compliance</PackageTags>
+    <PackageTags>privacy;data-protection;personal-data;sensitive-data;audit;redaction;dotnet;csharp</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

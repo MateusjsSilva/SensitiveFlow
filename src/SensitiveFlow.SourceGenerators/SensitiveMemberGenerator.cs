@@ -122,20 +122,17 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
         var sensitiveProperties = new HashSet<string>(StringComparer.Ordinal);
         var retentionProperties = new Dictionary<string, RetentionEntry>(StringComparer.Ordinal);
 
-        foreach (var property in EnumeratePublicInstanceProperties(type))
+        foreach (var (name, attributes) in EnumerateAnnotatedProperties(type))
         {
-            var attributes = property.GetAttributes();
-
             if (HasAttribute(attributes, symbols.PersonalData) || HasAttribute(attributes, symbols.SensitiveData))
             {
-                sensitiveProperties.Add(property.Name);
+                sensitiveProperties.Add(name);
             }
 
             var retention = attributes.FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, symbols.RetentionData));
-            if (retention is not null)
+            if (retention is not null && !retentionProperties.ContainsKey(name))
             {
-                var retentionEntry = BuildRetentionEntry(property.Name, retention);
-                retentionProperties[property.Name] = retentionEntry;
+                retentionProperties[name] = BuildRetentionEntry(name, retention);
             }
         }
 
@@ -148,33 +145,66 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
             retentionProperties.Values.OrderBy(r => r.PropertyName, StringComparer.Ordinal).ToImmutableArray());
     }
 
-    private static IEnumerable<IPropertySymbol> EnumeratePublicInstanceProperties(INamedTypeSymbol type)
+    /// <summary>
+    /// Yields each public instance property with the union of attributes declared on the property
+    /// itself and on the corresponding property in any implemented interface. This makes attribute
+    /// declarations on interfaces visible to implementing classes — without requiring the user
+    /// to re-declare the attribute.
+    /// </summary>
+    private static IEnumerable<(string Name, ImmutableArray<AttributeData> Attributes)> EnumerateAnnotatedProperties(INamedTypeSymbol type)
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var perProperty = new Dictionary<string, List<AttributeData>>(StringComparer.Ordinal);
 
-        // Walk the class hierarchy (base types).
+        // Class hierarchy: collect per-property attributes from the most-derived declaration.
+        var ownedNames = new HashSet<string>(StringComparer.Ordinal);
         for (var current = type; current is not null; current = current.BaseType)
         {
             foreach (var member in current.GetMembers())
             {
-                if (member is IPropertySymbol property && IsRelevantProperty(property) && seen.Add(property.Name))
+                if (member is not IPropertySymbol property || !IsRelevantProperty(property))
                 {
-                    yield return property;
+                    continue;
                 }
+
+                if (!ownedNames.Add(property.Name))
+                {
+                    continue;
+                }
+
+                if (!perProperty.TryGetValue(property.Name, out var list))
+                {
+                    list = new List<AttributeData>();
+                    perProperty[property.Name] = list;
+                }
+
+                list.AddRange(property.GetAttributes());
             }
         }
 
-        // Walk interfaces — a property defined on an interface and implemented explicitly
-        // won't appear in the class hierarchy walk above.
+        // Interfaces: merge attributes from the interface property into the implementing entry,
+        // and surface interface-only properties (e.g. explicit implementations) as their own entries.
         foreach (var iface in type.AllInterfaces)
         {
             foreach (var member in iface.GetMembers())
             {
-                if (member is IPropertySymbol property && IsRelevantProperty(property) && seen.Add(property.Name))
+                if (member is not IPropertySymbol property || !IsRelevantProperty(property))
                 {
-                    yield return property;
+                    continue;
                 }
+
+                if (!perProperty.TryGetValue(property.Name, out var list))
+                {
+                    list = new List<AttributeData>();
+                    perProperty[property.Name] = list;
+                }
+
+                list.AddRange(property.GetAttributes());
             }
+        }
+
+        foreach (var pair in perProperty)
+        {
+            yield return (pair.Key, pair.Value.ToImmutableArray());
         }
     }
 

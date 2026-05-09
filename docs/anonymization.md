@@ -103,14 +103,14 @@ string name  = "João da Silva".MaskName();
 
 ## IP addresses — why truncation is not anonymization
 
-IP truncation (`192.168.1.42` → `192.168.1.0`) is a common practice but **does not constitute anonymization** under many privacy frameworks and GDPR Recital 49. The CNIL ruled that truncated IPs combined with any metadata remain personal data. The EDPB requires anonymization to pass three cumulative tests (singling out, linkability, inference) — truncation fails all three.
+IP truncation (`192.168.1.42` → `192.168.1.0`) is a common practice but **does not constitute true anonymization** — a truncated IP combined with any other metadata can still single out an individual. Treat it as pseudonymization, not anonymization, and keep the same controls (audit, retention, access restrictions) you would apply to the raw value.
 
 **The correct treatment for IP addresses:**
 
-| Context | Correct treatment | Legal basis |
-|---------|------------------|-------------|
-| Audit / security logs | **Pseudonymize** with `TokenPseudonymizer` | Legitimate interest or equivalent basis |
-| Analytics / reporting | Do not store, or collect only with consent | Consent or equivalent basis |
+| Context | Suggested treatment | Notes |
+|---------|--------------------|-------|
+| Audit / security logs | **Pseudonymize** with `TokenPseudonymizer` | Keeps the value reversible for incident response without storing it in the clear |
+| Analytics / reporting | Do not store, or collect only after explicit user opt-in | Aggregate counters are usually enough and avoid the problem entirely |
 
 ```csharp
 // Pseudonymize IP before writing to the audit log

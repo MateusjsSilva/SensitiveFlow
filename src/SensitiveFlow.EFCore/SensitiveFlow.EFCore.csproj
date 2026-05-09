@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Entity Framework Core integration: audit interceptors, anonymization, and retention for privacy regulation compliance.</PackageDescription>
+    <PackageDescription>Entity Framework Core integration for SensitiveFlow: SaveChanges interceptor that audits personal data writes, plus retention hooks.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

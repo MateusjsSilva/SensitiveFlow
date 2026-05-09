@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Immutable audit trail of personal data accesses and modifications for privacy regulation compliance.</PackageDescription>
+    <PackageDescription>Immutable audit trail of personal data accesses and modifications. Bring-your-own durable store; ships with retry and diagnostics decorators.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
