@@ -1,13 +1,3 @@
-// ---------------------------------------------
-// SensitiveFlow - Minimal API Sample
-//
-// Real production stack:
-//   - SQLite via EF Core (durable AuditStore + TokenStore)
-//   - Serilog (structured logging with file sink)
-//   - OpenTelemetry (ASP.NET Core + HTTP instrumentation, console exporter)
-//   - SensitiveFlow full integration
-// ---------------------------------------------
-
 using Microsoft.EntityFrameworkCore;
 using MinimalApi.Sample.Infrastructure;
 using OpenTelemetry.Resources;
@@ -15,16 +5,17 @@ using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
 using SensitiveFlow.Anonymization.Extensions;
-using SensitiveFlow.Anonymization.Masking;
 using SensitiveFlow.Anonymization.Pseudonymizers;
+using SensitiveFlow.Audit.EFCore;
+using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 using SensitiveFlow.EFCore.Extensions;
+using SensitiveFlow.EFCore.Interceptors;
 using SensitiveFlow.Logging.Extensions;
 
-// ── Serilog bootstrap ──────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
@@ -39,7 +30,6 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // ── Serilog ──────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) => config
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
         .Enrich.FromLogContext()
@@ -47,22 +37,23 @@ try
             "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
         .WriteTo.File("logs/minimalapi-sample-.log", rollingInterval: RollingInterval.Day));
 
-    // ── EF Core / SQLite ──────────────────────────────────────────────────
-    builder.Services.AddDbContext<SampleDbContext>(o =>
-        o.UseSqlite(builder.Configuration.GetConnectionString("Default")
-            ?? "Data Source=sensitiveflow-minimalapi.db"));
+    var appConnection = builder.Configuration.GetConnectionString("Default")
+        ?? "Data Source=sensitiveflow-minimalapi.db";
+    var auditConnection = builder.Configuration.GetConnectionString("Audit")
+        ?? "Data Source=sensitiveflow-minimalapi-audit.db";
 
-    // ── SensitiveFlow ─────────────────────────────────────────────────────
-    builder.Services.AddScoped<IAuditStore, EfCoreAuditStore>();
+    builder.Services.AddDbContext<SampleDbContext>((sp, options) =>
+        options.UseSqlite(appConnection)
+            .AddInterceptors(sp.GetRequiredService<SensitiveDataAuditInterceptor>()));
+
+    builder.Services.AddEfCoreAuditStore(options => options.UseSqlite(auditConnection));
     builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
-    builder.Services.AddScoped<IPseudonymizer>(sp =>
-        new TokenPseudonymizer(sp.GetRequiredService<ITokenStore>()));
+    builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
 
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
 
-    // ── OpenTelemetry ─────────────────────────────────────────────────────
     builder.Services.AddOpenTelemetry()
         .WithTracing(tracing => tracing
             .SetResourceBuilder(ResourceBuilder.CreateDefault()
@@ -79,6 +70,11 @@ try
     {
         await scope.ServiceProvider.GetRequiredService<SampleDbContext>()
             .Database.EnsureCreatedAsync();
+
+        await using var auditDb = await scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<AuditDbContext>>()
+            .CreateDbContextAsync();
+        await auditDb.Database.EnsureCreatedAsync();
     }
 
     if (app.Environment.IsDevelopment())
@@ -89,7 +85,6 @@ try
     app.UseHttpsRedirection();
     app.UseSensitiveFlowAudit();
 
-    // ── POST /customers ───────────────────────────────────────────────────
     app.MapPost("/customers", async (
         CreateCustomerRequest request,
         SampleDbContext db,
@@ -99,26 +94,24 @@ try
         var customer = new Customer
         {
             DataSubjectId = Guid.NewGuid().ToString(),
-            Name          = request.Name,
-            Email         = request.Email,
-            TaxId         = request.TaxId,
-            Phone         = request.Phone,
-            CreatedAt     = DateTimeOffset.UtcNow,
+            Name = request.Name,
+            Email = request.Email,
+            TaxId = request.TaxId,
+            Phone = request.Phone,
+            CreatedAt = DateTimeOffset.UtcNow,
         };
 
         db.Customers.Add(customer);
         await db.SaveChangesAsync(ct);
 
-        logger.LogInformation("Customer created — name: {Name}, email: {[Sensitive]Email}",
+        logger.LogInformation("Customer created - name: {Name}, email: {[Sensitive]Email}",
             customer.Name.MaskName(),
             customer.Email);
 
-        return Results.Created($"/customers/{customer.DataSubjectId}",
-            ToResponse(customer));
+        return Results.Created($"/customers/{customer.DataSubjectId}", ToResponse(customer));
     })
     .WithName("CreateCustomer");
 
-    // ── GET /customers/{id} ───────────────────────────────────────────────
     app.MapGet("/customers/{id}", async (
         string id,
         SampleDbContext db,
@@ -137,22 +130,21 @@ try
 
         await auditStore.AppendAsync(new AuditRecord
         {
-            DataSubjectId  = customer.DataSubjectId,
-            Entity         = nameof(Customer),
-            Field          = "*",
-            Operation      = AuditOperation.Access,
-            ActorId        = auditContext.ActorId,
+            DataSubjectId = customer.DataSubjectId,
+            Entity = nameof(Customer),
+            Field = "*",
+            Operation = AuditOperation.Access,
+            ActorId = auditContext.ActorId,
             IpAddressToken = auditContext.IpAddressToken,
         }, ct);
 
-        logger.LogInformation("Customer {Id} accessed — email: {[Sensitive]Email}",
+        logger.LogInformation("Customer {Id} accessed - email: {[Sensitive]Email}",
             id, customer.Email);
 
         return Results.Ok(ToResponse(customer));
     })
     .WithName("GetCustomer");
 
-    // ── GET /customers/{id}/audit ─────────────────────────────────────────
     app.MapGet("/customers/{id}/audit", async (
         string id,
         IAuditStore auditStore,
@@ -173,8 +165,6 @@ finally
 {
     await Log.CloseAndFlushAsync();
 }
-
-// ── DTOs ──────────────────────────────────────────────────────────────────
 
 static CustomerResponse ToResponse(Customer c) => new(
     c.DataSubjectId,

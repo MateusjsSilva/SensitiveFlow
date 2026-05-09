@@ -1,29 +1,18 @@
-// ---------------------------------------------
-// SensitiveFlow - Web API (Controllers) Sample
-//
-// Real production stack:
-//   - SQLite via EF Core (durable AuditStore + TokenStore)
-//   - Serilog (structured logging with file sink)
-//   - OpenTelemetry (ASP.NET Core + HTTP instrumentation, console exporter)
-//   - SensitiveFlow full integration:
-//       AddAuditStore, AddTokenStore, AddSensitiveFlowEFCore,
-//       AddSensitiveFlowAspNetCore, AddSensitiveFlowLogging
-// ---------------------------------------------
-
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
-using SensitiveFlow.Anonymization.Extensions;
-using SensitiveFlow.Audit.Extensions;
+using SensitiveFlow.Anonymization.Pseudonymizers;
+using SensitiveFlow.Audit.EFCore;
+using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.EFCore.Extensions;
+using SensitiveFlow.EFCore.Interceptors;
 using SensitiveFlow.Logging.Extensions;
 using WebApi.Sample.Infrastructure;
 
-// ── Serilog bootstrap ──────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
@@ -38,7 +27,6 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // ── Serilog ──────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) => config
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
         .Enrich.FromLogContext()
@@ -46,30 +34,23 @@ try
             "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
         .WriteTo.File("logs/webapi-sample-.log", rollingInterval: RollingInterval.Day));
 
-    // ── EF Core / SQLite ──────────────────────────────────────────────────
-    builder.Services.AddDbContext<SampleDbContext>(o =>
-        o.UseSqlite(builder.Configuration.GetConnectionString("Default")
-            ?? "Data Source=sensitiveflow-webapi.db"));
+    var appConnection = builder.Configuration.GetConnectionString("Default")
+        ?? "Data Source=sensitiveflow-webapi.db";
+    var auditConnection = builder.Configuration.GetConnectionString("Audit")
+        ?? "Data Source=sensitiveflow-webapi-audit.db";
 
-    // ── SensitiveFlow ─────────────────────────────────────────────────────
-    // Register durable stores — EF Core / SQLite implementations.
-    builder.Services.AddScoped<IAuditStore, EfCoreAuditStore>();
+    builder.Services.AddDbContext<SampleDbContext>((sp, options) =>
+        options.UseSqlite(appConnection)
+            .AddInterceptors(sp.GetRequiredService<SensitiveDataAuditInterceptor>()));
+
+    builder.Services.AddEfCoreAuditStore(options => options.UseSqlite(auditConnection));
     builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
+    builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
 
-    // AddAuditStore<T> and AddTokenStore<T> register scoped stores;
-    // for scoped EF Core stores we register directly and wire the pseudonymizer manually.
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
 
-    // Wire the TokenPseudonymizer to the scoped EfCoreTokenStore.
-    builder.Services.AddScoped<IPseudonymizer>(sp =>
-    {
-        var store = sp.GetRequiredService<ITokenStore>();
-        return new SensitiveFlow.Anonymization.Pseudonymizers.TokenPseudonymizer(store);
-    });
-
-    // ── OpenTelemetry ─────────────────────────────────────────────────────
     builder.Services.AddOpenTelemetry()
         .WithTracing(tracing => tracing
             .SetResourceBuilder(ResourceBuilder.CreateDefault()
@@ -83,11 +64,15 @@ try
 
     var app = builder.Build();
 
-    // Ensure DB is created on startup.
     using (var scope = app.Services.CreateScope())
     {
         await scope.ServiceProvider.GetRequiredService<SampleDbContext>()
             .Database.EnsureCreatedAsync();
+
+        await using var auditDb = await scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<AuditDbContext>>()
+            .CreateDbContextAsync();
+        await auditDb.Database.EnsureCreatedAsync();
     }
 
     if (app.Environment.IsDevelopment())
@@ -96,11 +81,7 @@ try
     }
 
     app.UseHttpsRedirection();
-
-    // UseSensitiveFlowAudit pseudonymizes the remote IP and stores the token
-    // in HttpContext.Items before any controller executes.
     app.UseSensitiveFlowAudit();
-
     app.UseAuthorization();
     app.MapControllers();
 
