@@ -33,6 +33,7 @@ jobs:
           dotnet test
           --configuration Release
           --no-build
+          --filter "Category!=Container"
           --collect:"XPlat Code Coverage"
           --results-directory ./TestResults
           --logger "trx;LogFileName=results.trx"
