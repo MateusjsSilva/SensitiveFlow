@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Bridge OpenTelemetry: ActivitySource e Meter para auditoria e redacao. Decora IAuditStore com tracing/metrics e expoe nomes bem-conhecidos para AddMeter/AddSource.</PackageDescription>
+    <PackageDescription>OpenTelemetry bridge: ActivitySource and Meter for audit and redaction. Decorates IAuditStore with tracing/metrics and exposes well-known names for AddMeter/AddSource.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

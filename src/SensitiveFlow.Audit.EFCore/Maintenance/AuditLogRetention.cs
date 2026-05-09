@@ -8,7 +8,7 @@ namespace SensitiveFlow.Audit.EFCore.Maintenance;
 /// log itself accumulates personal data over time (subject IDs, actor IDs) and falls under the
 /// same retention duty as the data it audits.
 /// </summary>
-public sealed class AuditLogRetention<TContext> where TContext : DbContext
+public sealed class AuditLogRetention<TContext> : IAuditLogRetention where TContext : DbContext
 {
     private readonly IDbContextFactory<TContext> _factory;
     private readonly Func<TContext, DbSet<AuditRecordEntity>> _setSelector;

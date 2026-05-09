@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Integracao com ASP.NET Core: middlewares e helpers para auditoria e controle de dados sensíveis em APIs.</PackageDescription>
+    <PackageDescription>ASP.NET Core integration: middleware and helpers for auditing and controlling sensitive data in APIs.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

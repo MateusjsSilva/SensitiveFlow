@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Anonimizacao e pseudonimizacao de dados pessoais para conformidade com regulamentacoes de privacidade aplicaveis.</PackageDescription>
+    <PackageDescription>Anonymization and pseudonymization of personal data for privacy regulation compliance.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

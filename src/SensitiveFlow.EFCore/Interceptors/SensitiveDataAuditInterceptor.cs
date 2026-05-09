@@ -115,8 +115,11 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
     private void CaptureAuditRecords(DbContext context)
     {
+        // Filter by entity state AND by whether the type has any sensitive properties
+        // before materializing, so non-sensitive entities never allocate a list entry.
         var entries = context.ChangeTracker.Entries()
-            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted
+                     && SensitiveMemberCache.GetSensitiveProperties(e.Entity.GetType()).Count > 0)
             .ToList();
 
         var timestamp = DateTimeOffset.UtcNow;
@@ -127,11 +130,6 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         {
             var entityType = entry.Entity.GetType();
             var sensitiveProperties = SensitiveMemberCache.GetSensitiveProperties(entityType);
-            if (sensitiveProperties.Count == 0)
-            {
-                continue;
-            }
-
             var entityName = entityType.Name;
             var operation = MapOperation(entry.State);
             var dataSubjectId = ResolveDataSubjectId(entry.Entity);

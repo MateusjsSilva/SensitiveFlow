@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Politicas automaticas de ciclo de vida e encerramento do tratamento conforme requisitos de retencao e ciclo de vida.</PackageDescription>
+    <PackageDescription>Declarative data retention policies: automatic lifecycle evaluation and expiration handling for personal data fields.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

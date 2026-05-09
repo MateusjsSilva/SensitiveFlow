@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Implementacao de IAuditStore baseada em EF Core: indices otimizados, retencao do proprio audit log e suporte a appends em batch.</PackageDescription>
+    <PackageDescription>EF Core-backed IAuditStore implementation: optimized indexes, audit log retention, and batch append support.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsRoslynComponent>true</IsRoslynComponent>
-    <PackageDescription>Code-fix providers para os diagnosticos da SensitiveFlow.Analyzers (SF0001/SF0002).</PackageDescription>
+    <PackageDescription>Code-fix providers for SensitiveFlow.Analyzers diagnostics (SF0001/SF0002).</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Integracao com Entity Framework Core: interceptors de auditoria, anonimizacao e retencao para conformidade com regulamentacoes de privacidade.</PackageDescription>
+    <PackageDescription>Entity Framework Core integration: audit interceptors, anonymization, and retention for privacy regulation compliance.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

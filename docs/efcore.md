@@ -15,7 +15,7 @@
 
 ```csharp
 // Register your durable IAuditStore, then the interceptor.
-builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddEfCoreAuditStore<AppDbContext>();
 builder.Services.AddSensitiveFlowEFCore();
 ```
 

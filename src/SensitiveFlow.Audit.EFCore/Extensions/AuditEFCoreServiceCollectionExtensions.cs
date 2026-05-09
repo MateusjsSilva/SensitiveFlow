@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SensitiveFlow.Audit.EFCore.Maintenance;
 using SensitiveFlow.Audit.EFCore.Stores;
 using SensitiveFlow.Core.Interfaces;
@@ -32,7 +33,7 @@ public static class AuditEFCoreServiceCollectionExtensions
             new EfCoreAuditStore<AuditDbContext>(
                 sp.GetRequiredService<IDbContextFactory<AuditDbContext>>(),
                 static ctx => ctx.AuditRecords));
-        services.AddSingleton(sp => new AuditLogRetention<AuditDbContext>(
+        services.TryAddSingleton<IAuditLogRetention>(sp => new AuditLogRetention<AuditDbContext>(
             sp.GetRequiredService<IDbContextFactory<AuditDbContext>>(),
             static ctx => ctx.AuditRecords));
 
@@ -49,7 +50,7 @@ public static class AuditEFCoreServiceCollectionExtensions
         services.AddSingleton<IAuditStore>(sp =>
             new EfCoreAuditStore<TContext>(
                 sp.GetRequiredService<IDbContextFactory<TContext>>()));
-        services.AddSingleton(sp => new AuditLogRetention<TContext>(
+        services.TryAddSingleton<IAuditLogRetention>(sp => new AuditLogRetention<TContext>(
             sp.GetRequiredService<IDbContextFactory<TContext>>()));
         return services;
     }

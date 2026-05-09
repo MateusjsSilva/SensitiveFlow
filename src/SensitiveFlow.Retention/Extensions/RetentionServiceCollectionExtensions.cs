@@ -14,7 +14,7 @@ public static class RetentionServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddRetention(this IServiceCollection services)
     {
-        services.AddTransient<RetentionEvaluator>();
+        services.AddScoped<RetentionEvaluator>();
         return services;
     }
 
@@ -24,7 +24,7 @@ public static class RetentionServiceCollectionExtensions
     public static IServiceCollection AddRetentionHandler<THandler>(this IServiceCollection services)
         where THandler : class, IRetentionExpirationHandler
     {
-        services.AddTransient<IRetentionExpirationHandler, THandler>();
+        services.AddScoped<IRetentionExpirationHandler, THandler>();
         return services;
     }
 

@@ -153,11 +153,20 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 #### 4.4.3 Sem analyzer para detecção de propriedades não-anotadas que parecem ser PII
 **Status:** Aberto (nice-to-have, severidade Info).
 
-#### 4.4.5 README §3 mostra `EfCoreAuditStore` injetando `AuditDbContext`
-**Status:** Aberto. Doc poderia ser mais explícito sobre cenários self-referencing seguros.
+#### 4.4.5 README e docs mostram `EfCoreAuditStore` de forma errônea
+**Status:** Aberto. `audit.md`, `getting-started.md`, `efcore.md` e `aspnetcore.md` exemplificam `AddAuditStore<EfCoreAuditStore>()` ou mostram classes não genéricas que não existem código real (que usa `EfCoreAuditStore<TContext>` e `AddEfCoreAuditStore()`).
+**Severidade:** Alta (causa erros de compilação diretos aos usuários).
 
 #### 4.4.6 Samples registram `IPseudonymizer` manualmente em vez de usar `AddTokenStore<T>`
 **Status:** Aberto. Os samples ilustram dois padrões (manual + via extensão); a falta de uniformidade é deliberada para mostrar ambas as opções, mas poderia ter um comentário explicando.
+
+#### 4.4.7 Lacunas de DX nos guias e tutoriais
+**Status:** Aberto. Levantamento de maio de 2026 apontou:
+- `diagnostics.md` e `audit.md` ocultam namespaces e `usings` necessários, confundindo devs.
+- `diagnostics.md` vs `logging.md`: inconsistência na qualificação de namespaces.
+- `retention.md`: não deixa explícito que `AddRetentionExecutor()` é um registro separado de `AddRetention()`.
+- Instruções de instalação de pacotes auxiliares (ex: `SensitiveFlow.Diagnostics`) estão implícitas.
+**Severidade:** Média/Baixa.
 
 ### 4.5 Correção/qualidade menores
 

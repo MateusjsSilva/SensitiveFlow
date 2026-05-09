@@ -23,12 +23,11 @@ public static class AnonymizationServiceCollectionExtensions
     /// </typeparam>
     /// <example>
     /// <code>
-    /// // SQL via EF Core:
-    /// builder.Services.AddTokenStore&lt;EfCoreTokenStore&gt;();
+    /// // Custom store backed by your own DbContext that maps TokenMappingEntity:
+    /// builder.Services.AddTokenStore&lt;MyEfCoreTokenStore&gt;();
     ///
-    /// // Or register manually with a factory:
-    /// builder.Services.AddScoped&lt;ITokenStore&gt;(sp =>
-    ///     new EfCoreTokenStore(sp.GetRequiredService&lt;TokenDbContext&gt;()));
+    /// // Or register both components manually:
+    /// builder.Services.AddScoped&lt;ITokenStore, MyEfCoreTokenStore&gt;();
     /// builder.Services.AddScoped&lt;IPseudonymizer, TokenPseudonymizer&gt;();
     /// </code>
     /// </example>

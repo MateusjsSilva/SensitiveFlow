@@ -12,7 +12,7 @@ public sealed record AuditRecord
     /// Used to correlate events across systems and to implement idempotent appends.
     /// Defaults to a new <see cref="Guid"/> when not provided.
     /// </summary>
-    public string Id { get; init; } = Guid.NewGuid().ToString();
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     /// <summary>Identifier of the data subject whose data was involved.</summary>
     public required string DataSubjectId { get; init; }
@@ -24,6 +24,11 @@ public sealed record AuditRecord
     public required string Field { get; init; }
 
     /// <summary>Operation performed on the data.</summary>
+    /// <remarks>
+    /// Defaults to <see cref="AuditOperation.Access"/> so that callers that only record read
+    /// events can omit this property. Override it explicitly for write/delete/export events
+    /// to keep the audit trail accurate.
+    /// </remarks>
     public AuditOperation Operation { get; init; } = AuditOperation.Access;
 
     /// <summary>Timestamp of the operation.</summary>

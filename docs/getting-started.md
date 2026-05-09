@@ -50,7 +50,7 @@ public class Customer
 
 // Register your durable IAuditStore and ITokenStore implementations.
 // Audit records must survive process restarts — there is no built-in in-memory store for production.
-builder.Services.AddAuditStore<EfCoreAuditStore>();   // your IAuditStore backed by SQL, etc.
+builder.Services.AddEfCoreAuditStore<MyDbContext>();  // your IAuditStore backed by SQL via EF Core
 builder.Services.AddTokenStore<EfCoreTokenStore>();   // your ITokenStore backed by SQL, Redis, etc.
 
 builder.Services.AddSensitiveFlowEFCore();       // registers SensitiveDataAuditInterceptor

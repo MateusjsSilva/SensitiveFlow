@@ -67,7 +67,8 @@ public sealed class SensitiveDataLoggingAnalyzer : DiagnosticAnalyzer
 
         var containingType = method.ContainingType;
 
-        if (containingType.Name == "LoggerExtensions")
+        if (containingType.Name == "LoggerExtensions" &&
+            containingType.ContainingNamespace.ToDisplayString() == "Microsoft.Extensions.Logging")
         {
             return true;
         }

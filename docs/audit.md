@@ -67,26 +67,35 @@ Audit records must survive process restarts. An in-memory store is not suitable 
 If you use EF Core, `SensitiveFlow.Audit.EFCore` ships a ready-made `EfCoreAuditStore<TContext>` plus an `AddEfCoreAuditStore()` DI extension.
 
 ```csharp
-public sealed class EfCoreAuditStore : IAuditStore
-{
-    private readonly AuditDbContext _db;
+using SensitiveFlow.Audit.EFCore.Extensions;
 
-    public EfCoreAuditStore(AuditDbContext db) => _db = db;
+// Option A: Map it on top of your existing application DbContext
+builder.Services.AddEfCoreAuditStore<MyDbContext>();
+
+// Option B: Use a dedicated DbContext just for audit logs
+builder.Services.AddEfCoreAuditStore(opt =>
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("AuditStorage")));
+```
+
+If you need to store records elsewhere (e.g. MongoDB, Dapper), you can implement `IAuditStore` yourself:
+
+```csharp
+public sealed class CustomAuditStore : IAuditStore
+{
+    // Inject your infrastructure
+    public CustomAuditStore(...) { }
 
     public async Task AppendAsync(AuditRecord record, CancellationToken ct = default)
     {
-        _db.AuditRecords.Add(record);
-        await _db.SaveChangesAsync(ct);
+        // Add to your custom storage
     }
 
     public async Task<IReadOnlyList<AuditRecord>> QueryAsync(
         DateTimeOffset? from = null, DateTimeOffset? to = null,
         int skip = 0, int take = 100, CancellationToken ct = default)
     {
-        var q = _db.AuditRecords.AsQueryable();
-        if (from.HasValue) { q = q.Where(r => r.Timestamp >= from.Value); }
-        if (to.HasValue)   { q = q.Where(r => r.Timestamp <= to.Value); }
-        return await q.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
+        // Query from your custom storage
+        return [];
     }
 
     public async Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
@@ -94,15 +103,13 @@ public sealed class EfCoreAuditStore : IAuditStore
         DateTimeOffset? from = null, DateTimeOffset? to = null,
         int skip = 0, int take = 100, CancellationToken ct = default)
     {
-        var q = _db.AuditRecords.Where(r => r.DataSubjectId == dataSubjectId);
-        if (from.HasValue) { q = q.Where(r => r.Timestamp >= from.Value); }
-        if (to.HasValue)   { q = q.Where(r => r.Timestamp <= to.Value); }
-        return await q.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(ct);
+        // Query from your custom storage
+        return [];
     }
 }
 
 // Registration
-builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddAuditStore<CustomAuditStore>();
 ```
 
 ### Querying records
@@ -131,7 +138,7 @@ If your audit store can persist multiple records in one logical operation, imple
 Audit appends sit in the hot path of `SaveChanges`. A brief network blip or lock contention against the audit store would otherwise cascade into a `SaveChangesAsync` failure. Wrap your store with the bundled `RetryingAuditStore`:
 
 ```csharp
-builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddEfCoreAuditStore<MyDbContext>();
 builder.Services.AddAuditStoreRetry(options =>
 {
     options.MaxAttempts       = 3;

@@ -73,7 +73,7 @@ builder.Services.AddSensitiveFlowAspNetCore();
 
 ```csharp
 // Register your durable IAuditStore and ITokenStore.
-builder.Services.AddAuditStore<EfCoreAuditStore>();
+builder.Services.AddEfCoreAuditStore<AppDbContext>();
 builder.Services.AddTokenStore<EfCoreTokenStore>();
 
 // Register interceptor (NullAuditContext as default, replaced below).

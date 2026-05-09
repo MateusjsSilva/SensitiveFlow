@@ -108,8 +108,8 @@ public sealed class CoreContractTests
         var r1 = new AuditRecord { DataSubjectId = "u1", Entity = "E", Field = "F" };
         var r2 = new AuditRecord { DataSubjectId = "u2", Entity = "E", Field = "F" };
 
-        r1.Id.Should().NotBeNullOrEmpty();
-        r2.Id.Should().NotBeNullOrEmpty();
+        r1.Id.Should().NotBeEmpty();
+        r2.Id.Should().NotBeEmpty();
         r1.Id.Should().NotBe(r2.Id);
     }
 

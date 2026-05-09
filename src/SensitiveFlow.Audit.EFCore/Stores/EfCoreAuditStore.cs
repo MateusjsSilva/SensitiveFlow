@@ -59,10 +59,7 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore where TContext
 
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
-        foreach (var record in records)
-        {
-            set.Add(AuditRecordEntity.FromRecord(record));
-        }
+        set.AddRange(records.Select(AuditRecordEntity.FromRecord));
         await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

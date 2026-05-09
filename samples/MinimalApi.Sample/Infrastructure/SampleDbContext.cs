@@ -79,7 +79,7 @@ public sealed class EfCoreAuditStore : IAuditStore
     {
         _db.AuditEntries.Add(new AuditRecordEntity
         {
-            RecordId       = record.Id,
+            RecordId       = record.Id.ToString(),
             DataSubjectId  = record.DataSubjectId,
             Entity         = record.Entity,
             Field          = record.Field,
@@ -119,7 +119,7 @@ public sealed class EfCoreAuditStore : IAuditStore
         var rows = await query.ToListAsync(ct);
         return rows.Select(e => new AuditRecord
         {
-            Id             = e.RecordId,
+            Id             = Guid.TryParse(e.RecordId, out var parsedId) ? parsedId : Guid.Empty,
             DataSubjectId  = e.DataSubjectId,
             Entity         = e.Entity,
             Field          = e.Field,

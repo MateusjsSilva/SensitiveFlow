@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Registro imutavel de acessos e modificacoes de dados pessoais para conformidade com regulamentacoes de privacidade.</PackageDescription>
+    <PackageDescription>Immutable audit trail of personal data accesses and modifications for privacy regulation compliance.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

@@ -107,7 +107,15 @@ public sealed class RedactingLogger : ILogger
 
     // Visible for testing.
     internal string RedactTemplate(string message)
-        => SensitiveTemplatePattern.Replace(message, _ => _redactor.Redact(string.Empty));
+    {
+        // Fast-path: skip regex entirely when there are no [Sensitive] markers in the string.
+        if (!message.Contains("[Sensitive]", StringComparison.Ordinal))
+        {
+            return message;
+        }
+
+        return SensitiveTemplatePattern.Replace(message, _ => _redactor.Redact(string.Empty));
+    }
 
     private static string? FindOriginalFormat(IEnumerable<KeyValuePair<string, object?>> pairs)
     {

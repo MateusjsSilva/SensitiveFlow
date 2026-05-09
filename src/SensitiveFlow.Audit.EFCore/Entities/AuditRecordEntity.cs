@@ -42,7 +42,7 @@ public sealed class AuditRecordEntity
     /// <summary>Maps to a domain <see cref="AuditRecord"/>.</summary>
     public AuditRecord ToRecord() => new()
     {
-        Id = RecordId,
+        Id = Guid.TryParse(RecordId, out var parsed) ? parsed : Guid.Empty,
         DataSubjectId = DataSubjectId,
         Entity = Entity,
         Field = Field,
@@ -56,7 +56,7 @@ public sealed class AuditRecordEntity
     /// <summary>Builds an entity from a domain <see cref="AuditRecord"/>.</summary>
     public static AuditRecordEntity FromRecord(AuditRecord record) => new()
     {
-        RecordId = record.Id,
+        RecordId = record.Id.ToString(),
         DataSubjectId = record.DataSubjectId,
         Entity = record.Entity,
         Field = record.Field,

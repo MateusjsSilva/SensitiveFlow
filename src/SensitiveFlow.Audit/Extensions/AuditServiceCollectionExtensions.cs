@@ -20,12 +20,15 @@ public static class AuditServiceCollectionExtensions
     /// </typeparam>
     /// <example>
     /// <code>
-    /// // SQL via EF Core:
-    /// builder.Services.AddAuditStore&lt;EfCoreAuditStore&gt;();
+    /// // SQL via EF Core (dedicated AuditDbContext — preferred):
+    /// builder.Services.AddEfCoreAuditStore(opt =>
+    ///     opt.UseSqlite(builder.Configuration.GetConnectionString("Audit")));
     ///
-    /// // Or register manually with a factory:
-    /// builder.Services.AddScoped&lt;IAuditStore&gt;(sp =>
-    ///     new EfCoreAuditStore(sp.GetRequiredService&lt;AuditDbContext&gt;()));
+    /// // SQL via EF Core (user-owned DbContext that maps AuditRecordEntity):
+    /// builder.Services.AddEfCoreAuditStore&lt;MyAppDbContext&gt;();
+    ///
+    /// // Custom store (any sink):
+    /// builder.Services.AddAuditStore&lt;MyCustomAuditStore&gt;();
     /// </code>
     /// </example>
     public static IServiceCollection AddAuditStore<TStore>(this IServiceCollection services)
@@ -60,28 +63,35 @@ public static class AuditServiceCollectionExtensions
         services.Remove(existing);
 
         // Re-register the inner store under its own concrete type so the decorator can resolve it.
+        // Preserve the inner store's original lifetime so the decorator does not
+        // accidentally capture a Singleton inside a Scoped wrapper (or vice-versa),
+        // which would trigger DI captive-dependency validation errors.
         if (existing.ImplementationType is not null)
         {
             services.Add(new ServiceDescriptor(existing.ImplementationType, existing.ImplementationType, existing.Lifetime));
-            services.AddScoped<IAuditStore>(sp => new RetryingAuditStore(
-                (IAuditStore)sp.GetRequiredService(existing.ImplementationType),
-                options,
-                sp.GetService<ILogger<RetryingAuditStore>>()));
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new RetryingAuditStore(
+                    (IAuditStore)sp.GetRequiredService(existing.ImplementationType),
+                    options,
+                    sp.GetService<ILogger<RetryingAuditStore>>()),
+                existing.Lifetime));
         }
         else if (existing.ImplementationFactory is not null)
         {
             var factory = existing.ImplementationFactory;
-            services.AddScoped<IAuditStore>(sp => new RetryingAuditStore(
-                (IAuditStore)factory(sp),
-                options,
-                sp.GetService<ILogger<RetryingAuditStore>>()));
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new RetryingAuditStore(
+                    (IAuditStore)factory(sp),
+                    options,
+                    sp.GetService<ILogger<RetryingAuditStore>>()),
+                existing.Lifetime));
         }
         else if (existing.ImplementationInstance is IAuditStore instance)
         {
-            services.AddSingleton<IAuditStore>(sp => new RetryingAuditStore(
+            services.AddSingleton<IAuditStore>(new RetryingAuditStore(
                 instance,
                 options,
-                sp.GetService<ILogger<RetryingAuditStore>>()));
+                logger: null));
         }
 
         return services;

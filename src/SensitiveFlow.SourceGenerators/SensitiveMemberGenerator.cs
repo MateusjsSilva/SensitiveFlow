@@ -7,6 +7,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SensitiveFlow.SourceGenerators;
 
+/// <summary>
+/// Incremental source generator that precomputes sensitive/retention member metadata at compile
+/// time, avoiding per-call reflection scans at runtime.
+/// </summary>
 [Generator]
 public sealed class SensitiveMemberGenerator : IIncrementalGenerator
 {
@@ -14,9 +18,12 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
     private const string SensitiveDataAttributeName = "SensitiveFlow.Core.Attributes.SensitiveDataAttribute";
     private const string RetentionDataAttributeName = "SensitiveFlow.Core.Attributes.RetentionDataAttribute";
 
+    /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var attributes = context.CompilationProvider.Select(static (compilation, _) => new AttributeSymbols(
+        // Cache AttributeSymbols separately so they are recomputed only when the compilation
+        // changes (e.g. a package add/remove), not on every keystroke.
+        var attributeSymbols = context.CompilationProvider.Select(static (compilation, _) => new AttributeSymbols(
             compilation.GetTypeByMetadataName(PersonalDataAttributeName),
             compilation.GetTypeByMetadataName(SensitiveDataAttributeName),
             compilation.GetTypeByMetadataName(RetentionDataAttributeName)));
@@ -33,12 +40,13 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
             .Select(static (symbol, _) => symbol!)
             .Collect();
 
-        var compilationAndCandidates = context.CompilationProvider.Combine(candidateTypes).Combine(attributes);
+        // Combine the two independent pipelines — each is cached separately.
+        var combined = candidateTypes.Combine(attributeSymbols);
 
-        context.RegisterSourceOutput(compilationAndCandidates, static (spc, source) =>
+        context.RegisterSourceOutput(combined, static (spc, source) =>
         {
-            var ((compilation, types), attributeSymbols) = source;
-            Emit(spc, compilation, types, attributeSymbols);
+            var (types, attrs) = source;
+            Emit(spc, types, attrs);
         });
     }
 
@@ -64,7 +72,6 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
 
     private static void Emit(
         SourceProductionContext context,
-        Compilation compilation,
         ImmutableArray<INamedTypeSymbol> types,
         AttributeSymbols attributeSymbols)
     {
@@ -75,7 +82,7 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
 
         var uniqueTypes = types
             .Where(t => t is not null)
-            .Distinct(SymbolEqualityComparer.Default)
+            .Distinct((IEqualityComparer<INamedTypeSymbol>)SymbolEqualityComparer.Default)
             .ToImmutableArray();
 
         if (uniqueTypes.Length == 0)
@@ -139,32 +146,37 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
     private static IEnumerable<IPropertySymbol> EnumeratePublicInstanceProperties(INamedTypeSymbol type)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        // Walk the class hierarchy (base types).
         for (var current = type; current is not null; current = current.BaseType)
         {
             foreach (var member in current.GetMembers())
             {
-                if (member is not IPropertySymbol property)
+                if (member is IPropertySymbol property && IsRelevantProperty(property) && seen.Add(property.Name))
                 {
-                    continue;
+                    yield return property;
                 }
+            }
+        }
 
-                if (property.IsStatic || property.DeclaredAccessibility != Accessibility.Public)
-                {
-                    continue;
-                }
-
-                if (property.IsIndexer)
-                {
-                    continue;
-                }
-
-                if (seen.Add(property.Name))
+        // Walk interfaces — a property defined on an interface and implemented explicitly
+        // won't appear in the class hierarchy walk above.
+        foreach (var iface in type.AllInterfaces)
+        {
+            foreach (var member in iface.GetMembers())
+            {
+                if (member is IPropertySymbol property && IsRelevantProperty(property) && seen.Add(property.Name))
                 {
                     yield return property;
                 }
             }
         }
     }
+
+    private static bool IsRelevantProperty(IPropertySymbol property)
+        => !property.IsStatic
+        && property.DeclaredAccessibility == Accessibility.Public
+        && !property.IsIndexer;
 
     private static bool HasAttribute(ImmutableArray<AttributeData> attributes, INamedTypeSymbol? target)
     {
@@ -276,10 +288,40 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private sealed record AttributeSymbols(
-        INamedTypeSymbol? PersonalData,
-        INamedTypeSymbol? SensitiveData,
-        INamedTypeSymbol? RetentionData);
+    // IEquatable implemented so the incremental pipeline can detect equality changes
+    // and skip re-emitting source when nothing has changed.
+    private sealed class AttributeSymbols : IEquatable<AttributeSymbols>
+    {
+        public INamedTypeSymbol? PersonalData { get; }
+        public INamedTypeSymbol? SensitiveData { get; }
+        public INamedTypeSymbol? RetentionData { get; }
+
+        public AttributeSymbols(INamedTypeSymbol? personalData, INamedTypeSymbol? sensitiveData, INamedTypeSymbol? retentionData)
+        {
+            PersonalData = personalData;
+            SensitiveData = sensitiveData;
+            RetentionData = retentionData;
+        }
+
+        public bool Equals(AttributeSymbols? other)
+            => other is not null
+            && SymbolEqualityComparer.Default.Equals(PersonalData, other.PersonalData)
+            && SymbolEqualityComparer.Default.Equals(SensitiveData, other.SensitiveData)
+            && SymbolEqualityComparer.Default.Equals(RetentionData, other.RetentionData);
+
+        public override bool Equals(object? obj) => Equals(obj as AttributeSymbols);
+
+        public override int GetHashCode()
+        {
+            var h1 = PersonalData is null ? 0 : SymbolEqualityComparer.Default.GetHashCode(PersonalData);
+            var h2 = SensitiveData is null ? 0 : SymbolEqualityComparer.Default.GetHashCode(SensitiveData);
+            var h3 = RetentionData is null ? 0 : SymbolEqualityComparer.Default.GetHashCode(RetentionData);
+            unchecked
+            {
+                return ((h1 * 397) ^ h2) * 397 ^ h3;
+            }
+        }
+    }
 
     private sealed record TypeEntry(
         INamedTypeSymbol Type,

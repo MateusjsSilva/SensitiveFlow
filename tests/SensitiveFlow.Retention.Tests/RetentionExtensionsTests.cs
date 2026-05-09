@@ -21,17 +21,23 @@ public sealed class RetentionExtensionsTests
     }
 
     [Fact]
-    public void AddRetention_RegistersEvaluatorAsTransient()
+    public void AddRetention_RegistersEvaluatorAsScoped()
     {
         var services = new ServiceCollection();
         services.AddRetention();
 
         var provider = services.BuildServiceProvider();
 
-        var a = provider.GetRequiredService<RetentionEvaluator>();
-        var b = provider.GetRequiredService<RetentionEvaluator>();
+        // Within the same scope, both resolutions should return the same instance.
+        using var scope = provider.CreateScope();
+        var a = scope.ServiceProvider.GetRequiredService<RetentionEvaluator>();
+        var b = scope.ServiceProvider.GetRequiredService<RetentionEvaluator>();
+        a.Should().BeSameAs(b);
 
-        a.Should().NotBeSameAs(b);
+        // Across scopes, a fresh instance is created.
+        using var scope2 = provider.CreateScope();
+        var c = scope2.ServiceProvider.GetRequiredService<RetentionEvaluator>();
+        a.Should().NotBeSameAs(c);
     }
 
     [Fact]

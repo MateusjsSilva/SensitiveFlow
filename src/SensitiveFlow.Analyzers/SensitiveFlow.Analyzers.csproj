@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsRoslynComponent>true</IsRoslynComponent>
-    <PackageDescription>Analisadores Roslyn que detectam violacoes de politicas de privacidade em tempo de compilacao.</PackageDescription>
+    <PackageDescription>Roslyn analyzers that detect privacy policy violations at compile time.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>

@@ -21,7 +21,11 @@ public static class DiagnosticsServiceCollectionExtensions
     {
         var existing = services.FirstOrDefault(d => d.ServiceType == typeof(IAuditStore))
             ?? throw new InvalidOperationException(
-                $"No {nameof(IAuditStore)} registration was found. Call AddAuditStore<T>() before AddSensitiveFlowDiagnostics().");
+                $"No {nameof(IAuditStore)} registration was found. " +
+                "Register a store first: AddAuditStore<T>() or AddEfCoreAuditStore(), " +
+                "then call AddSensitiveFlowDiagnostics(). " +
+                "To wrap retries too, call AddAuditStoreRetry() before or after AddSensitiveFlowDiagnostics() " +
+                "depending on whether you want one span per retry attempt or one span for the whole retry cycle.");
 
         services.Remove(existing);
 

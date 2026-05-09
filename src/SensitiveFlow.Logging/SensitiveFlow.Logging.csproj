@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageDescription>Redacao automatica de dados pessoais em logs para conformidade com regulamentacoes de privacidade.</PackageDescription>
+    <PackageDescription>Automatic redaction of personal data in logs for privacy regulation compliance.</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
