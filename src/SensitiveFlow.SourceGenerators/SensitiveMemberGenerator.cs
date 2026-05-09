@@ -82,6 +82,11 @@ public sealed class SensitiveMemberGenerator : IIncrementalGenerator
 
         var uniqueTypes = types
             .Where(t => t is not null)
+            // Skip open generic definitions (class Foo<T>): typeof(Foo<T>) is not legal
+            // in C# without a concrete T, and typeof(Foo<>) cannot be looked up by closed
+            // instantiations at runtime. The reflection fallback in SensitiveMemberCache
+            // handles closed generic types correctly without needing pre-registration.
+            .Where(t => !t!.IsUnboundGenericType && t.TypeParameters.Length == 0)
             .Distinct((IEqualityComparer<INamedTypeSymbol>)SymbolEqualityComparer.Default)
             .ToImmutableArray();
 

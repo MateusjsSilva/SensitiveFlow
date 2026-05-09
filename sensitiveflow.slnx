@@ -33,5 +33,6 @@
     <Project Path="tests/SensitiveFlow.Integration.Tests/SensitiveFlow.Integration.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Logging.Tests/SensitiveFlow.Logging.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Retention.Tests/SensitiveFlow.Retention.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.SourceGenerators.Tests/SensitiveFlow.SourceGenerators.Tests.csproj" />
   </Folder>
 </Solution>
