@@ -14,6 +14,7 @@ dotnet add package SensitiveFlow.AspNetCore
 dotnet add package SensitiveFlow.Logging
 dotnet add package SensitiveFlow.Anonymization
 dotnet add package SensitiveFlow.Retention
+dotnet add package SensitiveFlow.Json    # optional: redact System.Text.Json output
 ```
 
 ## Step 1 — Annotate your model

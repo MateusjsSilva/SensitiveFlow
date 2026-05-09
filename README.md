@@ -22,12 +22,13 @@ Sensitive data flows through your application on every request: EF Core saves, H
 | `SensitiveFlow.AspNetCore` | Middleware for actor/IP context enrichment | Preview |
 | `SensitiveFlow.Logging` | ILogger decorator for PII redaction in logs | Preview |
 | `SensitiveFlow.Diagnostics` | OpenTelemetry bridge (ActivitySource + Meter) for audit/logging spans & metrics | Preview |
-| `SensitiveFlow.Anonymization` | Masking, anonymization, pseudonymization, and erasure (right-to-be-forgotten) | Preview |
+| `SensitiveFlow.Anonymization` | Masking, anonymization, pseudonymization, erasure, data export, and deterministic fingerprints | Preview |
+| `SensitiveFlow.Json` | `System.Text.Json` modifier that masks/redacts/omits annotated properties at serialization time | Preview |
 | `SensitiveFlow.Retention` | Retention metadata and expiration hook contracts | Preview |
 | `SensitiveFlow.Analyzers` | Roslyn analyzers for privacy anti-patterns | Preview |
 | `SensitiveFlow.Analyzers.CodeFixes` | Quick-fix providers for SF0001/SF0002 (wrap with `.MaskEmail()` / `.MaskPhone()` / `.MaskName()`) | Preview |
 | `SensitiveFlow.SourceGenerators` | Source generator that precomputes sensitive/retention member metadata | Preview |
-| `SensitiveFlow.TestKit` | xUnit conformance base classes for `IAuditStore` / `ITokenStore` implementations | Preview |
+| `SensitiveFlow.TestKit` | xUnit conformance bases for `IAuditStore` / `ITokenStore` plus a `SensitiveDataAssert` leak-detection helper | Preview |
 
 ## Quick Start
 

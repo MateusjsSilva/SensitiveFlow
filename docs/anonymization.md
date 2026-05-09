@@ -215,4 +215,53 @@ new HashStrategy("my-fixed-salt-16ch").Apply("value");
 
 > Always use a salt in production. Without a salt, identical values produce identical hashes — a lookup table can reverse common inputs such as CPF numbers.
 
+---
+
+## Data subject export (portability)
+
+`IDataSubjectExporter` is the read-side counterpart of `IDataSubjectErasureService`. Given an entity, it returns a dictionary keyed by property name with every annotated value (`[PersonalData]`, `[SensitiveData]`, `[RetentionData]`) — useful for satisfying portability requests where a user asks for a copy of the personal data the application holds about them.
+
+```csharp
+services.AddDataSubjectExport();
+
+// later
+var exporter = sp.GetRequiredService<IDataSubjectExporter>();
+
+var customer = await db.Customers.SingleAsync(c => c.DataSubjectId == subjectId);
+IReadOnlyDictionary<string, object?> snapshot = exporter.Export(customer);
+// { "Name": "Maria", "Email": "maria@example.com", "TaxId": "12345678900" }
+```
+
+The exporter operates on individual entity instances. Building the cross-table view of "everything we know about this subject" is the application's responsibility — typically by querying each table for rows where the subject identifier matches and feeding each row through `Export`.
+
+---
+
+## Deterministic fingerprints (safe diffing)
+
+`DeterministicFingerprint` produces a short HMAC-SHA256 token from a value so you can compare two values for equality without exposing them. Useful for:
+
+- "Did this customer's e-mail change between save A and save B?"
+- "Are these two records about the same person?" — same input always yields the same fingerprint
+- Diff-style logs that need to show "this field changed" without leaking the value
+
+```csharp
+var fp = new DeterministicFingerprint(secretKey: configuration["Fingerprint:Key"]);
+
+var before = fp.Fingerprint(snapshot.Email);
+var after  = fp.Fingerprint(updated.Email);
+
+if (before != after)
+{
+    _logger.LogInformation(
+        "Customer {SubjectId} e-mail changed from {Before} to {After}",
+        subjectId, before, after);
+    // Logs: ... e-mail changed from 7e3a1d... to 9c45ff...
+}
+
+// Or use the helper
+fp.AreEquivalent(snapshot.Email, updated.Email);
+```
+
+> **Not anonymization.** A determined attacker with the secret can still brute-force small input domains (booleans, low-cardinality enums). Apply the same access controls you would to the raw value, and rotate the key with care — rotation invalidates every previously-issued fingerprint.
+
 

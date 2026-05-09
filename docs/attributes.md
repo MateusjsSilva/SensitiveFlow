@@ -99,3 +99,27 @@ public string Email { get; set; }
 ```
 
 `[SensitiveData]` implies stronger classification; prefer it over `[PersonalData]` for health, biometric, or financial credential data.
+
+## Inheritance and interfaces
+
+Annotations are picked up from:
+
+- The property declaration on the class itself.
+- Properties on **base classes** — a derived type inherits the annotations of its base.
+- Properties on **implemented interfaces** — annotating an interface property is enough; you do not need to repeat the attribute on the implementation.
+
+```csharp
+public interface IHasContact
+{
+    [PersonalData(Category = DataCategory.Contact)]
+    string Email { get; }
+}
+
+public sealed class Customer : IHasContact
+{
+    public string Email { get; set; } = string.Empty;
+    // No need to repeat [PersonalData] here — it is inherited from IHasContact.
+}
+```
+
+Both the source generator and the runtime reflection fallback merge attributes from all of these sources, so behavior is consistent regardless of how a type is declared.

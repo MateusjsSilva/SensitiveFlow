@@ -209,3 +209,45 @@ public class AuditPurgeJob(IAuditLogRetention retention)
 ```
 
 `PurgeOlderThanAsync` uses `ExecuteDeleteAsync` (a single SQL `DELETE` statement) on relational providers, falling back to a materialise-and-remove approach on providers that do not support bulk deletes (e.g. InMemory in tests).
+
+---
+
+## Aggregate snapshots — `AuditSnapshot`
+
+`AuditRecord` is a per-field trail: one row per modified property. For some domains, a per-aggregate trail is more useful — a single entry per change carrying the serialized "before" and "after" state of the aggregate. `AuditSnapshot` and `IAuditSnapshotStore` provide that shape.
+
+When to prefer snapshots:
+
+- **Aggregates whose fields are only meaningful together** (e.g. an `Address` with `Street` / `City` / `Zip`). Three field-level rows hide the relationship; one snapshot row preserves it.
+- **Reviewers expect a "diff" view.** Showing `Before` and `After` side by side is friendlier than reconstructing the state from N field-level entries.
+- **Domains with strong audit/regulator pressure** where the inspector wants to see exactly what the record looked like at every step.
+
+When to prefer the per-field `AuditRecord`:
+
+- **High-frequency partial updates** where each field changes independently.
+- **Storage cost matters and you only ever care about which fields changed.**
+
+The snapshot model is independent of the per-field model — you can use both, neither, or only one.
+
+```csharp
+// Build the snapshot from your aggregate. Use SensitiveFlow.Json options to ensure
+// sensitive fields are already redacted before serialization, especially if the
+// snapshot store has weaker access controls than the primary store.
+var redactingOptions = new JsonSerializerOptions().WithSensitiveDataRedaction();
+
+var snapshot = new AuditSnapshot
+{
+    DataSubjectId = customer.DataSubjectId,
+    Aggregate = nameof(Customer),
+    AggregateId = customer.Id.ToString(),
+    Operation = AuditOperation.Update,
+    BeforeJson = JsonSerializer.Serialize(beforeState, redactingOptions),
+    AfterJson  = JsonSerializer.Serialize(customer,    redactingOptions),
+    ActorId = currentUser.Id,
+    IpAddressToken = ipToken,
+};
+
+await snapshotStore.AppendAsync(snapshot);
+```
+
+`SensitiveFlow.Audit` ships an `InMemoryAuditSnapshotStore` for tests and samples. Production use needs a durable backing — implement `IAuditSnapshotStore` against your database of choice (a dedicated EF-backed implementation may follow in a future preview).

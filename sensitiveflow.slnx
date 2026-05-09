@@ -32,8 +32,10 @@
     <Project Path="tests/SensitiveFlow.Diagnostics.Tests/SensitiveFlow.Diagnostics.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.EFCore.Tests/SensitiveFlow.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Integration.Tests/SensitiveFlow.Integration.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.Json.Tests/SensitiveFlow.Json.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Logging.Tests/SensitiveFlow.Logging.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Retention.Tests/SensitiveFlow.Retention.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.SourceGenerators.Tests/SensitiveFlow.SourceGenerators.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.TestKit.Tests/SensitiveFlow.TestKit.Tests.csproj" />
   </Folder>
 </Solution>

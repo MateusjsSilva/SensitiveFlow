@@ -8,6 +8,10 @@
 > **Análise de 2026-05-08 (pós-sprint):** Source generator analisado em profundidade. Genéricos aninhados funcionam corretamente (`SymbolDisplayFormat.FullyQualifiedFormat` produz `typeof()` válido). Interfaces não são percorridas — limitação documentada em §4.2.9, fallback de reflection cobre. Predicate do generator otimizado para filtrar apenas atributos relevantes (§4.5.14).
 >
 > **Análise de 2026-05-09 (pós-sprint):** Correções aplicadas com base na análise externa: A1 (lifetime decorator), A2 (msg erro), A4 (AuditRecord.Id→Guid), A5 (remarks Operation), D1 (Scoped), D3 (IAuditLogRetention), L1 (namespace check), P1-P3 (perf), S1-S3 (generator incremental+interface walk), X1-X3 (docs+csproj). Build: 0 erros, 0 avisos. Testes: todos aprovados.
+>
+> **Reframing 2026-05-09:** Removidas referências diretas a LGPD/GDPR em README, docs e Description dos pacotes. A biblioteca posiciona-se como conjunto de primitivas técnicas para tratamento de dados sensíveis — a conformidade com qualquer regulação específica depende de como o app usa as primitivas.
+>
+> **Novas features 2026-05-09:** (a) `SensitiveFlow.Json` — modificador de `System.Text.Json` que mascara/redata/omite propriedades anotadas; configurável por opção global + override por atributo (`[JsonRedaction]`). (b) `IDataSubjectExporter` em `SensitiveFlow.Anonymization.Export` — análogo simétrico de `IDataSubjectErasureService` para portabilidade. (c) `DeterministicFingerprint` em `SensitiveFlow.Anonymization.Comparison` — tokens HMAC-SHA256 curtos para diff/comparação sem expor o valor. (d) `SensitiveDataAssert.DoesNotLeak` em `SensitiveFlow.TestKit.Assertions` — pega regressão de redação. (e) `AuditSnapshot` + `IAuditSnapshotStore` em `SensitiveFlow.Core` — auditoria por agregado (vs. per-field do `AuditRecord`). Limitação §4.2.9 (interface attributes) **resolvida** — o generator e o fallback agora mesclam atributos da interface no implementador.
 
 ---
 
@@ -162,10 +166,9 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 **Status:** Aberto (limitação documentada).
 **Resolução parcial:** `docs/retention.md` agora documenta a limitação ("inspeciona apenas propriedades públicas do tipo top-level"). Implementação recursiva fica pendente.
 
-#### 4.2.9 Source generator não descobre propriedades de interface
-**Status:** Aberto (limitação documentada, baixo risco).
-**Detalhe:** `EnumeratePublicInstanceProperties` walka apenas `BaseType`, ignorando propriedades declaradas em interfaces. Na prática, atributos em propriedades de interface são raros, e a propriedade concreta na classe é detectada. Reflection fallback (`type.GetProperties()`) cobre interfaces corretamente.
-**Severidade:** Baixa (generator é otimização; fallback garante correção).
+#### 4.2.9 Atributos em propriedades de interface
+**Status:** Resolvido (2026-05-09).
+**Detalhe:** O generator e o fallback de reflexão agora mesclam atributos da propriedade da classe com os da propriedade homônima nas interfaces implementadas. Atributos declarados apenas na interface são automaticamente herdados pela implementação — o desenvolvedor não precisa repetir a anotação. Verificado por `Sensitive_PropertyAnnotatedOnlyOnInterface_IsDiscoveredOnImplementer`.
 
 ### 4.3 Problemas operacionais e de robustez
 *Todos os itens originais foram resolvidos em §3.1.*
