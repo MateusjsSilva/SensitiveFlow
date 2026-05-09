@@ -2,6 +2,12 @@
 
 `SensitiveFlow.Logging` prevents PII from reaching log sinks by intercepting messages before they are written.
 
+## Installation
+
+```bash
+dotnet add package SensitiveFlow.Logging
+```
+
 ## How it works
 
 `RedactingLogger` is an `ILogger` decorator. It wraps any existing `ILogger` and, before forwarding a message, replaces every occurrence of the pattern `[Sensitive]<value>` with a fixed redaction marker.

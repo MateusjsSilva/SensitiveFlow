@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Reflection;
@@ -17,9 +19,27 @@ namespace SensitiveFlow.Retention.Services;
 /// <see cref="RetentionExecutionReport.Entries"/> for <see cref="RetentionAction.DeletePending"/>
 /// and remove those entities from their unit of work before saving.
 /// </para>
+/// <para>
+/// <b>Nested objects:</b> Properties whose type is a reference type not in the terminal set
+/// (string, DateTime, Guid, etc.) are recursively traversed, matching the behavior of
+/// <see cref="RetentionEvaluator"/>.
+/// </para>
 /// </remarks>
 public sealed class RetentionExecutor
 {
+    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> NavigablePropertiesCache = new();
+
+    private static readonly HashSet<Type> TerminalTypes =
+    [
+        typeof(string),
+        typeof(decimal),
+        typeof(DateTime),
+        typeof(DateTimeOffset),
+        typeof(TimeSpan),
+        typeof(Guid),
+        typeof(Uri),
+    ];
+
     private readonly RetentionExecutorOptions _options;
 
     /// <summary>Initializes a new instance with default options.</summary>
@@ -61,13 +81,13 @@ public sealed class RetentionExecutor
             }
 
             var referenceDate = referenceDateSelector(entity);
-            ProcessEntity(entity, referenceDate, now, report);
+            ProcessEntityRecursive(entity, referenceDate, now, report);
         }
 
         return Task.FromResult(report);
     }
 
-    private void ProcessEntity(object entity, DateTimeOffset referenceDate, DateTimeOffset now, RetentionExecutionReport report)
+    private void ProcessEntityRecursive(object entity, DateTimeOffset referenceDate, DateTimeOffset now, RetentionExecutionReport report)
     {
         var retentionProperties = SensitiveMemberCache.GetRetentionProperties(entity.GetType());
 
@@ -90,6 +110,30 @@ public sealed class RetentionExecutor
 
             report.Add(new RetentionExecutionEntry(entity, pair.Property.Name, expiration, action));
         }
+
+        // Recurse into navigable properties.
+        foreach (var prop in GetNavigableProperties(entity.GetType()))
+        {
+            var value = prop.GetValue(entity);
+            if (value is null)
+            {
+                continue;
+            }
+
+            ProcessEntityRecursive(value, referenceDate, now, report);
+        }
+    }
+
+    private static PropertyInfo[] GetNavigableProperties(Type type)
+    {
+        return NavigablePropertiesCache.GetOrAdd(type, static t =>
+            t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+             .Where(static p => p.CanRead
+                 && !p.PropertyType.IsValueType
+                 && !TerminalTypes.Contains(p.PropertyType)
+                 && p.PropertyType != typeof(object)
+                 && p.GetIndexParameters().Length == 0)
+             .ToArray());
     }
 
     private RetentionAction Anonymize(object entity, System.Reflection.PropertyInfo property)

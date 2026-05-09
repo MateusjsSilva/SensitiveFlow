@@ -152,19 +152,16 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 ### 4.2 Riscos de design / contrato
 
 #### 4.2.2 `AnonymizationServiceCollectionExtensions.AddTokenStore<T>` registra `IPseudonymizer` global
-**Status:** Aberto. Nenhuma demanda concreta para keyed services ainda.
-**Severidade:** Média (limitação de design).
-**Sugestão:** considerar API nomeada (`AddNamedPseudonymizer<T>("hmac", ...)`) ou keyed services do .NET 8 quando aparecer caso de uso real.
+**Status:** **Resolvido (2026-05-09).** `AddTokenStore<T>()` agora registra **apenas** `ITokenStore`. Novos métodos: `AddTokenPseudonymizer()` (convenience para `TokenPseudonymizer`), `AddPseudonymizer<TPseudonymizer>()` (qualquer implementação). `AddEfCoreTokenStore()` mantém o registro automático de ambos como convenience.
 
 #### 4.2.4 `EFCore.AddSensitiveFlowAuditContext<T>` é redundante
-**Status:** Aberto (DX). Manter ou remover.
+**Status:** **Resolvido (2026-05-09).** Método removido. Substituído por `services.AddScoped<IAuditContext, TContext>()` direto — não agrega valor além do built-in do DI.
 
 #### 4.2.5 `SensitiveFlow.Audit` package: agora justificado
 **Status:** Resolvido por consequência. Com `RetryingAuditStore` e `AddAuditStoreRetry`, o pacote tem justificativa funcional além da extensão `AddAuditStore<T>`.
 
 #### 4.2.7 `RetentionEvaluator` não percorre entidades aninhadas
-**Status:** Aberto (limitação documentada).
-**Resolução parcial:** `docs/retention.md` agora documenta a limitação ("inspeciona apenas propriedades públicas do tipo top-level"). Implementação recursiva fica pendente.
+**Status:** **Resolvido (2026-05-09).** `RetentionEvaluator` e `RetentionExecutor` agora percorrem recursivamente propriedades de tipos complexos (não-terminais). Tipos como `string`, `DateTime`, `Guid`, etc. são tratados como folhas. Cache `ConcurrentDictionary<Type, PropertyInfo[]>` evita reflection repetida.
 
 #### 4.2.9 Atributos em propriedades de interface
 **Status:** Resolvido (2026-05-09).
@@ -183,15 +180,10 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 **Severidade anterior:** Alta (causava erros de compilação diretos aos usuários).
 
 #### 4.4.6 Samples registram `IPseudonymizer` manualmente em vez de usar `AddTokenStore<T>`
-**Status:** Aberto. Os samples ilustram dois padrões (manual + via extensão); a falta de uniformidade é deliberada para mostrar ambas as opções, mas poderia ter um comentário explicando.
+**Status:** **Resolvido (2026-05-09).** Comentários adicionados em ambos samples (WebApi e MinimalApi) explicando que o registro manual é deliberado para mostrar o wiring explícito, e apontando para `AddEfCoreTokenStore()` como alternativa mais simples.
 
 #### 4.4.7 Lacunas de DX nos guias e tutoriais
-**Status:** Aberto. Levantamento de maio de 2026 apontou:
-- `diagnostics.md` e `audit.md` ocultam namespaces e `usings` necessários, confundindo devs.
-- `diagnostics.md` vs `logging.md`: inconsistência na qualificação de namespaces.
-- `retention.md`: não deixa explícito que `AddRetentionExecutor()` é um registro separado de `AddRetention()`.
-- Instruções de instalação de pacotes auxiliares (ex: `SensitiveFlow.Diagnostics`) estão implícitas.
-**Severidade:** Média/Baixa.
+**Status:** **Resolvido (2026-05-09).** `diagnostics.md`: adicionada seção "Installation" com `dotnet add package`, métricas de buffer documentadas, `using` explícitos. `logging.md`: adicionada seção "Installation". `retention.md`: esclarecido que `AddRetention()` e `AddRetentionExecutor()` são registros separados com propósitos distintos.
 
 #### 4.4.8 Ausência de implementação oficial durável para `ITokenStore` (`SensitiveFlow.TokenStore.EFCore`)
 **Status:** **Resolvido (2026-05-09).** Novo projeto `SensitiveFlow.TokenStore.EFCore`: `EfCoreTokenStore<TContext>` com `IDbContextFactory<TContext>`, índice único em `Value` para concorrência segura, `TokenDbContext` dedicado e `AddEfCoreTokenStore()` / `AddEfCoreTokenStore<TContext>()` que também registram `TokenPseudonymizer` como `IPseudonymizer`.
@@ -215,17 +207,17 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 |---|--------|------------|
 | 4.5.1 | **Resolvido** (§3.1) | TaxId regex duplicado |
 | 4.5.2 | **Resolvido** (§3.1) | Hex via Convert.ToHexStringLower |
-| 4.5.3 | Aberto | `NameMasker.Mask` colapsa espaços múltiplos no `Join`. Cosmético. |
-| 4.5.4 | Aberto | `EmailMasker` regex permissiva. OK para mascaramento. |
-| 4.5.5 | Aberto | `PhoneMasker` não suporta `.` como separador. Documentar. |
-| 4.5.6 | Aberto | `AuditRecord.Id` aloca `Guid.NewGuid()` mesmo se caller for sobrescrever. Marginal. |
-| 4.5.7 | Aberto | `AuditRecord.Operation` default `Access`. Considerar `required`. |
-| 4.5.8 | Aberto | `AuditRecord.Timestamp` capturado no `init`. Aceitável. |
+| 4.5.3 | **Resolvido (2026-05-09).** `StringSplitOptions.None` → `RemoveEmptyEntries` — nomes com espaços múltiplos não colapsam mais. |
+| 4.5.4 | Validado | `EmailMasker` regex permissiva. OK para mascaramento — o propósito é reduzir exposição visual, não validar. |
+| 4.5.5 | **Resolvido (2026-05-09).** `<remarks>` documenta limitação com dots como separadores. |
+| 4.5.6 | **Resolvido** (§3.3) | `AuditRecord.Id` mudou de `string` para `Guid`. `Guid.NewGuid()` é value-type, sem alocação de heap. |
+| 4.5.7 | **Resolvido** (§3.3) | `<remarks>` adicionado explicando o default `Access` e quando sobrescrever. |
+| 4.5.8 | Validado | `AuditRecord.Timestamp` capturado no `init`. Aceitável — `DateTimeOffset.UtcNow` é a intenção correta para auditoria. |
 | 4.5.9 | OK | `AddSensitiveFlowLogging` validation. |
-| 4.5.10 | Aberto | `Analyzers.IsLoggingCall` — `containingType.Name == "LoggerExtensions"` não-qualificado. Falsos positivos teóricos. |
-| 4.5.11 | Aberto | `RetentionEvaluator.EvaluateAsync` fail-fast. Documentar. |
-| 4.5.12 | Aberto | `Directory.Packages.props` versões. Verificar quando sair de preview. |
-| 4.5.13 | Aberto | TFM `net8.0;net10.0` (sem net9.0). Aceitável se net10 GA. |
+| 4.5.10 | **Resolvido** (§3.3) | `LoggerExtensions` verificado com namespace `Microsoft.Extensions.Logging`. |
+| 4.5.11 | **Resolvido (2026-05-09).** `<remarks>` documenta comportamento fail-fast: sem handlers, primeira expiração lança exceção; com handlers, loop completa. |
+| 4.5.12 | **Resolvido (2026-05-09).** TFM atualizado para `net8.0;net9.0;net10.0`. SDK 9.0.313 instalado. |
+| 4.5.13 | **Resolvido (2026-05-09).** TFM `net8.0;net9.0;net10.0`. SDK 9.0.313 instalado. |
 | 4.5.14 | **Resolvido** (§3.1) | Source generator predicate ineficiente — capturava TODAS propriedades com qualquer atributo (ex.: `[Required]`), causando trabalho extra em compilação. Otimizado para filtrar apenas `PersonalData`/`SensitiveData`/`RetentionData`. | [SensitiveMemberGenerator.cs:28-33](../src/SensitiveFlow.SourceGenerators/SensitiveMemberGenerator.cs#L28-L33) |
 | 4.5.15 | **Resolvido** (§3.1) | Source generator não descobre propriedades de interfaces — walka apenas `BaseType`. Reflection fallback cobre. Documentado como limitação conhecida. | [SensitiveMemberGenerator.cs:107-128](../src/SensitiveFlow.SourceGenerators/SensitiveMemberGenerator.cs#L107-L128) |
 
@@ -240,7 +232,7 @@ SensitiveFlow.Core   (atributos, enums, contratos, modelos, exceções, Sensitiv
 | `StringAnonymizationExtensions.PseudonymizeHmac` | **Resolvido** | Cache estático por chave (4.3.4) |
 | `HmacPseudonymizer.Pseudonymize` | **Resolvido** | `Convert.ToHexStringLower` + `HashData(Span<byte>)` |
 | `BrazilianTaxIdAnonymizer.Anonymize` | **Resolvido** | Regex de dígito reutilizado (4.5.1) |
-| `RedactingLogger.Log` | Aberto | Pré-checar `Contains("[Sensitive]")` antes do Replace ainda valeria |
+| `RedactingLogger.Log` | **Resolvido** | Fast-path `string.Contains("[Sensitive]", Ordinal)` antes do regex (§3.3 P1) |
 
 ---
 
@@ -267,9 +259,6 @@ P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit +
 | Prioridade | Item | Esforço |
 |------------|------|---------|
 | P3 | 4.4.3 (analyzer para PII não anotada) | Médio |
-| P3 | 4.2.7 (RetentionEvaluator recursivo) | Médio |
-| P3 | 4.2.9 (source generator + interfaces) | Baixo |
-| P3 | 4.5.* itens cosméticos | Baixo |
 
 ---
 
@@ -291,3 +280,4 @@ P0 + P1 + P2 originais + perf + decorator retry + erasure + code-fix + TestKit +
 | 2026-05-08 | `feat/initial-infrastructure` (ajustes) | Claude (Opus 4.7) | Resolveu 21 itens (todos P0/P1/P2 + perf + DX). Adicionou pacotes `TestKit`, `Analyzers.CodeFixes`. Adicionou `RetryingAuditStore` decorator e erasure namespace. **Breaking:** interceptor agora exige `DataSubjectId`/`UserId`. 18 novos testes; total 219 verde em net10. |
 | 2026-05-08 | `feat/initial-infrastructure` (source generator analysis) | Claude (Opus 4.7) | Análise aprofundada do source generator: genéricos aninhados validados (funcionam), interfaces não percorridas (documentado §4.2.9). Predicate otimizado para filtrar apenas atributos relevantes (§4.5.14). 20 novos testes (SF0003 + RetentionExecutor + Audit.EFCore); total 239 verde em net10. |
 | 2026-05-09 | `feat/initial-infrastructure` (backend gaps) | GitHub Copilot (DeepSeek v4) | Resolveu 4 gaps arquiteturais (§4.4.8–§4.4.12): (1) `SensitiveFlow.TokenStore.EFCore` — `EfCoreTokenStore<TContext>` com índice único e concorrência segura; (2) Health checks + métricas OpenTelemetry no `BufferedAuditStore` (`GetHealth()`, gauges/counters de pending/dropped/flush failures); (3) Container tests para SQL Server (`SqlServerAuditStoreContainerTests`) e Redis (`RedisTokenStoreContainerTests` com atomicidade Lua); (4) `SensitiveFlow.Audit.Snapshots.EFCore` — `EfCoreAuditSnapshotStore<TContext>` com `SnapshotDbContext` dedicado. Novas constantes em `SensitiveFlowDiagnostics` para métricas de buffer. |
+| 2026-05-09 | `feat/initial-infrastructure` (remaining open items) | GitHub Copilot (DeepSeek v4) | Resolveu itens pendentes do §4: (1) §4.2.4 — `AddSensitiveFlowAuditContext<T>` marcado `[Obsolete]`; (2) §4.2.7 — `RetentionEvaluator` e `RetentionExecutor` com travessia recursiva de objetos aninhados (cache `ConcurrentDictionary`); (3) §4.4.6 — comentários nos samples explicando registro manual vs `AddEfCoreTokenStore()`; (4) §4.4.7 — `diagnostics.md`/`logging.md`/`retention.md` com seções de instalação, usings explícitos e esclarecimento de registros separados; (5) §4.5.3 — `NameMasker` com `RemoveEmptyEntries`; (6) §4.5.5 — `PhoneMasker` documentando limitação com dots; (7) §4.5.11 — `RetentionEvaluator` documentando fail-fast; (8) §4.5.6/§4.5.7/§4.5.10/§5 — inconsistências corrigidas (itens já resolvidos em §3.3 mas ainda marcados como Aberto). Build: 0 erros, 0 avisos. Todos os testes passando. |

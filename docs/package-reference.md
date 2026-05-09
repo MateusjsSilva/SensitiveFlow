@@ -183,7 +183,6 @@ Purpose:
 Primary APIs:
 
 - `AddSensitiveFlowEFCore()`
-- `AddSensitiveFlowAuditContext<TContext>()`
 - `SensitiveDataAuditInterceptor`
 - `NullAuditContext`
 
@@ -195,7 +194,7 @@ Recommended setup:
 
 ```csharp
 builder.Services.AddSensitiveFlowEFCore();
-builder.Services.AddSensitiveFlowAuditContext<MyAuditContext>();
+builder.Services.AddScoped<IAuditContext, MyAuditContext>();
 ```
 
 Operational notes:

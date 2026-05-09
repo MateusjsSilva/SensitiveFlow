@@ -2,6 +2,12 @@
 
 `SensitiveFlow.Diagnostics` bridges the library to OpenTelemetry by emitting spans and metrics through `System.Diagnostics`.
 
+## Installation
+
+```bash
+dotnet add package SensitiveFlow.Diagnostics
+```
+
 ## What it emits
 
 - ActivitySource name: `SensitiveFlow` (`SensitiveFlowDiagnostics.ActivitySourceName`)
@@ -11,10 +17,16 @@
   - `sensitiveflow.audit.append.duration` (histogram, ms)
   - `sensitiveflow.audit.append.count` (counter, records)
   - `sensitiveflow.redact.fields.count` (counter, fields)
+  - `sensitiveflow.audit.buffer.pending` (gauge, items) — requires `BufferedAuditStore`
+  - `sensitiveflow.audit.buffer.dropped` (counter, items) — requires `BufferedAuditStore`
+  - `sensitiveflow.audit.buffer.flush_failures` (counter, failures) — requires `BufferedAuditStore`
 
 ## Registration
 
 ```csharp
+using SensitiveFlow.Core.Diagnostics;
+using SensitiveFlow.Diagnostics.Extensions;
+
 builder.Services.AddSensitiveFlowDiagnostics();
 
 builder.Services.AddOpenTelemetry()

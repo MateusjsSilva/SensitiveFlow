@@ -58,7 +58,7 @@ public sealed class MyAuditContext : IAuditContext
 }
 
 builder.Services.AddSensitiveFlowEFCore();
-builder.Services.AddSensitiveFlowAuditContext<MyAuditContext>();
+builder.Services.AddScoped<IAuditContext, MyAuditContext>();
 ```
 
 ## What gets audited

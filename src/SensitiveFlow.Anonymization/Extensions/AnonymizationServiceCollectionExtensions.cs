@@ -14,8 +14,10 @@ namespace SensitiveFlow.Anonymization.Extensions;
 public static class AnonymizationServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers a durable <see cref="ITokenStore"/> implementation and wires
-    /// <see cref="TokenPseudonymizer"/> as the scoped <see cref="IPseudonymizer"/>.
+    /// Registers a durable <see cref="ITokenStore"/> implementation.
+    /// Does <b>not</b> register <see cref="IPseudonymizer"/> — call
+    /// <see cref="AddTokenPseudonymizer"/> or <see cref="AddPseudonymizer{TPseudonymizer}"/>
+    /// separately if you need reversible pseudonymization.
     /// </summary>
     /// <typeparam name="TStore">
     /// Your <see cref="ITokenStore"/> implementation backed by a durable sink
@@ -25,19 +27,42 @@ public static class AnonymizationServiceCollectionExtensions
     /// </typeparam>
     /// <example>
     /// <code>
-    /// // Custom store backed by your own DbContext that maps TokenMappingEntity:
+    /// // Register the store and the pseudonymizer separately:
     /// builder.Services.AddTokenStore&lt;MyEfCoreTokenStore&gt;();
+    /// builder.Services.AddTokenPseudonymizer();
     ///
-    /// // Or register both components manually:
-    /// builder.Services.AddScoped&lt;ITokenStore, MyEfCoreTokenStore&gt;();
-    /// builder.Services.AddScoped&lt;IPseudonymizer, TokenPseudonymizer&gt;();
+    /// // Or use a different pseudonymizer:
+    /// builder.Services.AddTokenStore&lt;MyEfCoreTokenStore&gt;();
+    /// builder.Services.AddPseudonymizer&lt;HmacPseudonymizer&gt;();
     /// </code>
     /// </example>
     public static IServiceCollection AddTokenStore<TStore>(this IServiceCollection services)
         where TStore : class, ITokenStore
     {
         services.AddScoped<ITokenStore, TStore>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="TokenPseudonymizer"/> as the scoped <see cref="IPseudonymizer"/>.
+    /// Requires an <see cref="ITokenStore"/> to already be registered.
+    /// </summary>
+    public static IServiceCollection AddTokenPseudonymizer(this IServiceCollection services)
+    {
         services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a custom <see cref="IPseudonymizer"/> implementation.
+    /// Use this when you want a non-default pseudonymizer (e.g. <c>HmacPseudonymizer</c>)
+    /// instead of <see cref="TokenPseudonymizer"/>.
+    /// </summary>
+    /// <typeparam name="TPseudonymizer">Your <see cref="IPseudonymizer"/> implementation.</typeparam>
+    public static IServiceCollection AddPseudonymizer<TPseudonymizer>(this IServiceCollection services)
+        where TPseudonymizer : class, IPseudonymizer
+    {
+        services.AddScoped<IPseudonymizer, TPseudonymizer>();
         return services;
     }
 

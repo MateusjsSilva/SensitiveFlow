@@ -25,16 +25,4 @@ public static class EFCoreServiceCollectionExtensions
         services.AddScoped<SensitiveDataAuditInterceptor>();
         return services;
     }
-
-    /// <summary>
-    /// Replaces the registered <see cref="IAuditContext"/> with a custom scoped implementation.
-    /// Call this after <see cref="AddSensitiveFlowEFCore"/> to override the default
-    /// <see cref="NullAuditContext"/> with an HTTP-aware or custom context.
-    /// </summary>
-    public static IServiceCollection AddSensitiveFlowAuditContext<TContext>(this IServiceCollection services)
-        where TContext : class, IAuditContext
-    {
-        services.AddScoped<IAuditContext, TContext>();
-        return services;
-    }
 }

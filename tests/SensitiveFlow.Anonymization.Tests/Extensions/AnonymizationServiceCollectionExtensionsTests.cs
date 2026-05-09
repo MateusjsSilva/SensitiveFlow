@@ -22,10 +22,11 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddTokenStore_RegistersTokenPseudonymizerAsIPseudonymizer()
+    public void AddTokenPseudonymizer_RegistersTokenPseudonymizerAsIPseudonymizer()
     {
         var services = new ServiceCollection();
         services.AddTokenStore<FakeTokenStore>();
+        services.AddTokenPseudonymizer();
 
         var provider = services.BuildServiceProvider();
 
@@ -33,7 +34,29 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddTokenStore_RegistersBothAsScoped()
+    public void AddPseudonymizer_RegistersCustomPseudonymizer()
+    {
+        var services = new ServiceCollection();
+        services.AddPseudonymizer<FakePseudonymizer>();
+
+        var provider = services.BuildServiceProvider();
+
+        provider.GetService<IPseudonymizer>().Should().BeOfType<FakePseudonymizer>();
+    }
+
+    [Fact]
+    public void AddTokenStore_DoesNotRegisterIPseudonymizer()
+    {
+        var services = new ServiceCollection();
+        services.AddTokenStore<FakeTokenStore>();
+
+        var provider = services.BuildServiceProvider();
+
+        provider.GetService<IPseudonymizer>().Should().BeNull();
+    }
+
+    [Fact]
+    public void AddTokenStore_RegistersAsScoped()
     {
         var services = new ServiceCollection();
         services.AddTokenStore<FakeTokenStore>();
@@ -48,12 +71,6 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
         var store3 = scope2.ServiceProvider.GetRequiredService<ITokenStore>();
         store1.Should().BeSameAs(store2);
         store1.Should().NotBeSameAs(store3);
-
-        var pseudo1 = scope1.ServiceProvider.GetRequiredService<IPseudonymizer>();
-        var pseudo2 = scope1.ServiceProvider.GetRequiredService<IPseudonymizer>();
-        var pseudo3 = scope2.ServiceProvider.GetRequiredService<IPseudonymizer>();
-        pseudo1.Should().BeSameAs(pseudo2);
-        pseudo1.Should().NotBeSameAs(pseudo3);
     }
 
     [Fact]
@@ -84,6 +101,17 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
             => Task.FromResult(Guid.NewGuid().ToString());
 
         public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
+            => Task.FromResult(token);
+    }
+
+    private sealed class FakePseudonymizer : IPseudonymizer
+    {
+        public bool CanPseudonymize(string value) => true;
+        public string Pseudonymize(string value) => value;
+        public Task<string> PseudonymizeAsync(string value, CancellationToken cancellationToken = default)
+            => Task.FromResult(value);
+        public string Reverse(string token) => token;
+        public Task<string> ReverseAsync(string token, CancellationToken cancellationToken = default)
             => Task.FromResult(token);
     }
 }

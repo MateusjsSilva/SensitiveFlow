@@ -12,6 +12,11 @@ namespace SensitiveFlow.Anonymization.Masking;
 /// remain visible, which may allow re-identification when combined with other fields.
 /// The result remains personal data and all privacy obligations apply.
 /// Use this class to reduce accidental exposure in UIs or logs — not as a compliance measure.
+/// <para>
+/// <b>Limitation:</b> The validator only accepts digits, spaces, parentheses, hyphens, and plus signs.
+/// Phone numbers using dots as separators (e.g. <c>+55.11.99999.8877</c>) are not recognized and will
+/// pass through unmasked. Normalize dot-separated numbers before masking.
+/// </para>
 /// </remarks>
 public sealed class PhoneMasker : IMasker
 {

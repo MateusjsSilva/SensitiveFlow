@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Reflection;
@@ -10,6 +12,19 @@ namespace SensitiveFlow.Retention.Services;
 /// </summary>
 public sealed class RetentionEvaluator
 {
+    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> NavigablePropertiesCache = new();
+
+    private static readonly HashSet<Type> TerminalTypes =
+    [
+        typeof(string),
+        typeof(decimal),
+        typeof(DateTime),
+        typeof(DateTimeOffset),
+        typeof(TimeSpan),
+        typeof(Guid),
+        typeof(Uri),
+    ];
+
     private readonly IEnumerable<IRetentionExpirationHandler> _handlers;
 
     /// <summary>
@@ -32,11 +47,30 @@ public sealed class RetentionEvaluator
     /// Thrown when a field is expired and no handlers are registered.
     /// When handlers are registered, they receive the event instead.
     /// </exception>
+    /// <remarks>
+    /// <para>
+    /// <b>Fail-fast behavior:</b> When no handlers are registered, the first expired field
+    /// throws <see cref="RetentionExpiredException"/> immediately — subsequent fields on the
+    /// same entity are not evaluated. To collect all expired fields in one pass, register at
+    /// least one handler (even a no-op collector) so the loop completes without throwing.
+    /// </para>
+    /// <para>
+    /// <b>Nested objects:</b> Properties whose type is a reference type not in the terminal set
+    /// (string, DateTime, Guid, etc.) are recursively traversed. This means a
+    /// <c>[RetentionData]</c> attribute on <c>Customer.Address.PostalCode</c> is discovered
+    /// automatically — you do not need to call the evaluator on <c>Address</c> separately.
+    /// </para>
+    /// </remarks>
     public async Task EvaluateAsync(object entity, DateTimeOffset referenceDate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
+        await EvaluateRecursiveAsync(entity, referenceDate, cancellationToken).ConfigureAwait(false);
+    }
 
-        var retentionProperties = SensitiveMemberCache.GetRetentionProperties(entity.GetType());
+    private async Task EvaluateRecursiveAsync(object entity, DateTimeOffset referenceDate, CancellationToken cancellationToken)
+    {
+        var type = entity.GetType();
+        var retentionProperties = SensitiveMemberCache.GetRetentionProperties(type);
 
         foreach (var pair in retentionProperties)
         {
@@ -50,13 +84,38 @@ public sealed class RetentionEvaluator
             {
                 foreach (var handler in _handlers)
                 {
-                    await handler.HandleAsync(entity, pair.Property.Name, expiration, cancellationToken);
+                    await handler.HandleAsync(entity, pair.Property.Name, expiration, cancellationToken)
+                        .ConfigureAwait(false);
                 }
             }
             else
             {
-                throw new RetentionExpiredException(entity.GetType().Name, pair.Property.Name, expiration);
+                throw new RetentionExpiredException(type.Name, pair.Property.Name, expiration);
             }
         }
+
+        // Recurse into navigable properties (complex types that may carry their own [RetentionData]).
+        foreach (var prop in GetNavigableProperties(type))
+        {
+            var value = prop.GetValue(entity);
+            if (value is null)
+            {
+                continue;
+            }
+
+            await EvaluateRecursiveAsync(value, referenceDate, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static PropertyInfo[] GetNavigableProperties(Type type)
+    {
+        return NavigablePropertiesCache.GetOrAdd(type, static t =>
+            t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+             .Where(static p => p.CanRead
+                 && !p.PropertyType.IsValueType
+                 && !TerminalTypes.Contains(p.PropertyType)
+                 && p.PropertyType != typeof(object)
+                 && p.GetIndexParameters().Length == 0)
+             .ToArray());
     }
 }

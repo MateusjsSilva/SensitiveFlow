@@ -85,6 +85,13 @@ Use `RetentionExecutionReport.Entries` to delete or notify for policies the exec
 
 ## Registration
 
+`AddRetention()` and `AddRetentionExecutor()` are **separate registrations** — each serves a different purpose:
+
+- `AddRetention()` registers `RetentionEvaluator` (read-only inspection — reports expiration via handlers or throws).
+- `AddRetentionExecutor()` registers `RetentionExecutor` (mutates expired fields in place for `AnonymizeOnExpiration`).
+
+You can register one, both, or neither depending on your workflow.
+
 ```csharp
 builder.Services.AddRetention();
 builder.Services.AddRetentionHandler<AnonymizeOnExpirationHandler>();

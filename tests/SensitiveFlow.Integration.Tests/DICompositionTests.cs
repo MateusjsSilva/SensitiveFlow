@@ -126,11 +126,12 @@ public sealed class DICompositionTests
     }
 
     [Fact]
-    public void AddTokenStore_RegistersBothTokenStoreAndPseudonymizer()
+    public void AddTokenStore_WithTokenPseudonymizer_RegistersBoth()
     {
         var services = new ServiceCollection();
 
         services.AddTokenStore<FakeTokenStore>();
+        services.AddTokenPseudonymizer();
 
         var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();

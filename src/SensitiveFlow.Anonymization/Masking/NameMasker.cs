@@ -32,7 +32,7 @@ public sealed class NameMasker : IMasker
             return value;
         }
 
-        var words  = value.Split(' ', StringSplitOptions.None);
+        var words  = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var masked = new string[words.Length];
 
         for (var i = 0; i < words.Length; i++)

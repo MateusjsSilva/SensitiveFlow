@@ -56,6 +56,10 @@ try
     builder.Services.AddAuditStoreRetry();
     builder.Services.AddSensitiveFlowDiagnostics();
 
+    // This sample registers ITokenStore and IPseudonymizer manually to show the
+    // explicit wiring. For a simpler setup, use the first-party EF Core extension:
+    //   builder.Services.AddEfCoreTokenStore(options => options.UseSqlite(...));
+    // That single call registers both ITokenStore (Singleton) and IPseudonymizer (Scoped).
     builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
     builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
     builder.Services.AddCachingTokenStore();
