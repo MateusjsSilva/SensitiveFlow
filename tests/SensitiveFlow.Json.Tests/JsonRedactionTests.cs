@@ -89,6 +89,69 @@ public sealed class JsonRedactionTests
         json.Should().Contain("\"PublicNote\":\"hello world\"");
     }
 
+    [Fact]
+    public void Mode_Mask_HandlesPhoneNameGenericSingleCharacterEmptyAndNullValues()
+    {
+        var json = JsonSerializer.Serialize(new ExtendedCustomer
+        {
+            Phone = "+55 11 99999-8877",
+            NickName = "Ana Maria",
+            TaxId = "12345678900",
+            OneCharacterSecret = "x",
+            EmptySecret = string.Empty,
+            NullSecret = null,
+        }, Build());
+
+        json.Should().NotContain("+55 11 99999-8877");
+        json.Should().Contain("\"Phone\":\"\\u002B** ** *****-**77\"");
+        json.Should().Contain("\"NickName\":\"A** M****\"");
+        json.Should().Contain("\"TaxId\":\"1**********\"");
+        json.Should().Contain("\"OneCharacterSecret\":\"*\"");
+        json.Should().Contain("\"EmptySecret\":\"\"");
+        json.Should().Contain("\"NullSecret\":null");
+    }
+
+    [Fact]
+    public void Mode_Mask_ReplacesNonStringSensitiveValuesWithPlaceholder()
+    {
+        var json = JsonSerializer.Serialize(new NumericSensitiveData
+        {
+            Score = 42,
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Mask,
+            RedactedPlaceholder = "***",
+        }));
+
+        json.Should().Contain("\"Score\":0");
+        json.Should().NotContain("42");
+    }
+
+    [Fact]
+    public void Mode_Redacted_UsesCustomPlaceholder()
+    {
+        var json = JsonSerializer.Serialize(new Customer
+        {
+            Name = "Alice",
+            Email = "alice@example.com",
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Redacted,
+            RedactedPlaceholder = "***",
+        }));
+
+        json.Should().Contain("\"Name\":\"***\"");
+        json.Should().Contain("\"Email\":\"***\"");
+    }
+
+    [Fact]
+    public void WithSensitiveDataRedaction_AllowsNullOptions()
+    {
+        Action act = () => JsonSerializer.Serialize(new Customer(), Build(null));
+
+        act.Should().NotThrow();
+    }
+
     public class Customer
     {
         public int Id { get; set; }
@@ -111,5 +174,32 @@ public sealed class JsonRedactionTests
         [SensitiveData(Category = SensitiveDataCategory.Other)]
         [JsonRedaction(JsonRedactionMode.Omit)]
         public string TaxId { get; set; } = string.Empty;
+    }
+
+    public class ExtendedCustomer
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Phone { get; set; } = string.Empty;
+
+        [PersonalData(Category = DataCategory.Identification)]
+        public string NickName { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string TaxId { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string OneCharacterSecret { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string EmptySecret { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string? NullSecret { get; set; }
+    }
+
+    public class NumericSensitiveData
+    {
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public int Score { get; set; }
     }
 }

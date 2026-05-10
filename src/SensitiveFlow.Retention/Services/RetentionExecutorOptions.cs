@@ -14,14 +14,14 @@ public sealed class RetentionExecutorOptions
     public Func<object, PropertyInfo, object?> AnonymousValueFactory
     {
         get => _anonymousValueFactory ?? DefaultAnonymousValue;
-        init => _anonymousValueFactory = value;
+        set => _anonymousValueFactory = value;
     }
 
     /// <summary>
     /// Default placeholder used by <see cref="AnonymousValueFactory"/> for string properties.
     /// Value types collapse to <c>default(T)</c>.
     /// </summary>
-    public string AnonymousStringMarker { get; init; } = "[ANONYMIZED]";
+    public string AnonymousStringMarker { get; set; } = "[ANONYMIZED]";
 
     /// <summary>
     /// Returns the type's anonymous default. Strings return <see cref="AnonymousStringMarker"/>,

@@ -6,7 +6,7 @@ obj/
 .vs/
 *.nupkg
 *.snupkg
-TestResults/
+TestResults*/
 coverage/
 BenchmarkDotNet.Artifacts/
 

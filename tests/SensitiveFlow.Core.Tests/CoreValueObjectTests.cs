@@ -2,6 +2,7 @@ using FluentAssertions;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Exceptions;
+using SensitiveFlow.Core.Models;
 
 namespace SensitiveFlow.Core.Tests;
 
@@ -59,5 +60,48 @@ public sealed class CoreValueObjectTests
         exception.Field.Should().Be("Email");
         exception.ExpiredAt.Should().Be(expiredAt);
         exception.Message.Should().Contain("Customer").And.Contain("Email");
+    }
+
+    [Fact]
+    public void AuditSnapshot_ExposesDefaultAndProvidedValues()
+    {
+        var timestamp = DateTimeOffset.Parse("2026-05-10T12:00:00Z");
+        var id = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+        var snapshot = new AuditSnapshot
+        {
+            Id = id,
+            DataSubjectId = "subject-1",
+            Aggregate = "Customer",
+            AggregateId = "customer-1",
+            Operation = AuditOperation.Create,
+            Timestamp = timestamp,
+            ActorId = "actor-1",
+            IpAddressToken = "ip-token",
+            BeforeJson = null,
+            AfterJson = "{\"name\":\"Alice\"}",
+        };
+
+        snapshot.Id.Should().Be(id);
+        snapshot.DataSubjectId.Should().Be("subject-1");
+        snapshot.Aggregate.Should().Be("Customer");
+        snapshot.AggregateId.Should().Be("customer-1");
+        snapshot.Operation.Should().Be(AuditOperation.Create);
+        snapshot.Timestamp.Should().Be(timestamp);
+        snapshot.ActorId.Should().Be("actor-1");
+        snapshot.IpAddressToken.Should().Be("ip-token");
+        snapshot.BeforeJson.Should().BeNull();
+        snapshot.AfterJson.Should().Be("{\"name\":\"Alice\"}");
+
+        var defaultSnapshot = new AuditSnapshot
+        {
+            DataSubjectId = "subject-2",
+            Aggregate = "Customer",
+            AggregateId = "customer-2",
+        };
+
+        defaultSnapshot.Id.Should().NotBeEmpty();
+        defaultSnapshot.Operation.Should().Be(AuditOperation.Update);
+        defaultSnapshot.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
 }

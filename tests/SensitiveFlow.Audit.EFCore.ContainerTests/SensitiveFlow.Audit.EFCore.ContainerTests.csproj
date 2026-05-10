@@ -14,17 +14,8 @@
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="StackExchange.Redis" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Audit.EFCore\SensitiveFlow.Audit.EFCore.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Using Include="Xunit" />
   </ItemGroup>
 </Project>

@@ -75,6 +75,57 @@ public sealed class RetentionExtensionsTests
         result.Should().BeSameAs(services);
     }
 
+    [Fact]
+    public void AddRetentionExecutor_RegistersRetentionExecutorAsSingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddRetentionExecutor();
+
+        var provider = services.BuildServiceProvider();
+
+        var executor = provider.GetService<RetentionExecutor>();
+        executor.Should().NotBeNull();
+
+        var a = provider.GetRequiredService<RetentionExecutor>();
+        var b = provider.GetRequiredService<RetentionExecutor>();
+        a.Should().BeSameAs(b);
+    }
+
+    [Fact]
+    public void AddRetentionExecutor_WithConfigure_AppliesOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddRetentionExecutor(options =>
+        {
+            options.AnonymousStringMarker = "CUSTOM";
+        });
+
+        var provider = services.BuildServiceProvider();
+
+        var options = provider.GetRequiredService<RetentionExecutorOptions>();
+        options.AnonymousStringMarker.Should().Be("CUSTOM");
+    }
+
+    [Fact]
+    public void AddRetentionExecutor_WithoutConfigure_UsesDefaults()
+    {
+        var services = new ServiceCollection();
+        services.AddRetentionExecutor();
+
+        var provider = services.BuildServiceProvider();
+
+        var options = provider.GetRequiredService<RetentionExecutorOptions>();
+        options.AnonymousStringMarker.Should().Be("[ANONYMIZED]");
+    }
+
+    [Fact]
+    public void AddRetentionExecutor_ReturnsSameServiceCollection()
+    {
+        var services = new ServiceCollection();
+        var result = services.AddRetentionExecutor();
+        result.Should().BeSameAs(services);
+    }
+
     private sealed class FakeHandler : IRetentionExpirationHandler
     {
         public Task HandleAsync(object entity, string fieldName, DateTimeOffset expiredAt, CancellationToken cancellationToken = default)

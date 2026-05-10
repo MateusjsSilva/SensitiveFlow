@@ -25,6 +25,19 @@ public sealed class RetentionEvaluatorTests
         public string Data { get; set; } = "value";
     }
 
+    private sealed class ParentEntity
+    {
+        public NestedEntity? MissingNested { get; set; }
+
+        public NestedEntity Nested { get; set; } = new();
+    }
+
+    private sealed class NestedEntity
+    {
+        [RetentionData(Years = 1, Policy = RetentionPolicy.DeleteOnExpiration)]
+        public string Secret { get; set; } = "nested-secret";
+    }
+
     [Fact]
     public async Task EvaluateAsync_NoExpiredFields_DoesNothing()
     {
@@ -101,5 +114,22 @@ public sealed class RetentionEvaluatorTests
 
         await handler1.Received(1).HandleAsync(entity, "Email", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
         await handler2.Received(1).HandleAsync(entity, "Email", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_RecursesIntoNestedEntities()
+    {
+        var handler = Substitute.For<IRetentionExpirationHandler>();
+        var evaluator = new RetentionEvaluator([handler]);
+        var entity = new ParentEntity();
+        var reference = DateTimeOffset.UtcNow.AddYears(-2);
+
+        await evaluator.EvaluateAsync(entity, reference);
+
+        await handler.Received(1).HandleAsync(
+            entity.Nested,
+            nameof(NestedEntity.Secret),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<CancellationToken>());
     }
 }

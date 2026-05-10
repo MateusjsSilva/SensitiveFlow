@@ -78,6 +78,14 @@ public sealed class SensitiveMemberCacheTests
     }
 
     [Fact]
+    public void SensitiveMemberCache_IgnoresInterfacePropertiesWithoutRetentionAttribute()
+    {
+        var retention = SensitiveMemberCache.GetRetentionProperties(typeof(InterfaceWithoutRetentionCustomer));
+
+        retention.Should().BeEmpty();
+    }
+
+    [Fact]
     public void RetentionProperty_ExposesPropertyAndAttribute()
     {
         var property = typeof(ReflectionCustomer).GetProperty(nameof(ReflectionCustomer.Name))!;
@@ -109,6 +117,17 @@ public sealed class SensitiveMemberCacheTests
     }
 
     private sealed class InterfaceCustomer : IInterfaceCustomer
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+
+    private interface IInterfaceWithoutRetentionCustomer
+    {
+        [PersonalData]
+        string Email { get; set; }
+    }
+
+    private sealed class InterfaceWithoutRetentionCustomer : IInterfaceWithoutRetentionCustomer
     {
         public string Email { get; set; } = string.Empty;
     }

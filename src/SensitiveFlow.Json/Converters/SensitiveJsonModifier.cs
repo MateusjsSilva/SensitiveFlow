@@ -93,15 +93,25 @@ public static class SensitiveJsonModifier
         jsonProperty.Get = obj =>
         {
             var value = originalGetter(obj);
-            return Redact(value, mode, placeholder, propertyName);
+            return Redact(value, mode, placeholder, propertyName, jsonProperty.PropertyType);
         };
     }
 
-    private static object? Redact(object? value, JsonRedactionMode mode, string placeholder, string propertyName)
+    private static object? Redact(
+        object? value,
+        JsonRedactionMode mode,
+        string placeholder,
+        string propertyName,
+        Type propertyType)
     {
         if (value is null)
         {
             return null;
+        }
+
+        if (propertyType != typeof(string))
+        {
+            return propertyType.IsValueType ? Activator.CreateInstance(propertyType) : null;
         }
 
         return mode switch
