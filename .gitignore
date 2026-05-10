@@ -10,6 +10,15 @@ TestResults/
 coverage/
 BenchmarkDotNet.Artifacts/
 
+## Local sample/runtime artifacts
+logs/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
 ## NuGet
 *.nuspec
 nuget.exe

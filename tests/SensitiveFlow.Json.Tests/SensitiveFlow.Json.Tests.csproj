@@ -1,19 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="coverlet.collector">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Json\SensitiveFlow.Json.csproj" />
   </ItemGroup>
-
 </Project>

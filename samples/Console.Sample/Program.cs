@@ -274,7 +274,7 @@ public sealed class EfCoreAuditStore : IAuditStore
         var query = _db.AuditEntries.AsQueryable();
         if (from.HasValue) { query = query.Where(r => r.Timestamp >= from.Value); }
         if (to.HasValue)   { query = query.Where(r => r.Timestamp <= to.Value); }
-        var rows = await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(cancellationToken);
+        var rows = await query.OrderBy(r => r.Id).Skip(skip).Take(take).ToListAsync(cancellationToken);
         return rows.Select(ToRecord).ToList();
     }
 
@@ -286,7 +286,7 @@ public sealed class EfCoreAuditStore : IAuditStore
         var query = _db.AuditEntries.Where(r => r.DataSubjectId == dataSubjectId);
         if (from.HasValue) { query = query.Where(r => r.Timestamp >= from.Value); }
         if (to.HasValue)   { query = query.Where(r => r.Timestamp <= to.Value); }
-        var rows = await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take).ToListAsync(cancellationToken);
+        var rows = await query.OrderBy(r => r.Id).Skip(skip).Take(take).ToListAsync(cancellationToken);
         return rows.Select(ToRecord).ToList();
     }
 

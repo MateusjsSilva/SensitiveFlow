@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Audit.Decorators;
 using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
@@ -44,6 +45,94 @@ public sealed class AuditStoreExtensionsTests
         var services = new ServiceCollection();
         var result = services.AddAuditStore<FakeAuditStore>();
         result.Should().BeSameAs(services);
+    }
+
+    [Fact]
+    public void AddAuditStoreRetry_WithoutAuditStore_ThrowsHelpfulError()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddAuditStoreRetry();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AddAuditStore<T>()*AddAuditStoreRetry*");
+    }
+
+    [Fact]
+    public void AddAuditStoreRetry_WrapsFactoryRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IAuditStore>(_ => new FakeAuditStore());
+
+        services.AddAuditStoreRetry(options => options.MaxAttempts = 1);
+        using var provider = services.BuildServiceProvider();
+
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IAuditStore>()
+            .Should().BeOfType<RetryingAuditStore>();
+    }
+
+    [Fact]
+    public void AddAuditStoreRetry_WrapsSingletonInstanceRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAuditStore>(new FakeAuditStore());
+
+        services.AddAuditStoreRetry();
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IAuditStore>()
+            .Should().BeOfType<RetryingAuditStore>();
+    }
+
+    [Fact]
+    public void AddBufferedAuditStore_WithoutAuditStore_ThrowsHelpfulError()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddBufferedAuditStore();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AddAuditStore<T>()*AddBufferedAuditStore*");
+    }
+
+    [Fact]
+    public void AddBufferedAuditStore_RejectsNonSingletonStore()
+    {
+        var services = new ServiceCollection();
+        services.AddAuditStore<FakeAuditStore>();
+
+        var act = () => services.AddBufferedAuditStore();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*requires a Singleton*");
+    }
+
+    [Fact]
+    public async Task AddBufferedAuditStore_WrapsSingletonFactoryRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAuditStore>(_ => new FakeAuditStore());
+
+        services.AddBufferedAuditStore(options => options.Capacity = 8);
+        await using var provider = services.BuildServiceProvider();
+
+        var store = provider.GetRequiredService<IAuditStore>();
+
+        store.Should().BeOfType<BufferedAuditStore>();
+    }
+
+    [Fact]
+    public async Task AddBufferedAuditStore_WrapsSingletonInstanceRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAuditStore>(new FakeAuditStore());
+
+        services.AddBufferedAuditStore();
+        await using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IAuditStore>()
+            .Should().BeOfType<BufferedAuditStore>();
     }
 
     private sealed class FakeAuditStore : IAuditStore
