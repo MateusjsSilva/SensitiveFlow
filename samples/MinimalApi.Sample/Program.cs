@@ -8,7 +8,6 @@ using Serilog.Events;
 using SensitiveFlow.Anonymization.Erasure;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Export;
-using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Audit.EFCore;
 using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.Audit.Extensions;
@@ -26,6 +25,8 @@ using SensitiveFlow.Json.Extensions;
 using SensitiveFlow.Logging.Extensions;
 using SensitiveFlow.Retention.Extensions;
 using SensitiveFlow.Retention.Services;
+using SensitiveFlow.TokenStore.EFCore;
+using SensitiveFlow.TokenStore.EFCore.Extensions;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
@@ -52,6 +53,8 @@ try
         ?? "Data Source=sensitiveflow-minimalapi.db";
     var auditConnection = builder.Configuration.GetConnectionString("Audit")
         ?? "Data Source=sensitiveflow-minimalapi-audit.db";
+    var tokenConnection = builder.Configuration.GetConnectionString("Tokens")
+        ?? "Data Source=sensitiveflow-minimalapi-tokens.db";
 
     builder.Services.AddDbContext<SampleDbContext>((sp, options) =>
         options.UseSqlite(appConnection)
@@ -60,13 +63,7 @@ try
     builder.Services.AddEfCoreAuditStore(options => options.UseSqlite(auditConnection));
     builder.Services.AddAuditStoreRetry();
     builder.Services.AddSensitiveFlowDiagnostics();
-
-    // This sample registers ITokenStore and IPseudonymizer manually to show the
-    // explicit wiring. For a simpler setup, use the first-party EF Core extension:
-    //   builder.Services.AddEfCoreTokenStore(options => options.UseSqlite(...));
-    // That single call registers both ITokenStore (Singleton) and IPseudonymizer (Scoped).
-    builder.Services.AddScoped<ITokenStore, EfCoreTokenStore>();
-    builder.Services.AddScoped<IPseudonymizer, TokenPseudonymizer>();
+    builder.Services.AddEfCoreTokenStore(options => options.UseSqlite(tokenConnection));
     builder.Services.AddCachingTokenStore();
     builder.Services.AddDataSubjectExport();
     builder.Services.AddDataSubjectErasure();
@@ -106,6 +103,11 @@ try
             .GetRequiredService<IDbContextFactory<AuditDbContext>>()
             .CreateDbContextAsync();
         await auditDb.Database.EnsureCreatedAsync();
+
+        await using var tokenDb = await scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<TokenDbContext>>()
+            .CreateDbContextAsync();
+        await tokenDb.Database.EnsureCreatedAsync();
     }
 
     if (app.Environment.IsDevelopment())

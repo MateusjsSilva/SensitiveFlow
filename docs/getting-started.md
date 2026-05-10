@@ -10,6 +10,7 @@ Install only the packages used by the app:
 dotnet add package SensitiveFlow.Core
 dotnet add package SensitiveFlow.Audit
 dotnet add package SensitiveFlow.Audit.EFCore
+dotnet add package SensitiveFlow.TokenStore.EFCore
 dotnet add package SensitiveFlow.EFCore
 dotnet add package SensitiveFlow.AspNetCore
 dotnet add package SensitiveFlow.Anonymization
@@ -46,7 +47,9 @@ public class Customer
 
 ## Step 2 - Register the recommended web stack
 
-This is the full ASP.NET Core + EF Core setup. For a smaller app, remove the packages you do not need.
+This is the recommended ASP.NET Core + EF Core setup. For a smaller app, keep only the
+features you need: `Core` + `Anonymization` works without DI, EF audit needs an
+`IAuditStore`, and ASP.NET Core IP pseudonymization needs an `IPseudonymizer`.
 
 ```csharp
 builder.Services.AddEfCoreAuditStore(options =>
@@ -71,7 +74,9 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.WithSensitiveDataRedaction());
 ```
 
-The token store is the one piece you still provide today. It must be durable because losing token mappings makes reversible pseudonymization impossible.
+`AddEfCoreTokenStore(...)` registers both `ITokenStore` and the default
+`IPseudonymizer`. Keep that store durable because losing token mappings makes reversible
+pseudonymization impossible.
 
 ## Step 3 - Wire your DbContext
 

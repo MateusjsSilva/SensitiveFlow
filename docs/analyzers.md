@@ -11,6 +11,24 @@ Add the package to any project that contains models or handlers you want to guar
 dotnet add package SensitiveFlow.Analyzers
 ```
 
+In application projects, keep analyzers private to that project:
+
+```xml
+<PackageReference Include="SensitiveFlow.Analyzers" Version="1.0.0-preview.1" PrivateAssets="all" />
+```
+
+During local development of this repository, reference the analyzer project as an
+analyzer instead of as a normal library:
+
+```xml
+<ProjectReference Include="..\src\SensitiveFlow.Analyzers\SensitiveFlow.Analyzers.csproj"
+                  OutputItemType="Analyzer"
+                  ReferenceOutputAssembly="false" />
+```
+
+Install `SensitiveFlow.Analyzers.CodeFixes` as well if you want IDE quick fixes for
+SF0001/SF0002.
+
 The diagnostics run automatically during `dotnet build` and in real-time inside VS Code,
 Visual Studio, and Rider via their Roslyn analysis pipelines.
 
@@ -118,6 +136,35 @@ public sealed class Customer
 
 ---
 
+### SF0004 -- Property name suggests unannotated personal data
+
+**Severity:** Info
+
+Triggers when a public property name looks like personal data, such as `Email`, `Phone`,
+`TaxId`, `Cpf`, `Ssn`, `Passport`, `Address`, `BirthDate`, or `IpAddress`, but the
+property is not annotated with `[PersonalData]` or `[SensitiveData]`.
+
+**Detected pattern:**
+
+```csharp
+public sealed class Customer
+{
+    public string Email { get; set; } = string.Empty; // SF0004
+}
+```
+
+**Compliant pattern:**
+
+```csharp
+public sealed class Customer
+{
+    [PersonalData]
+    public string Email { get; set; } = string.Empty;
+}
+```
+
+---
+
 ## How Suppression Works
 
 The analyzer considers a value safe when it passes through a method whose name contains
@@ -134,6 +181,7 @@ Use `.editorconfig` to adjust per-rule severity across the entire solution or pe
 dotnet_diagnostic.SF0001.severity = warning
 dotnet_diagnostic.SF0002.severity = warning
 dotnet_diagnostic.SF0003.severity = warning
+dotnet_diagnostic.SF0004.severity = suggestion
 ```
 
 Available severities: `error`, `warning`, `suggestion`, `silent`, `none`.
@@ -145,6 +193,7 @@ Prefer `error` in new code to prevent regressions from being merged:
 dotnet_diagnostic.SF0001.severity = error
 dotnet_diagnostic.SF0002.severity = error
 dotnet_diagnostic.SF0003.severity = error
+dotnet_diagnostic.SF0004.severity = warning
 ```
 
 ## Known Limitations
