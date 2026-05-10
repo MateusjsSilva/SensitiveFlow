@@ -39,6 +39,53 @@ public sealed class CachingTokenStoreTests
     }
 
     [Fact]
+    public async Task ResolveTokenAsync_CachesValueReturnedByInnerStore()
+    {
+        var inner = Substitute.For<ITokenStore>();
+        inner.ResolveTokenAsync("token", Arg.Any<CancellationToken>())
+            .Returns("value");
+        var sut = new CachingTokenStore(inner);
+
+        var first = await sut.ResolveTokenAsync("token");
+        var second = await sut.ResolveTokenAsync("token");
+
+        first.Should().Be("value");
+        second.Should().Be("value");
+        await inner.Received(1).ResolveTokenAsync("token", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullInnerAndInvalidOptions()
+    {
+        var actNullInner = () => new CachingTokenStore(null!);
+        var actInvalidOptions = () => new CachingTokenStore(Substitute.For<ITokenStore>(), new CachingTokenStoreOptions
+        {
+            MaxEntries = 0,
+        });
+
+        actNullInner.Should().Throw<ArgumentNullException>();
+        actInvalidOptions.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task GetOrCreateTokenAsync_RejectsNullValue()
+    {
+        var sut = new CachingTokenStore(Substitute.For<ITokenStore>());
+
+        await sut.Invoking(s => s.GetOrCreateTokenAsync(null!))
+            .Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task ResolveTokenAsync_RejectsNullToken()
+    {
+        var sut = new CachingTokenStore(Substitute.For<ITokenStore>());
+
+        await sut.Invoking(s => s.ResolveTokenAsync(null!))
+            .Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
     public async Task MaxEntries_EvictsOldestMapping()
     {
         var inner = Substitute.For<ITokenStore>();

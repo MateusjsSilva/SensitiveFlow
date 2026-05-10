@@ -54,6 +54,16 @@ public sealed class HmacPseudonymizerTests
     }
 
     [Fact]
+    public async Task PseudonymizeAsync_ReturnsSameTokenAsSyncApi()
+    {
+        var sync = _sut.Pseudonymize("any-value");
+
+        var asyncToken = await _sut.PseudonymizeAsync("any-value");
+
+        asyncToken.Should().Be(sync);
+    }
+
+    [Fact]
     public void Reverse_ThrowsNotSupportedException()
     {
         var token = _sut.Pseudonymize("value");

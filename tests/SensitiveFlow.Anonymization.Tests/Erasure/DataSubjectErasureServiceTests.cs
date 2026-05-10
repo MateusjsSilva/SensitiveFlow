@@ -24,6 +24,18 @@ public sealed class DataSubjectErasureServiceTests
         public string PublicField { get; set; } = "should-stay";
     }
 
+    private sealed class MixedCustomer
+    {
+        [PersonalData]
+        public int Score { get; set; } = 42;
+
+        [PersonalData]
+        public object? Reference { get; set; } = new();
+
+        [PersonalData]
+        public string ReadOnly => "keep";
+    }
+
     [Fact]
     public void Erase_OverwritesAnnotatedProperties()
     {
@@ -68,5 +80,35 @@ public sealed class DataSubjectErasureServiceTests
         var sut = new DataSubjectErasureService(new RedactionErasureStrategy());
         var act = () => sut.Erase(null!);
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Erase_DefaultsNonStringValuesAndSkipsReadOnlyProperties()
+    {
+        var sut = new DataSubjectErasureService(new RedactionErasureStrategy());
+        var customer = new MixedCustomer();
+
+        var count = sut.Erase(customer);
+
+        count.Should().Be(2);
+        customer.Score.Should().Be(0);
+        customer.Reference.Should().BeNull();
+        customer.ReadOnly.Should().Be("keep");
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullStrategy()
+    {
+        var act = () => new DataSubjectErasureService(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void RedactionErasureStrategy_RejectsBlankMarker()
+    {
+        var act = () => new RedactionErasureStrategy(" ");
+
+        act.Should().Throw<ArgumentException>();
     }
 }

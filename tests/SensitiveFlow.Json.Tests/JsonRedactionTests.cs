@@ -1,5 +1,7 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Json.Attributes;
@@ -152,6 +154,79 @@ public sealed class JsonRedactionTests
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void WithSensitiveDataRedaction_RejectsNullSerializerOptions()
+    {
+        var act = () => JsonRedactionExtensions.WithSensitiveDataRedaction(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void WithSensitiveDataRedaction_HandlesCollectionsAndWriteOnlyProperties()
+    {
+        var json = JsonSerializer.Serialize(new List<WriteOnlySensitiveData>
+        {
+            new() { Secret = "hidden" },
+        }, Build());
+
+        json.Should().Be("[{}]");
+        json.Should().NotContain("hidden");
+    }
+
+    [Fact]
+    public void Mode_Redacted_ReplacesNonStringReferenceValuesWithNull()
+    {
+        var json = JsonSerializer.Serialize(new ReferenceSensitiveData
+        {
+            Payload = new Payload("secret"),
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Redacted,
+        }));
+
+        json.Should().Contain("\"Payload\":null");
+        json.Should().NotContain("secret");
+    }
+
+    [Fact]
+    public void AddSensitiveFlowJsonRedaction_RegistersDefaultOptions()
+    {
+        var services = new ServiceCollection();
+
+        var result = services.AddSensitiveFlowJsonRedaction();
+        using var provider = services.BuildServiceProvider();
+
+        result.Should().BeSameAs(services);
+        provider.GetRequiredService<IOptions<JsonRedactionOptions>>()
+            .Value.DefaultMode.Should().Be(JsonRedactionMode.Mask);
+    }
+
+    [Fact]
+    public void AddSensitiveFlowJsonRedaction_AppliesConfiguration()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSensitiveFlowJsonRedaction(options =>
+        {
+            options.DefaultMode = JsonRedactionMode.Redacted;
+            options.RedactedPlaceholder = "***";
+        });
+        using var provider = services.BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<JsonRedactionOptions>>().Value;
+        options.DefaultMode.Should().Be(JsonRedactionMode.Redacted);
+        options.RedactedPlaceholder.Should().Be("***");
+    }
+
+    [Fact]
+    public void AddSensitiveFlowJsonRedaction_RejectsNullServices()
+    {
+        var act = () => JsonRedactionExtensions.AddSensitiveFlowJsonRedaction(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
     public class Customer
     {
         public int Id { get; set; }
@@ -202,4 +277,21 @@ public sealed class JsonRedactionTests
         [SensitiveData(Category = SensitiveDataCategory.Other)]
         public int Score { get; set; }
     }
+
+    public class WriteOnlySensitiveData
+    {
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string Secret
+        {
+            set { _ = value; }
+        }
+    }
+
+    public class ReferenceSensitiveData
+    {
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public Payload? Payload { get; set; }
+    }
+
+    public sealed record Payload(string Value);
 }

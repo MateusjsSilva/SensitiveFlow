@@ -2,6 +2,8 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SensitiveFlow.Anonymization.Decorators;
+using SensitiveFlow.Anonymization.Erasure;
+using SensitiveFlow.Anonymization.Export;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Core.Interfaces;
@@ -93,6 +95,82 @@ public sealed class AnonymizationServiceCollectionExtensionsTests
 
         scope.ServiceProvider.GetRequiredService<ITokenStore>()
             .Should().BeOfType<CachingTokenStore>();
+    }
+
+    [Fact]
+    public void AddCachingTokenStore_WithoutTokenStore_ThrowsHelpfulException()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddCachingTokenStore();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AddTokenStore<T>()*AddCachingTokenStore*");
+    }
+
+    [Fact]
+    public void AddCachingTokenStore_WrapsFactoryRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<ITokenStore>(_ => new FakeTokenStore());
+
+        services.AddCachingTokenStore();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<ITokenStore>()
+            .Should().BeOfType<CachingTokenStore>();
+    }
+
+    [Fact]
+    public void AddCachingTokenStore_WrapsInstanceRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITokenStore>(new FakeTokenStore());
+
+        services.AddCachingTokenStore();
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<ITokenStore>()
+            .Should().BeOfType<CachingTokenStore>();
+    }
+
+    [Fact]
+    public void AddDataSubjectErasure_RegistersDefaultServices()
+    {
+        var services = new ServiceCollection();
+
+        var result = services.AddDataSubjectErasure();
+        using var provider = services.BuildServiceProvider();
+
+        result.Should().BeSameAs(services);
+        provider.GetRequiredService<IErasureStrategy>().Should().BeOfType<RedactionErasureStrategy>();
+        provider.GetRequiredService<IDataSubjectErasureService>().Should().BeOfType<DataSubjectErasureService>();
+    }
+
+    [Fact]
+    public void AddDataSubjectErasure_DoesNotReplaceExistingStrategy()
+    {
+        var strategy = Substitute.For<IErasureStrategy>();
+        var services = new ServiceCollection();
+        services.AddSingleton(strategy);
+
+        services.AddDataSubjectErasure();
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IErasureStrategy>().Should().BeSameAs(strategy);
+    }
+
+    [Fact]
+    public void AddDataSubjectExport_RegistersExporter()
+    {
+        var services = new ServiceCollection();
+
+        var result = services.AddDataSubjectExport();
+        using var provider = services.BuildServiceProvider();
+
+        result.Should().BeSameAs(services);
+        provider.GetRequiredService<IDataSubjectExporter>().Should().BeOfType<DataSubjectExporter>();
     }
 
     private sealed class FakeTokenStore : ITokenStore

@@ -87,6 +87,18 @@ public sealed class RetryingAuditStoreTests
     }
 
     [Fact]
+    public async Task AppendRangeAsync_AppendsOneByOne_WhenBatchStoreIsNotAvailable()
+    {
+        var inner = Substitute.For<IAuditStore>();
+        var sut = new RetryingAuditStore(inner, FastOptions());
+        var records = new[] { SampleRecord(), SampleRecord() };
+
+        await sut.AppendRangeAsync(records);
+
+        await inner.Received(2).AppendAsync(Arg.Any<AuditRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task QueryAsync_DoesNotRetry()
     {
         var inner = Substitute.For<IAuditStore>();
@@ -100,6 +112,25 @@ public sealed class RetryingAuditStoreTests
             .Should().ThrowAsync<IOException>();
 
         await inner.Received(1).QueryAsync(
+            Arg.Any<DateTimeOffset?>(), Arg.Any<DateTimeOffset?>(),
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QueryByDataSubjectAsync_DoesNotRetry()
+    {
+        var inner = Substitute.For<IAuditStore>();
+        inner.QueryByDataSubjectAsync("subject", Arg.Any<DateTimeOffset?>(), Arg.Any<DateTimeOffset?>(),
+                Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(_ => new IOException("query failed"));
+
+        var sut = new RetryingAuditStore(inner, FastOptions());
+
+        await sut.Invoking(s => s.QueryByDataSubjectAsync("subject"))
+            .Should().ThrowAsync<IOException>();
+
+        await inner.Received(1).QueryByDataSubjectAsync(
+            "subject",
             Arg.Any<DateTimeOffset?>(), Arg.Any<DateTimeOffset?>(),
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }

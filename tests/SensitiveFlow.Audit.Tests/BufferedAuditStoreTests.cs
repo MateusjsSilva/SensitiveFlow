@@ -1,7 +1,9 @@
 using FluentAssertions;
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SensitiveFlow.Audit.Decorators;
+using SensitiveFlow.Core.Diagnostics;
 using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.Audit.Tests.Stores;
 using SensitiveFlow.Core.Enums;
@@ -50,6 +52,39 @@ public sealed class BufferedAuditStoreTests
         var result = await sut.QueryAsync();
 
         result.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task QueryByDataSubjectAsync_DelegatesToInnerStore()
+    {
+        var inner = Substitute.For<IAuditStore>();
+        var expected = new[] { SampleRecord() };
+        inner.QueryByDataSubjectAsync("subject", null, null, 0, 100, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<AuditRecord>>(expected));
+
+        await using var sut = new BufferedAuditStore(inner);
+
+        var result = await sut.QueryByDataSubjectAsync("subject");
+
+        result.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullInnerAndInvalidOptions()
+    {
+        var actNullInner = () => new BufferedAuditStore(null!);
+        var actInvalidCapacity = () => new BufferedAuditStore(new RecordingBatchAuditStore(), new BufferedAuditStoreOptions
+        {
+            Capacity = 0,
+        });
+        var actInvalidBatchSize = () => new BufferedAuditStore(new RecordingBatchAuditStore(), new BufferedAuditStoreOptions
+        {
+            MaxBatchSize = 0,
+        });
+
+        actNullInner.Should().Throw<ArgumentNullException>();
+        actInvalidCapacity.Should().Throw<ArgumentOutOfRangeException>();
+        actInvalidBatchSize.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
@@ -110,6 +145,32 @@ public sealed class BufferedAuditStoreTests
     }
 
     [Fact]
+    public async Task PendingItemsGauge_CanBeObserved()
+    {
+        var measurements = new List<long>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Name == SensitiveFlowDiagnostics.BufferPendingItemsName)
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => measurements.Add(measurement));
+        listener.Start();
+
+        await using var sut = new BufferedAuditStore(new RecordingBatchAuditStore(), new BufferedAuditStoreOptions
+        {
+            Capacity = 10,
+            MaxBatchSize = 10,
+        });
+
+        listener.RecordObservableInstruments();
+
+        measurements.Should().Contain(m => m >= 0);
+    }
+
+    [Fact]
     public async Task GetHealth_AfterDispose_ShowsZeroPending()
     {
         var inner = new RecordingBatchAuditStore();
@@ -124,6 +185,64 @@ public sealed class BufferedAuditStoreTests
 
         var health = sut.GetHealth();
         health.PendingItems.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AppendAsync_AfterDispose_ThrowsChannelClosedAndIncrementsDroppedCount()
+    {
+        var sut = new BufferedAuditStore(new RecordingBatchAuditStore());
+        await sut.DisposeAsync();
+
+        var act = () => sut.AppendAsync(SampleRecord("closed"));
+
+        await act.Should().ThrowAsync<System.Threading.Channels.ChannelClosedException>();
+        sut.GetHealth().DroppedItems.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AppendRangeAsync_AfterDispose_ThrowsChannelClosedAndIncrementsDroppedCount()
+    {
+        var sut = new BufferedAuditStore(new RecordingBatchAuditStore());
+        await sut.DisposeAsync();
+
+        var act = () => sut.AppendRangeAsync([SampleRecord("closed")]);
+
+        await act.Should().ThrowAsync<System.Threading.Channels.ChannelClosedException>();
+        sut.GetHealth().DroppedItems.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AppendAsync_RejectsNullRecord()
+    {
+        await using var sut = new BufferedAuditStore(new RecordingBatchAuditStore());
+
+        await sut.Invoking(s => s.AppendAsync(null!))
+            .Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task AppendRangeAsync_RejectsNullRecords()
+    {
+        await using var sut = new BufferedAuditStore(new RecordingBatchAuditStore());
+
+        await sut.Invoking(s => s.AppendRangeAsync(null!))
+            .Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task Dispose_FlushesQueuedRecordsToNonBatchStore()
+    {
+        var inner = new RecordingAuditStore();
+        using var sut = new BufferedAuditStore(inner, new BufferedAuditStoreOptions
+        {
+            Capacity = 10,
+            MaxBatchSize = 1,
+        });
+
+        await sut.AppendRangeAsync([SampleRecord("A"), SampleRecord("B")]);
+        sut.Dispose();
+
+        inner.Appended.Select(r => r.Field).Should().BeEquivalentTo("A", "B");
     }
 
     [Fact]
@@ -186,6 +305,35 @@ public sealed class BufferedAuditStoreTests
         public Task AppendRangeAsync(IReadOnlyCollection<AuditRecord> records, CancellationToken cancellationToken = default)
         {
             Appended.AddRange(records);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(
+            DateTimeOffset? from = null,
+            DateTimeOffset? to = null,
+            int skip = 0,
+            int take = 100,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>(Appended);
+
+        public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
+            string dataSubjectId,
+            DateTimeOffset? from = null,
+            DateTimeOffset? to = null,
+            int skip = 0,
+            int take = 100,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>(
+                Appended.Where(r => r.DataSubjectId == dataSubjectId).ToList());
+    }
+
+    private sealed class RecordingAuditStore : IAuditStore
+    {
+        public List<AuditRecord> Appended { get; } = [];
+
+        public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
+        {
+            Appended.Add(record);
             return Task.CompletedTask;
         }
 

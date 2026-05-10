@@ -73,6 +73,20 @@ public sealed class AuditStoreExtensionsTests
     }
 
     [Fact]
+    public void AddAuditStoreRetry_WrapsImplementationTypeRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddAuditStore<FakeAuditStore>();
+
+        services.AddAuditStoreRetry(options => options.MaxAttempts = 1);
+        using var provider = services.BuildServiceProvider();
+
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IAuditStore>()
+            .Should().BeOfType<RetryingAuditStore>();
+    }
+
+    [Fact]
     public void AddAuditStoreRetry_WrapsSingletonInstanceRegistration()
     {
         var services = new ServiceCollection();

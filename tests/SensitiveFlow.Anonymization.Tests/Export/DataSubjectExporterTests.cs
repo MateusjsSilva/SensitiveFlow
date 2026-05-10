@@ -41,6 +41,19 @@ public sealed class DataSubjectExporterTests
     }
 
     [Fact]
+    public void Export_SkipsUnreadableAndDuplicateRetentionProperties()
+    {
+        var exported = _exporter.Export(new ReadShape
+        {
+            Email = "maria@example.com",
+        });
+
+        exported.Should().ContainSingle();
+        exported.Should().ContainKey("Email").WhoseValue.Should().Be("maria@example.com");
+        exported.Should().NotContainKey("WriteOnly");
+    }
+
+    [Fact]
     public void Export_OnNullEntity_Throws()
     {
         Action act = () => _exporter.Export(null!);
@@ -67,5 +80,18 @@ public sealed class DataSubjectExporterTests
     {
         [RetentionData(Years = 5)]
         public string ConsentedAt { get; set; } = string.Empty;
+    }
+
+    public class ReadShape
+    {
+        [PersonalData]
+        [RetentionData(Years = 1)]
+        public string Email { get; set; } = string.Empty;
+
+        [PersonalData]
+        public string WriteOnly
+        {
+            set { _ = value; }
+        }
     }
 }
