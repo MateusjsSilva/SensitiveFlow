@@ -28,10 +28,7 @@ public sealed class SensitiveDataLoggingAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeInvocation(OperationAnalysisContext context)
     {
-        if (context.Operation is not IInvocationOperation invocation)
-        {
-            return;
-        }
+        var invocation = (IInvocationOperation)context.Operation;
 
         if (!IsLoggingCall(invocation.TargetMethod))
         {
@@ -45,15 +42,10 @@ public sealed class SensitiveDataLoggingAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            if (sensitiveMember is null || argument.Syntax.GetLocation() is not { } location)
-            {
-                continue;
-            }
-
             context.ReportDiagnostic(Diagnostic.Create(
                 DiagnosticDescriptors.SensitiveDataLoggedDirectly,
-                location,
-                sensitiveMember.Name));
+                argument.Syntax.GetLocation(),
+                sensitiveMember!.Name));
         }
     }
 

@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using SensitiveFlow.Audit.EFCore;
+using SensitiveFlow.Audit.EFCore.Configuration;
+using SensitiveFlow.Audit.EFCore.Entities;
 using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.Audit.EFCore.Maintenance;
 using SensitiveFlow.Audit.EFCore.Stores;
@@ -111,12 +113,226 @@ public sealed class AuditLogRetentionTests : IAsyncLifetime
         remaining.Should().ContainSingle(r => r.DataSubjectId == "bob");
     }
 
+    [Fact]
+    public async Task PurgeOlderThanAsync_FallsBackWhenProviderDoesNotSupportExecuteDelete()
+    {
+        var factory = new InMemoryFactory(Guid.NewGuid().ToString("N"));
+        await using (var ctx = factory.CreateDbContext())
+        {
+            await ctx.Database.EnsureCreatedAsync();
+        }
+
+        var store = new EfCoreAuditStore<AuditDbContext>(factory);
+        await store.AppendAsync(new AuditRecord
+        {
+            DataSubjectId = "old",
+            Entity = "Customer",
+            Field = "Email",
+            Operation = AuditOperation.Update,
+            Timestamp = DateTimeOffset.UtcNow.AddYears(-2),
+        });
+
+        var retention = new AuditLogRetention<AuditDbContext>(factory);
+
+        var deleted = await retention.PurgeOlderThanAsync(DateTimeOffset.UtcNow.AddYears(-1));
+
+        deleted.Should().Be(1);
+        (await store.QueryAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PurgeOlderThanAsync_FallbackReturnsZeroWhenNothingMatches()
+    {
+        var factory = new InMemoryFactory(Guid.NewGuid().ToString("N"));
+        await using (var ctx = factory.CreateDbContext())
+        {
+            await ctx.Database.EnsureCreatedAsync();
+        }
+
+        var retention = new AuditLogRetention<AuditDbContext>(factory);
+
+        var deleted = await retention.PurgeOlderThanAsync(DateTimeOffset.UtcNow.AddYears(-1));
+
+        deleted.Should().Be(0);
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullFactory()
+    {
+        var act = () => new AuditLogRetention<AuditDbContext>(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
     private sealed class ConnectionScopedFactory(SqliteConnection connection) : IDbContextFactory<AuditDbContext>
     {
         public AuditDbContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<AuditDbContext>()
                 .UseSqlite(connection)
+                .Options;
+            return new AuditDbContext(options);
+        }
+    }
+
+    private sealed class InMemoryFactory(string databaseName) : IDbContextFactory<AuditDbContext>
+    {
+        public AuditDbContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<AuditDbContext>()
+                .UseInMemoryDatabase(databaseName)
+                .Options;
+            return new AuditDbContext(options);
+        }
+    }
+}
+
+public sealed class EfCoreAuditStoreEdgeCaseTests
+{
+    [Fact]
+    public void AuditRecordEntity_Id_IsMutableForEfCoreMaterialization()
+    {
+        var entity = new AuditRecordEntity { Id = 42 };
+
+        entity.Id.Should().Be(42);
+    }
+
+    [Fact]
+    public void AuditRecordEntityTypeConfiguration_RejectsBlankTableName()
+    {
+        var act = () => new AuditRecordEntityTypeConfiguration(" ");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("tableName");
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullFactory()
+    {
+        var act = () => new EfCoreAuditStore<AuditDbContext>(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task AppendAsync_RejectsNullRecord()
+    {
+        var store = new EfCoreAuditStore<AuditDbContext>(new InMemoryFactory());
+
+        var act = () => store.AppendAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task AppendRangeAsync_RejectsNullRecords()
+    {
+        var store = new EfCoreAuditStore<AuditDbContext>(new InMemoryFactory());
+
+        var act = () => store.AppendRangeAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task AppendRangeAsync_ReturnsWithoutCreatingRows_WhenRecordsAreEmpty()
+    {
+        var factory = new InMemoryFactory();
+        var store = new EfCoreAuditStore<AuditDbContext>(factory);
+
+        await store.AppendRangeAsync([]);
+
+        (await store.QueryAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task QueryAsync_AppliesDateRangeAndPagination()
+    {
+        var factory = new InMemoryFactory();
+        var store = new EfCoreAuditStore<AuditDbContext>(factory);
+        var now = DateTimeOffset.UtcNow;
+
+        await store.AppendRangeAsync([
+            Record("a", now.AddHours(-3)),
+            Record("b", now.AddHours(-2)),
+            Record("c", now.AddHours(-1)),
+        ]);
+
+        var result = await store.QueryAsync(now.AddHours(-3), now, skip: 1, take: 1);
+
+        result.Should().ContainSingle(r => r.DataSubjectId == "b");
+    }
+
+    [Fact]
+    public async Task QueryByDataSubjectAsync_AppliesSubjectDateRangeAndPagination()
+    {
+        var factory = new InMemoryFactory();
+        var store = new EfCoreAuditStore<AuditDbContext>(factory);
+        var now = DateTimeOffset.UtcNow;
+
+        await store.AppendRangeAsync([
+            Record("alice", now.AddHours(-3)),
+            Record("alice", now.AddHours(-2)),
+            Record("alice", now.AddHours(-1)),
+            Record("bob", now.AddHours(-1)),
+        ]);
+
+        var result = await store.QueryByDataSubjectAsync("alice", now.AddHours(-3), now, skip: 1, take: 1);
+
+        result.Should().ContainSingle(r => r.DataSubjectId == "alice" && r.Timestamp == now.AddHours(-2));
+    }
+
+    [Theory]
+    [InlineData(-1, 1)]
+    [InlineData(0, -1)]
+    public async Task QueryAsync_RejectsInvalidPagination(int skip, int take)
+    {
+        var store = new EfCoreAuditStore<AuditDbContext>(new InMemoryFactory());
+
+        var act = () => store.QueryAsync(skip: skip, take: take);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task QueryByDataSubjectAsync_RejectsNullOrEmptySubject()
+    {
+        var store = new EfCoreAuditStore<AuditDbContext>(new InMemoryFactory());
+
+        var act = () => store.QueryByDataSubjectAsync(string.Empty);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(-1, 1)]
+    [InlineData(0, -1)]
+    public async Task QueryByDataSubjectAsync_RejectsInvalidPagination(int skip, int take)
+    {
+        var store = new EfCoreAuditStore<AuditDbContext>(new InMemoryFactory());
+
+        var act = () => store.QueryByDataSubjectAsync("subject", skip: skip, take: take);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+
+    private static AuditRecord Record(string subject, DateTimeOffset timestamp) => new()
+    {
+        DataSubjectId = subject,
+        Entity = "Customer",
+        Field = "Email",
+        Operation = AuditOperation.Update,
+        Timestamp = timestamp,
+    };
+
+    private sealed class InMemoryFactory : IDbContextFactory<AuditDbContext>
+    {
+        private readonly string _databaseName = Guid.NewGuid().ToString("N");
+
+        public AuditDbContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<AuditDbContext>()
+                .UseInMemoryDatabase(_databaseName)
                 .Options;
             return new AuditDbContext(options);
         }
@@ -204,5 +420,28 @@ public sealed class IAuditLogRetentionViaDITests : IAsyncLifetime
         var deleted = await retention.PurgeOlderThanAsync(DateTimeOffset.UtcNow);
 
         deleted.Should().Be(0);
+    }
+
+    [Fact]
+    public void AddEfCoreAuditStore_RejectsNullOptionsAction()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddEfCoreAuditStore(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void AddEfCoreAuditStore_Generic_RegistersStoreAndRetentionForExistingContextFactory()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<AuditDbContext>(options => options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
+
+        services.AddEfCoreAuditStore<AuditDbContext>();
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IAuditStore>().Should().BeOfType<EfCoreAuditStore<AuditDbContext>>();
+        provider.GetRequiredService<IAuditLogRetention>().Should().BeOfType<AuditLogRetention<AuditDbContext>>();
     }
 }

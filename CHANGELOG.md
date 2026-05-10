@@ -7,30 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-preview.1] - 2026-05-10
+
 ### Added
 
-- `SensitiveFlow.Audit` — `RetryingAuditStore` decorator with bounded exponential backoff for transient append failures; opt-in via `AddAuditStoreRetry`.
-- `SensitiveFlow.Audit.EFCore` — durable EF Core implementation of `IAuditStore`/`IBatchAuditStore` with maintenance helper for audit log retention.
-- `SensitiveFlow.Anonymization` — `IDataSubjectErasureService` and `RedactionErasureStrategy` for right-to-be-forgotten flows; opt-in via `AddDataSubjectErasure`.
-- `SensitiveFlow.Analyzers.CodeFixes` — quick-fix providers for SF0001/SF0002 that wrap sensitive expressions with `.MaskEmail()` / `.MaskPhone()` / `.MaskName()` based on the member name.
-- `SensitiveFlow.Analyzers` — new SF0003 rule for entities with sensitive members missing `DataSubjectId`/`UserId`.
-- `SensitiveFlow.Diagnostics` — OpenTelemetry bridge emitting `ActivitySource` spans and `Meter` metrics for audit/log redaction.
-- `SensitiveFlow.Retention` — `RetentionExecutor` to auto-apply `AnonymizeOnExpiration` and report pending delete/notify/block actions.
-- `SensitiveFlow.SourceGenerators` — source generator for precomputing sensitive/retention member metadata.
-- `SensitiveFlow.TestKit` — xUnit conformance base classes (`AuditStoreContractTests`, `TokenStoreContractTests`) for validating custom store implementations.
-- `SensitiveFlow.Core` — `SensitiveMemberCache` shared reflection cache used by the EF Core interceptor and the retention evaluator (eliminates per-call `GetProperties` / `Attribute.IsDefined` cost).
-- `SensitiveFlow.Benchmarks` — real BenchmarkDotNet suites for masking, pseudonymization, and reflection caching.
+- `SensitiveFlow.Audit` - `RetryingAuditStore` decorator with bounded exponential backoff for transient append failures; opt-in via `AddAuditStoreRetry`.
+- `SensitiveFlow.Audit.EFCore` - durable EF Core implementation of `IAuditStore`/`IBatchAuditStore` with maintenance helper for audit log retention.
+- `SensitiveFlow.Anonymization` - `IDataSubjectErasureService` and `RedactionErasureStrategy` for right-to-be-forgotten flows; opt-in via `AddDataSubjectErasure`.
+- `SensitiveFlow.Analyzers.CodeFixes` - quick-fix providers for SF0001/SF0002 that wrap sensitive expressions with `.MaskEmail()` / `.MaskPhone()` / `.MaskName()` based on the member name.
+- `SensitiveFlow.Analyzers` - new SF0003 rule for entities with sensitive members missing `DataSubjectId`/`UserId`.
+- `SensitiveFlow.Diagnostics` - OpenTelemetry bridge emitting `ActivitySource` spans and `Meter` metrics for audit/log redaction.
+- `SensitiveFlow.Retention` - `RetentionExecutor` to auto-apply `AnonymizeOnExpiration` and report pending delete/notify/block actions.
+- `SensitiveFlow.SourceGenerators` - source generator for precomputing sensitive/retention member metadata.
+- `SensitiveFlow.TestKit` - xUnit conformance base classes (`AuditStoreContractTests`, `TokenStoreContractTests`) for validating custom store implementations.
+- `SensitiveFlow.Core` - `SensitiveMemberCache` shared reflection cache used by the EF Core interceptor and the retention evaluator (eliminates per-call `GetProperties` / `Attribute.IsDefined` cost).
+- `SensitiveFlow.Benchmarks` - real BenchmarkDotNet suites for masking, pseudonymization, and reflection caching.
 - Sample: Redis-backed `ITokenStore` implementation for distributed pseudonymization.
-- `SensitiveFlow.TokenStore.EFCore` — durable EF Core implementation of `ITokenStore` with unique index for concurrency-safe `GetOrCreateTokenAsync`; registers `TokenPseudonymizer` as `IPseudonymizer` automatically.
-- `SensitiveFlow.Audit.Snapshots.EFCore` — durable EF Core implementation of `IAuditSnapshotStore` with `SnapshotDbContext` and indexes optimized for aggregate and data-subject queries.
-- `BufferedAuditStore` — health checks via `GetHealth()` returning `BufferedAuditStoreHealth` (pending/dropped/flush failures/isFaulted); OpenTelemetry metrics: `sensitiveflow.audit.buffer.pending` (gauge), `.dropped` (counter), `.flush_failures` (counter).
+- `SensitiveFlow.TokenStore.EFCore` - durable EF Core implementation of `ITokenStore` with unique index for concurrency-safe `GetOrCreateTokenAsync`; registers `TokenPseudonymizer` as `IPseudonymizer` automatically.
+- `SensitiveFlow.Audit.Snapshots.EFCore` - durable EF Core implementation of `IAuditSnapshotStore` with `SnapshotDbContext` and indexes optimized for aggregate and data-subject queries.
+- `BufferedAuditStore` - health checks via `GetHealth()` returning `BufferedAuditStoreHealth` (pending/dropped/flush failures/isFaulted); OpenTelemetry metrics: `sensitiveflow.audit.buffer.pending` (gauge), `.dropped` (counter), `.flush_failures` (counter).
 - Container tests: SQL Server (`SqlServerAuditStoreContainerTests`) and Redis (`RedisTokenStoreContainerTests` with atomic Lua scripts) added alongside existing PostgreSQL coverage.
 
 ### Changed
 
 - **(Breaking)** `SensitiveDataAuditInterceptor` now requires the entity to expose `DataSubjectId` (or the `UserId` legacy alias). Falling back to a database-generated `Id` was removed: EF providers can assign auto-increment keys before the interceptor runs, which silently grouped unrelated audit rows under whatever `Id` the database happened to allocate. Add a `DataSubjectId` to your entities before upgrading.
 - `RetentionDataAttribute.Years` and `Months` now reject negative values with `ArgumentOutOfRangeException`.
-- `HmacPseudonymizer` now validates `secretKey` by UTF-8 byte length (≥32 bytes) instead of character count, matching the SHA-256 digest size precisely.
+- `HmacPseudonymizer` now validates `secretKey` by UTF-8 byte length (>=32 bytes) instead of character count, matching the SHA-256 digest size precisely.
 - `HmacPseudonymizer.ReverseAsync` returns a faulted task instead of throwing synchronously, so async callers observe the failure via the task and not via the call site.
 - `RedactingLogger` rebuilds the rendered message from `{OriginalFormat}` using the redacted structured values; the previous global string-replace approach corrupted unrelated fields when a sensitive value happened to appear as a substring.
 - `HttpAuditContext.ActorId` now also checks `ClaimTypes.NameIdentifier` (the default Microsoft mapping for the `sub` claim) before falling back to `Identity.Name`.
@@ -39,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sample `EfCoreTokenStore` adds a unique index on `Value` and recovers from concurrent insert collisions.
 - Sample/EF Core: SHA-256 hex now uses `Convert.ToHexStringLower` on .NET 9+ (faster, less allocation) and falls back to `Convert.ToHexString().ToLowerInvariant()` on .NET 8.
 
-### Added
+### Initial Package Surface
 
 - `SensitiveFlow.Core` package with:
   - Attributes: `PersonalData`, `SensitiveData`, `EraseData`, `RetentionData`, `InternationalTransfer`
@@ -53,3 +55,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Central Package Management via `Directory.Packages.props`
 - Multi-target: `net8.0` and `net10.0`
 - Documentation: getting-started, attributes, legal-bases, consent, audit, data-subject-rights, retention, data-map, incidents, ripd, international-transfer, efcore, aspnetcore, migration
+
+

@@ -194,4 +194,43 @@ namespace Microsoft.Extensions.Logging
 
         diagnostics.Should().ContainSingle(d => d.Id == "SF0001");
     }
+
+    [Fact]
+    public async Task ReportsDiagnostic_WhenLoggingTypeNameStartsWithILoggerInLoggingNamespace()
+    {
+        const string source = """
+using SensitiveFlow.Core.Attributes;
+
+public sealed class Customer
+{
+    [PersonalData]
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class Sample
+{
+    public void Execute(Customer customer)
+    {
+        Microsoft.Extensions.Logging.ILoggerDiagnostics.LogInformation(customer.Email);
+    }
+}
+
+namespace SensitiveFlow.Core.Attributes
+{
+    public sealed class PersonalDataAttribute : System.Attribute { }
+}
+
+namespace Microsoft.Extensions.Logging
+{
+    public static class ILoggerDiagnostics
+    {
+        public static void LogInformation(object value) { }
+    }
+}
+""";
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(source, new SensitiveDataLoggingAnalyzer());
+
+        diagnostics.Should().ContainSingle(d => d.Id == "SF0001");
+    }
 }

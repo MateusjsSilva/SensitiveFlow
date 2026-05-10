@@ -28,10 +28,7 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeInvocation(OperationAnalysisContext context)
     {
-        if (context.Operation is not IInvocationOperation invocation)
-        {
-            return;
-        }
+        var invocation = (IInvocationOperation)context.Operation;
 
         if (!IsHttpResponseFactoryCall(invocation.TargetMethod))
         {
@@ -40,7 +37,7 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
 
         foreach (var argument in invocation.Arguments)
         {
-            if (!argument.Value.TryFindSensitiveMember(out var sensitiveMember) || sensitiveMember is null)
+            if (!argument.Value.TryFindSensitiveMember(out var sensitiveMember))
             {
                 continue;
             }
@@ -48,13 +45,14 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(
                 DiagnosticDescriptors.SensitiveDataReturnedDirectly,
                 argument.Syntax.GetLocation(),
-                sensitiveMember.Name));
+                sensitiveMember!.Name));
         }
     }
 
     private static void AnalyzeReturn(OperationAnalysisContext context)
     {
-        if (context.Operation is not IReturnOperation returnOperation || returnOperation.ReturnedValue is null)
+        var returnOperation = (IReturnOperation)context.Operation;
+        if (returnOperation.ReturnedValue is null)
         {
             return;
         }
@@ -70,7 +68,7 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!returnOperation.ReturnedValue.TryFindSensitiveMember(out var sensitiveMember) || sensitiveMember is null)
+        if (!returnOperation.ReturnedValue.TryFindSensitiveMember(out var sensitiveMember))
         {
             return;
         }
@@ -78,7 +76,7 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(Diagnostic.Create(
             DiagnosticDescriptors.SensitiveDataReturnedDirectly,
             returnOperation.ReturnedValue.Syntax.GetLocation(),
-            sensitiveMember.Name));
+            sensitiveMember!.Name));
     }
 
     private static bool IsHttpResponseFactoryCall(IMethodSymbol method)
@@ -97,12 +95,7 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
         foreach (var attribute in method.GetAttributes())
         {
             var name = attribute.AttributeClass?.Name;
-            if (name is null)
-            {
-                continue;
-            }
-
-            if (name.StartsWith("Http", StringComparison.Ordinal) ||
+            if (name?.StartsWith("Http", StringComparison.Ordinal) == true ||
                 name is "RouteAttribute" or "EndpointAttribute")
             {
                 return true;

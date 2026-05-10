@@ -29,10 +29,7 @@ public sealed class MissingDataSubjectIdAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeNamedType(SymbolAnalysisContext context)
     {
-        if (context.Symbol is not INamedTypeSymbol namedType)
-        {
-            return;
-        }
+        var namedType = (INamedTypeSymbol)context.Symbol;
 
         if (namedType.TypeKind != TypeKind.Class || namedType.IsAbstract)
         {

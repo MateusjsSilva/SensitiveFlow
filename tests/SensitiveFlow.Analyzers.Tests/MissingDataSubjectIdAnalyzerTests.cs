@@ -89,6 +89,8 @@ namespace SensitiveFlow.Core.Attributes
 public sealed class Plain
 {
     public int Id { get; set; }
+
+    [System.Obsolete]
     public string Name { get; set; } = string.Empty;
 }
 """;

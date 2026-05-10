@@ -41,11 +41,7 @@ public sealed class AuditLogRetention<TContext> : IAuditLogRetention where TCont
         {
             return await query.ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (InvalidOperationException)
-        {
-            return await FallbackDeleteAsync(ctx, query, cancellationToken).ConfigureAwait(false);
-        }
-        catch (NotSupportedException)
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
         {
             return await FallbackDeleteAsync(ctx, query, cancellationToken).ConfigureAwait(false);
         }

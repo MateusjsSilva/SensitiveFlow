@@ -3,6 +3,8 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SensitiveFlow.Audit.Snapshots.EFCore;
+using SensitiveFlow.Audit.Snapshots.EFCore.Configuration;
+using SensitiveFlow.Audit.Snapshots.EFCore.Entities;
 using SensitiveFlow.Audit.Snapshots.EFCore.Extensions;
 using SensitiveFlow.Audit.Snapshots.EFCore.Stores;
 using SensitiveFlow.Core.Enums;
@@ -188,5 +190,22 @@ public sealed class EfCoreAuditSnapshotStoreTests : IAsyncLifetime
 
         var store = _provider.GetRequiredService<IAuditSnapshotStore>();
         store.Should().BeOfType<EfCoreAuditSnapshotStore<SnapshotDbContext>>();
+    }
+
+    [Fact]
+    public void AuditSnapshotEntity_Id_IsMutableForEfCoreMaterialization()
+    {
+        var entity = new AuditSnapshotEntity { Id = 42 };
+
+        entity.Id.Should().Be(42);
+    }
+
+    [Fact]
+    public void AuditSnapshotEntityTypeConfiguration_RejectsBlankTableName()
+    {
+        var act = () => new AuditSnapshotEntityTypeConfiguration(" ");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("tableName");
     }
 }

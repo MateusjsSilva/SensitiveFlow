@@ -167,6 +167,12 @@ public sealed class Customer
 
 public sealed class CustomersController
 {
+    [HttpGet]
+    public void Empty()
+    {
+        return;
+    }
+
     [HttpPost]
     public string? Post(Customer customer)
     {
@@ -182,6 +188,35 @@ public sealed class CustomersController
 
 public sealed class HttpGetAttribute : System.Attribute {}
 public sealed class HttpPostAttribute : System.Attribute {}
+""";
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(source, new SensitiveDataResponseAnalyzer());
+
+        diagnostics.Should().NotContain(d => d.Id == "SF0002");
+    }
+
+    [Fact]
+    public async Task DoesNotReport_WhenMethodHasOnlyNonHttpAttribute()
+    {
+        const string source = """
+using SensitiveFlow.Core.Attributes;
+
+public sealed class Customer
+{
+    [PersonalData]
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class CustomerFormatter
+{
+    [Other]
+    public string Format(Customer customer)
+    {
+        return customer.Email;
+    }
+}
+
+public sealed class OtherAttribute : System.Attribute {}
 """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(source, new SensitiveDataResponseAnalyzer());

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -190,6 +191,79 @@ public sealed class JsonRedactionTests
     }
 
     [Fact]
+    public void Modifier_SkipsSyntheticPropertiesWithoutClrAttributeProvider()
+    {
+        var resolver = new DefaultJsonTypeInfoResolver();
+        resolver.Modifiers.Add(typeInfo =>
+        {
+            if (typeInfo.Type != typeof(Customer))
+            {
+                return;
+            }
+
+            var synthetic = typeInfo.CreateJsonPropertyInfo(typeof(string), "Synthetic");
+            synthetic.Get = _ => "public";
+            typeInfo.Properties.Add(synthetic);
+        });
+
+        var options = new JsonSerializerOptions { TypeInfoResolver = resolver }
+            .WithSensitiveDataRedaction();
+
+        var json = JsonSerializer.Serialize(new Customer
+        {
+            Name = "Alice",
+            Email = "alice@example.com",
+        }, options);
+
+        json.Should().Contain("\"Synthetic\":\"public\"");
+        json.Should().NotContain("alice@example.com");
+    }
+
+    [Fact]
+    public void Mode_Mask_UsesPlaceholderWhenStringPropertyGetterReturnsNonStringValue()
+    {
+        var resolver = new DefaultJsonTypeInfoResolver();
+        resolver.Modifiers.Add(typeInfo =>
+        {
+            if (typeInfo.Type != typeof(OddGetterSensitiveData))
+            {
+                return;
+            }
+
+            var original = typeInfo.Properties.Single(p => p.Name == nameof(OddGetterSensitiveData.Secret));
+            var index = typeInfo.Properties.IndexOf(original);
+            typeInfo.Properties.RemoveAt(index);
+
+            var replacement = typeInfo.CreateJsonPropertyInfo(typeof(string), nameof(OddGetterSensitiveData.Secret));
+            replacement.AttributeProvider = typeof(OddGetterSensitiveData).GetProperty(nameof(OddGetterSensitiveData.Secret));
+            replacement.Get = _ => 123;
+            typeInfo.Properties.Insert(index, replacement);
+        });
+
+        var options = new JsonSerializerOptions { TypeInfoResolver = resolver }
+            .WithSensitiveDataRedaction(new JsonRedactionOptions
+            {
+                DefaultMode = JsonRedactionMode.Mask,
+                RedactedPlaceholder = "***",
+            });
+
+        var json = JsonSerializer.Serialize(new OddGetterSensitiveData(), options);
+
+        json.Should().Contain("\"Secret\":\"***\"");
+    }
+
+    [Fact]
+    public void UnknownRedactionMode_LeavesStringValueUnchanged()
+    {
+        var json = JsonSerializer.Serialize(new UnknownModeSensitiveData
+        {
+            Secret = "visible",
+        }, Build());
+
+        json.Should().Contain("\"Secret\":\"visible\"");
+    }
+
+    [Fact]
     public void AddSensitiveFlowJsonRedaction_RegistersDefaultOptions()
     {
         var services = new ServiceCollection();
@@ -291,6 +365,19 @@ public sealed class JsonRedactionTests
     {
         [SensitiveData(Category = SensitiveDataCategory.Other)]
         public Payload? Payload { get; set; }
+    }
+
+    public class OddGetterSensitiveData
+    {
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string Secret { get; set; } = "hidden";
+    }
+
+    public class UnknownModeSensitiveData
+    {
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [JsonRedaction((JsonRedactionMode)999)]
+        public string Secret { get; set; } = string.Empty;
     }
 
     public sealed record Payload(string Value);

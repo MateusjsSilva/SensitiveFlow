@@ -45,10 +45,7 @@ public sealed class PossibleUnannotatedPiiAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeProperty(SymbolAnalysisContext context)
     {
-        if (context.Symbol is not IPropertySymbol property)
-        {
-            return;
-        }
+        var property = (IPropertySymbol)context.Symbol;
 
         // Only inspect public instance properties on non-abstract classes.
         if (property.IsStatic || property.DeclaredAccessibility != Accessibility.Public)

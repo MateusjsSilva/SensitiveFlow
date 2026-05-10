@@ -137,6 +137,24 @@ public sealed class RedactingLoggerStructuredTests
     }
 
     [Fact]
+    public void Log_StructuredState_PreservesUnknownTemplatePlaceholder()
+    {
+        var spy = new SpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        var state = new List<KeyValuePair<string, object?>>
+        {
+            new("Known", "value"),
+            new("{OriginalFormat}", "Known={Known}, Missing={Missing}"),
+        };
+
+        logger.Log(LogLevel.Information, new EventId(0), state, null,
+            (s, _) => string.Join(", ", s.Select(kv => $"{kv.Key}={kv.Value}")));
+
+        spy.LastMessage.Should().Be("Known=value, Missing={Missing}");
+    }
+
+    [Fact]
     public void Log_StructuredState_FormatterIsInvokedWithRedactedState()
     {
         // Uses a real spy logger so the formatter lambda inside RedactingLogger

@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.TokenStore.EFCore;
+using SensitiveFlow.TokenStore.EFCore.Configuration;
+using SensitiveFlow.TokenStore.EFCore.Entities;
 using SensitiveFlow.TokenStore.EFCore.Extensions;
 using SensitiveFlow.TokenStore.EFCore.Stores;
 
@@ -159,5 +161,108 @@ public sealed class EfCoreTokenStoreTests : IAsyncLifetime
 
         var pseudonymizer = scope.ServiceProvider.GetRequiredService<IPseudonymizer>();
         pseudonymizer.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void DI_AddEfCoreTokenStore_Dedicated_RejectsNullOptionsAction()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddEfCoreTokenStore(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+}
+
+public sealed class EfCoreTokenStoreEdgeCaseTests
+{
+    [Fact]
+    public void Constructor_RejectsNullFactory()
+    {
+        var act = () => new EfCoreTokenStore<TokenDbContext>(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void TokenMappingEntity_Id_IsMutableForEfCoreMaterialization()
+    {
+        var entity = new TokenMappingEntity { Id = 42 };
+
+        entity.Id.Should().Be(42);
+    }
+
+    [Fact]
+    public void TokenMappingEntityTypeConfiguration_RejectsBlankTableName()
+    {
+        var act = () => new TokenMappingEntityTypeConfiguration(" ");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("tableName");
+    }
+
+    [Fact]
+    public async Task GetOrCreateToken_RecoversFromConcurrentInsert()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var normalOptions = new DbContextOptionsBuilder<TokenDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using (var db = new TokenDbContext(normalOptions))
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
+
+        var factory = new RaceFactory(connection);
+        var store = new EfCoreTokenStore<RaceTokenDbContext>(factory, static ctx => ctx.TokenMappings);
+
+        var token = await store.GetOrCreateTokenAsync("raced-value");
+
+        token.Should().Be("winner-token");
+    }
+
+    private sealed class RaceFactory(SqliteConnection connection) : IDbContextFactory<RaceTokenDbContext>
+    {
+        public RaceTokenDbContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<TokenDbContext>()
+                .UseSqlite(connection)
+                .Options;
+            return new RaceTokenDbContext(options, connection);
+        }
+    }
+
+    private sealed class RaceTokenDbContext(
+        DbContextOptions<TokenDbContext> options,
+        SqliteConnection connection) : TokenDbContext(options)
+    {
+        private bool _hasThrown;
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var pending = ChangeTracker.Entries<TokenMappingEntity>()
+                .FirstOrDefault(e => e.State == EntityState.Added);
+
+            if (pending is not null && !_hasThrown)
+            {
+                _hasThrown = true;
+                var normalOptions = new DbContextOptionsBuilder<TokenDbContext>()
+                    .UseSqlite(connection)
+                    .Options;
+                await using var winnerContext = new TokenDbContext(normalOptions);
+                winnerContext.TokenMappings.Add(new TokenMappingEntity
+                {
+                    Value = pending.Entity.Value,
+                    Token = "winner-token",
+                });
+                await winnerContext.SaveChangesAsync(cancellationToken);
+
+                throw new DbUpdateException("Simulated unique index race.");
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
     }
 }

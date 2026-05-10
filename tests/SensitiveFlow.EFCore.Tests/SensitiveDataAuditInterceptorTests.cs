@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NSubstitute;
@@ -263,5 +264,55 @@ public sealed class SensitiveDataAuditInterceptorTests
 
         var records = await store.QueryByDataSubjectAsync("user-alias-1");
         records.Should().NotBeEmpty();
+    }
+
+    private sealed class UniqueEntity
+    {
+        public int Id { get; set; }
+        public string DataSubjectId { get; set; } = "unique-subject";
+        public string UniqueValue { get; set; } = "same";
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = "unique@example.com";
+    }
+
+    private sealed class FailingDbContext : DbContext
+    {
+        private readonly SqliteConnection _connection;
+        private readonly SensitiveDataAuditInterceptor _interceptor;
+
+        public FailingDbContext(SqliteConnection connection, SensitiveDataAuditInterceptor interceptor)
+        {
+            _connection = connection;
+            _interceptor = interceptor;
+        }
+
+        public DbSet<UniqueEntity> Items => Set<UniqueEntity>();
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+            => optionsBuilder.UseSqlite(_connection).AddInterceptors(_interceptor);
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+            => modelBuilder.Entity<UniqueEntity>().HasIndex(e => e.UniqueValue).IsUnique();
+    }
+
+    [Fact]
+    public async Task SaveChangesFailedAsync_RemovesPendingAuditRecords()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+        await using var db = new FailingDbContext(connection, interceptor);
+        await db.Database.EnsureCreatedAsync();
+
+        db.Items.Add(new UniqueEntity { DataSubjectId = "one", UniqueValue = "duplicate" });
+        await db.SaveChangesAsync();
+
+        db.Items.Add(new UniqueEntity { DataSubjectId = "two", UniqueValue = "duplicate" });
+        await db.Invoking(c => c.SaveChangesAsync())
+            .Should().ThrowAsync<DbUpdateException>();
+
+        (await store.QueryByDataSubjectAsync("two")).Should().BeEmpty();
     }
 }
