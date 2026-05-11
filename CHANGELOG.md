@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container tests moved out of `ci.yml` into dedicated `container-tests.yml` (manual + weekly) and `release.yml` (before publish).
 - `bug_report.md` issue template translated to English.
 - `CONTRIBUTING.md` updated with link to `RELEASE.md`.
+- CI optimized: PRs run only `net10.x` for fast feedback; pushes to `main`/`develop` run full matrix (`net8.x`, `net9.x`, `net10.x`).
 
 ## [1.0.0-preview.1] - 2026-05-10
 
