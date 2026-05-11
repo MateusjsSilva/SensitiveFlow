@@ -155,14 +155,58 @@ public string InternalNote { get; set; } = string.Empty;
 
 ## Audit outbox
 
-`SensitiveFlow.Audit` ships a concrete in-memory outbox for tests/local development and an `OutboxAuditStore` decorator for production-owned durable outboxes:
+`SensitiveFlow.Audit` ships a concrete in-memory outbox for tests/local development. Production systems must use a durable audit outbox to ensure reliable delivery to downstream systems (e.g., SIEM, compliance dashboards, data lakes).
+
+### In-memory outbox (tests only)
 
 ```csharp
 builder.Services.AddAuditStore<MyDurableAuditStore>();
-builder.Services.AddAuditOutbox<MyDurableAuditOutbox>();
+builder.Services.AddInMemoryAuditOutbox();  // Deprecated – use for tests/dev only
 ```
 
-Use `AddInMemoryAuditOutbox()` only for tests and local samples. It is not durable.
+⚠️ `InMemoryAuditOutbox` is **deprecated for production**. It loses all enqueued records on process restart and is not suitable for compliance/audit scenarios. The `SensitiveFlowConfigurationValidator` will emit `SF-CONFIG-013` if it detects an in-memory outbox outside a Development environment.
+
+### Durable outbox with EF Core (production-ready)
+
+For production, use the EF Core-backed durable outbox with transactional guarantees:
+
+```bash
+dotnet add package SensitiveFlow.Audit.EFCore.Outbox
+```
+
+```csharp
+// Register durable audit store + durable outbox with automatic dispatcher
+builder.Services.AddEfCoreAuditStore(opt => opt.UseSqlServer(...));
+builder.Services.AddEfCoreAuditOutbox(options =>
+{
+    options.PollInterval = TimeSpan.FromSeconds(1);
+    options.BatchSize = 100;
+    options.MaxAttempts = 5;
+});
+
+// Register a publisher to deliver outbox records downstream
+builder.Services.AddScoped<IAuditOutboxPublisher, MySiemPublisher>();
+```
+
+The durable outbox provides **at-least-once delivery** guarantees:
+- Records enqueued and audit store writes happen in a single `SaveChanges` transaction
+- Failed deliveries are retried with exponential backoff (configurable)
+- Dead-lettered entries (max retries exceeded) are queryable for inspection
+- The `AuditOutboxDispatcher` automatically detects and polls pending entries
+
+### Custom durable outbox
+
+If you need to integrate with a different backend (e.g. Apache Kafka, AWS SQS), implement `IDurableAuditOutbox`:
+
+```csharp
+public sealed class KafkaAuditOutbox : IDurableAuditOutbox
+{
+    // Implement: EnqueueAsync, DequeueBatchAsync, MarkProcessedAsync, MarkFailedAsync
+}
+
+builder.Services.AddAuditStore<MyAuditStore>();
+builder.Services.AddAuditOutbox<KafkaAuditOutbox>();
+```
 
 ## Retrying transient failures
 

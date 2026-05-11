@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SensitiveFlow.Core.Discovery;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Policies;
@@ -56,6 +57,7 @@ public sealed class SensitiveFlowConfigurationValidator
         AddEfCoreDiagnostics(provider, diagnostics);
         AddRetentionDiagnostics(provider, diagnostics);
         AddAspNetCoreDiagnostics(provider, diagnostics);
+        AddOutboxDiagnostics(provider, diagnostics);
 
         var sensitiveFlowOptions = provider.GetService<SensitiveFlowOptions>();
         if (sensitiveFlowOptions is not null)
@@ -145,6 +147,30 @@ public sealed class SensitiveFlowConfigurationValidator
         if (observedAuthenticatedUser)
         {
             diagnostics.Add(Warning("SF-CONFIG-012", "SensitiveFlow audit middleware observed an already-authenticated user before it ran; it may be registered after authentication."));
+        }
+    }
+
+    private static void AddOutboxDiagnostics(
+        IServiceProvider provider,
+        ICollection<SensitiveFlowConfigurationDiagnostic> diagnostics)
+    {
+        var outbox = provider.GetService<IAuditOutbox>();
+        if (outbox is null)
+        {
+            return;
+        }
+
+        var environment = provider.GetService<IHostEnvironment>();
+        if (outbox.GetType().FullName == "SensitiveFlow.Audit.Outbox.InMemoryAuditOutbox"
+            && environment?.IsDevelopment() == false)
+        {
+            diagnostics.Add(Warning("SF-CONFIG-013", "In-memory audit outbox is configured outside Development. Use AddEfCoreAuditOutbox() or AddAuditOutbox<TOutbox>()."));
+        }
+
+        var durableOutbox = provider.GetService<IDurableAuditOutbox>();
+        if (durableOutbox is not null && !provider.GetServices<IAuditOutboxPublisher>().Any())
+        {
+            diagnostics.Add(Warning("SF-CONFIG-014", "IDurableAuditOutbox is registered, but no IAuditOutboxPublisher registration was found."));
         }
     }
 

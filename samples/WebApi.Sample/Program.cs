@@ -7,6 +7,7 @@ using Serilog.Events;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Audit.EFCore;
 using SensitiveFlow.Audit.EFCore.Extensions;
+using SensitiveFlow.Audit.EFCore.Outbox.Extensions;
 using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Diagnostics;
@@ -60,6 +61,15 @@ try
             .AddInterceptors(sp.GetRequiredService<SensitiveDataAuditInterceptor>()));
 
     builder.Services.AddEfCoreAuditStore(options => options.UseSqlite(auditConnection));
+    builder.Services.AddEfCoreAuditOutbox(options =>
+    {
+        // Configure durable outbox with sensible defaults
+        options.PollInterval = TimeSpan.FromSeconds(5);     // Poll every 5 seconds
+        options.BatchSize = 100;                             // Process up to 100 entries per batch
+        options.MaxAttempts = 5;                             // Retry up to 5 times before dead-lettering
+    });
+    builder.Services.AddScoped<SampleAuditOutboxPublisher>();
+    builder.Services.AddScoped<IAuditOutboxPublisher>(sp => sp.GetRequiredService<SampleAuditOutboxPublisher>());
     builder.Services.AddAuditStoreRetry();
     builder.Services.AddSensitiveFlowDiagnostics();
     builder.Services.AddEfCoreTokenStore(options => options.UseSqlite(tokenConnection));

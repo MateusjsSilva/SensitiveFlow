@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Audit.EFCore\SensitiveFlow.Audit.EFCore.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Audit.EFCore.Outbox\SensitiveFlow.Audit.EFCore.Outbox.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.EFCore\SensitiveFlow.EFCore.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore\SensitiveFlow.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.TokenStore.EFCore\SensitiveFlow.TokenStore.EFCore.csproj" />

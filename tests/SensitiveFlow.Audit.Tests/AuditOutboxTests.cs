@@ -8,6 +8,7 @@ using SensitiveFlow.Core.Models;
 
 namespace SensitiveFlow.Audit.Tests;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 public sealed class AuditOutboxTests
 {
     [Fact]
@@ -89,3 +90,4 @@ public sealed class AuditOutboxTests
                 _records.Where(r => r.DataSubjectId == dataSubjectId).ToArray());
     }
 }
+#pragma warning restore CS0618 // Type or member is obsolete

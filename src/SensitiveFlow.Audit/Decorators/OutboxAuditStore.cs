@@ -1,5 +1,6 @@
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Audit.Outbox;
 
 namespace SensitiveFlow.Audit.Decorators;
 
@@ -22,8 +23,12 @@ public sealed class OutboxAuditStore : IBatchAuditStore
     /// <inheritdoc />
     public async Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
     {
-        await _inner.AppendAsync(record, cancellationToken);
-        await _outbox.EnqueueAsync(record, cancellationToken);
+        await ExecuteAsync(async ct =>
+        {
+            await _inner.AppendAsync(record, ct);
+            await _outbox.EnqueueAsync(record, ct);
+            SensitiveFlowAuditDiagnostics.RecordEnqueued();
+        }, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -31,22 +36,27 @@ public sealed class OutboxAuditStore : IBatchAuditStore
     {
         ArgumentNullException.ThrowIfNull(records);
 
-        if (_inner is IBatchAuditStore batch)
+        await ExecuteAsync(async ct =>
         {
-            await batch.AppendRangeAsync(records, cancellationToken);
-        }
-        else
-        {
+            if (_inner is IBatchAuditStore batch)
+            {
+                await batch.AppendRangeAsync(records, ct);
+            }
+            else
+            {
+                foreach (var record in records)
+                {
+                    await _inner.AppendAsync(record, ct);
+                }
+            }
+
             foreach (var record in records)
             {
-                await _inner.AppendAsync(record, cancellationToken);
+                await _outbox.EnqueueAsync(record, ct);
             }
-        }
 
-        foreach (var record in records)
-        {
-            await _outbox.EnqueueAsync(record, cancellationToken);
-        }
+            SensitiveFlowAuditDiagnostics.RecordEnqueued(records.Count);
+        }, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -67,4 +77,14 @@ public sealed class OutboxAuditStore : IBatchAuditStore
         int take = 100,
         CancellationToken cancellationToken = default)
         => _inner.QueryByDataSubjectAsync(dataSubjectId, from, to, skip, take, cancellationToken);
+
+    private Task ExecuteAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
+    {
+        if (_inner is IAuditStoreTransaction transaction)
+        {
+            return transaction.ExecuteInTransactionAsync(operation, cancellationToken);
+        }
+
+        return operation(cancellationToken);
+    }
 }

@@ -7,25 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-preview.3] - 2026-05-11
+
 ### Added
 
-- `SensitiveFlow.Core` policy engine primitives: `SensitiveFlowOptions`, built-in profiles, category policy registry, output behavior attributes, contextual redaction attributes, data sensitivity levels, discovery reports, export formatters, audit correlation helpers, audit outbox interfaces, data-subject request interfaces, and privacy-safe exception types.
-- `SensitiveFlow.Tool` command-line project with `sensitiveflow scan <assembly-or-directory> [output-directory]` for JSON/Markdown discovery reports.
-- `SensitiveFlow.HealthChecks` package with audit/token store health checks.
-- `SensitiveFlow.Diagnostics` startup validation via `AddSensitiveFlowValidation(...)` and `ValidateSensitiveFlow()`.
-- `SensitiveFlow.Diagnostics` happy-path `AddSensitiveFlow(...)` registration for shared profiles/policies.
-- `SensitiveFlow.Retention` dry-run execution via `RetentionExecutor.DryRunAsync(...)`.
-- `SensitiveFlow.TestKit` expanded assertions: `ContainsMaskedEmail`, `DoesNotContainRawValues`, `JsonDoesNotExposeAnnotatedProperties`, and `LogsDoNotContainSensitiveValues`.
-- `SensitiveFlow.TestKit` contract test bases for `IAuditSnapshotStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, and `IRetentionExpirationHandler`.
-- `SensitiveFlow.Json` now honors output attributes, contextual API response redaction, and category policies before falling back to the configured default mode.
-- `SensitiveFlow.Logging` now redacts annotated structured object members by default and applies `.MaskInLogs()` policies when a policy registry is supplied through `SensitiveLoggingOptions`.
-- `DataSubjectExporter` now honors contextual `[Redaction(Export = ...)]` attributes while keeping raw export as the default.
-- `SensitiveDataAuditInterceptor` now honors contextual `[Redaction(Audit = ...)]` for per-field audit records.
-- `SensitiveFlow.Tool` now builds project/solution inputs before scanning compiled assemblies.
-- `SensitiveFlow.Audit` now includes `JsonAuditOutboxSerializer`, `InMemoryAuditOutbox`, and `OutboxAuditStore`.
-- Startup diagnostics now detect EF Core interceptor registration without `IAuditStore`, loaded retention annotations without executor/handlers, and ASP.NET Core audit middleware registration/order markers when available.
-- `SensitiveDataAssert.DoesNotContainAny` - checks a payload against explicit string values without requiring an annotated entity.
-- `SensitiveDataAssert.DoesNotLeakKnownValues` - same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
+- **Durable audit outbox framework**: `IDurableAuditOutbox` contract with `DequeueBatchAsync`, `MarkProcessedAsync`, `MarkFailedAsync` for production-grade delivery guarantees.
+- **Audit outbox entries**: `AuditOutboxEntry` model tracking attempts, timestamps, errors, and dead-letter status for reliable retry logic.
+- **Outbox publisher abstraction**: `IAuditOutboxPublisher` for pluggable downstream delivery (SIEM, webhooks, event buses, etc.).
+- **Audit outbox dispatcher**: `AuditOutboxDispatcher` background service with configurable polling, exponential backoff, and dead-lettering.
+- **Metrics & diagnostics**: New diagnostic codes SF-CONFIG-013 (in-memory outbox outside Development) and SF-CONFIG-014 (durable outbox without publishers).
+- **Health checks**: `AuditOutboxHealthCheck` detects in-memory outbox usage in production.
+- **EF Core durable outbox** (`SensitiveFlow.Audit.EFCore.Outbox` package): `EfCoreAuditOutbox` with transactional guarantees (audit + outbox in single SaveChanges).
+- **Audit outbox diagnostics class**: `SensitiveFlowAuditDiagnostics` tracks enqueued/dispatched/failed/dead-lettered/pending record counts.
+
+### Deprecated
+
+- `InMemoryAuditOutbox` — use `AddEfCoreAuditOutbox()` or custom `IDurableAuditOutbox` for production.
+- `AddInMemoryAuditOutbox()` — same guidance as above.
+
+### Changed
+
+- Audit store decorator `OutboxAuditStore` now reports metrics via `SensitiveFlowAuditDiagnostics`.
+- `SensitiveFlowConfigurationValidator` now checks for in-memory outbox outside Development (SF-CONFIG-013).
+- Docs: `docs/audit.md` updated with at-least-once vs at-most-once delivery matrix and production-ready outbox patterns.
+
+### Security
+
+- Durable outbox prevents audit record loss on process restart or failure — critical for compliance.
+- Transactional outbox pattern ensures audit writes and outbox enqueuing happen atomically.
 
 ## [1.0.0-preview.2] - 2026-05-10
 

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SensitiveFlow.Audit.Decorators;
 using SensitiveFlow.Audit.Outbox;
@@ -170,6 +171,7 @@ public static class AuditServiceCollectionExtensions
     /// systems should provide a durable <see cref="IAuditOutbox"/> implementation
     /// and call <see cref="AddAuditOutbox{TOutbox}"/>.
     /// </remarks>
+    [Obsolete("In-memory audit outbox is for tests/local development only. Use AddEfCoreAuditOutbox() or AddAuditOutbox<TOutbox>() for durable production delivery.", error: false)]
     public static IServiceCollection AddInMemoryAuditOutbox(this IServiceCollection services)
     {
         services.AddSingleton<IAuditOutboxSerializer, JsonAuditOutboxSerializer>();
@@ -188,6 +190,21 @@ public static class AuditServiceCollectionExtensions
         services.AddSingleton<IAuditOutboxSerializer, JsonAuditOutboxSerializer>();
         services.AddSingleton<IAuditOutbox, TOutbox>();
         return services.AddAuditOutboxDecorator();
+    }
+
+    /// <summary>
+    /// Registers the hosted durable audit outbox dispatcher.
+    /// </summary>
+    public static IServiceCollection AddAuditOutboxDispatcher(
+        this IServiceCollection services,
+        Action<AuditOutboxDispatcherOptions>? configure = null)
+    {
+        var options = new AuditOutboxDispatcherOptions();
+        configure?.Invoke(options);
+
+        services.AddSingleton(options);
+        services.AddHostedService<AuditOutboxDispatcher>();
+        return services;
     }
 
     private static IServiceCollection AddAuditOutboxDecorator(this IServiceCollection services)

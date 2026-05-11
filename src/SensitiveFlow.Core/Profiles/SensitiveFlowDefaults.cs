@@ -33,4 +33,9 @@ public static class SensitiveFlowDefaults
     /// Default health-check registration name for token-store checks.
     /// </summary>
     public const string TokenStoreHealthCheckName = "sensitiveflow-token-store";
+
+    /// <summary>
+    /// Default health-check registration name for audit-outbox checks.
+    /// </summary>
+    public const string AuditOutboxHealthCheckName = "sensitiveflow-audit-outbox";
 }

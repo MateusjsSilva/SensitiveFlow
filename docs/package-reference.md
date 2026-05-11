@@ -9,6 +9,7 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.Core` | You annotate models or implement contracts. | Add attributes to models. | None by itself; it does not enforce behavior. |
 | `SensitiveFlow.Audit` | You register custom audit stores or decorators. | `AddAuditStore<T>()` or first-party EF store plus optional retry/buffer. | In-memory/buffered data can be lost before durable write. |
 | `SensitiveFlow.Audit.EFCore` | You want first-party SQL audit storage. | `AddEfCoreAuditStore(...)`; create/migrate audit table. | Audit DB must be durable and backed up independently. |
+| `SensitiveFlow.Audit.EFCore.Outbox` | You need durable, reliable delivery of audit records to downstream systems (SIEM, data lakes, compliance dashboards). | `AddEfCoreAuditOutbox()` and register `IAuditOutboxPublisher` implementations. | Outbox table must be monitored for dead-lettered entries (failed delivery after max retries). |
 | `SensitiveFlow.Audit.Snapshots.EFCore` | You want durable aggregate-level audit snapshots. | `AddEfCoreAuditSnapshotStore(...)`; create/migrate snapshot table. | Snapshots can be large; monitor storage growth. |
 | `SensitiveFlow.TokenStore.EFCore` | You want first-party SQL token storage for reversible pseudonymization. | `AddEfCoreTokenStore(...)`; create/migrate token table. | Losing token mappings makes pseudonymized data irrecoverable. |
 | `SensitiveFlow.EFCore` | You want automatic audit on `SaveChanges`. | `AddSensitiveFlowEFCore()` and `AddInterceptors(...)`. | Missing interceptor means no automatic audit. |
@@ -122,6 +123,84 @@ Operational notes:
 - Uses `IDbContextFactory<TContext>` so audit writes do not piggyback on the application `DbContext`.
 - Implements `IBatchAuditStore`.
 - PostgreSQL and SQL Server container coverage lives in `tests/SensitiveFlow.Audit.EFCore.ContainerTests`.
+
+## SensitiveFlow.Audit.EFCore.Outbox
+
+Purpose:
+
+- First-party EF Core-backed **durable audit outbox** for reliable, transactional delivery of audit records to downstream systems (SIEM, data lakes, compliance dashboards, Kafka, webhooks, etc.).
+
+Primary APIs:
+
+- `AddEfCoreAuditOutbox(options => ...)`
+- `EfCoreAuditOutbox`
+- `AuditOutboxEntry` (data model in Core)
+- `IAuditOutboxPublisher` (interface for delivery logic — implemented by you)
+- `AuditOutboxDispatcher` (background service that polls and delivers)
+- `AuditOutboxDispatcherOptions` (configurable polling, retry backoff, max attempts)
+
+Install when:
+
+- You need **guaranteed, at-least-once delivery** of audit records to a remote system.
+- Your business/compliance requirements demand that no audit record is lost if the application crashes.
+
+Recommended setup:
+
+```csharp
+// Package installation
+dotnet add package SensitiveFlow.Audit.EFCore.Outbox
+
+// DI setup
+builder.Services.AddEfCoreAuditStore(opt => 
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("Audit")));
+
+// Enable durable outbox with automatic background dispatcher
+builder.Services.AddEfCoreAuditOutbox(options =>
+{
+    options.PollInterval = TimeSpan.FromSeconds(2);
+    options.BatchSize = 100;
+    options.MaxAttempts = 5;
+    options.BackoffStrategy = BackoffStrategy.Exponential; // or Linear
+});
+
+// Register publishers (one or more) to deliver records downstream
+builder.Services.AddScoped<IAuditOutboxPublisher, MySiemPublisher>();
+builder.Services.AddScoped<IAuditOutboxPublisher, MyDataLakePublisher>();
+```
+
+Example publisher implementation:
+
+```csharp
+public sealed class MySiemPublisher : IAuditOutboxPublisher
+{
+    private readonly HttpClient _http;
+    
+    public MySiemPublisher(HttpClient http) => _http = http;
+    
+    public async Task PublishAsync(AuditOutboxEntry entry, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(entry.Record);
+        var response = await _http.PostAsJsonAsync("/siem/audit", json, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+}
+```
+
+Delivery guarantee:
+
+- Records are enqueued and the audit store write happen in a **single `SaveChanges` transaction** — transactional outbox pattern.
+- The `AuditOutboxDispatcher` background service polls periodically and calls all registered `IAuditOutboxPublisher` implementations.
+- On successful publish, entries are marked `IsProcessed`.
+- On exception, entries are marked `IsDeadLettered` or retried based on `MaxAttempts`.
+- Dead-lettered entries and retry history are queryable for operational dashboards and alerting.
+
+Operational notes:
+
+- Audit and outbox data live in the same `AuditDbContext` (configurable persistence strategy).
+- Dispatcher runs as a `HostedService` — activate after application startup.
+- Multiple instances of your application can run simultaneously; polling is coordinated via outbox entry state transitions (no distributed locking required).
+- Monitor the `AuditOutboxEntry` table for growth, dead-lettered entries, and retry counts in operational dashboards.
+- SQL Server and PostgreSQL container coverage in `tests/SensitiveFlow.Audit.EFCore.Outbox.Tests`.
 
 ## SensitiveFlow.Audit.Snapshots.EFCore
 

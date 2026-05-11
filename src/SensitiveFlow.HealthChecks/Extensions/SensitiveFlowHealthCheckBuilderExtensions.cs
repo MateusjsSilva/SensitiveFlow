@@ -38,4 +38,15 @@ public static class SensitiveFlowHealthCheckBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
         return builder.AddCheck<TokenStoreHealthCheck>(name, failureStatus, tags ?? Array.Empty<string>());
     }
+
+    /// <summary>Adds an audit outbox health check.</summary>
+    public static IHealthChecksBuilder AddAuditOutboxCheck(
+        this IHealthChecksBuilder builder,
+        string name = SensitiveFlowDefaults.AuditOutboxHealthCheckName,
+        HealthStatus? failureStatus = HealthStatus.Degraded,
+        IEnumerable<string>? tags = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.AddCheck<AuditOutboxHealthCheck>(name, failureStatus, tags ?? Array.Empty<string>());
+    }
 }
