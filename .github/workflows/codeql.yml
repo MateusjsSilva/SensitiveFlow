@@ -12,6 +12,8 @@ jobs:
   analyze:
     name: Analyze (csharp)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       security-events: write
       packages: read
