@@ -2,7 +2,9 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SensitiveFlow.Audit.Decorators;
 using SensitiveFlow.Audit.EFCore;
+using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.Audit.EFCore.Outbox.Extensions;
 using SensitiveFlow.Audit.Outbox;
 using SensitiveFlow.Core.Interfaces;
@@ -61,6 +63,18 @@ public sealed class OutboxEFCoreServiceCollectionExtensionsTests
             .ToList();
 
         hostedServices.Should().ContainSingle(d => d.ImplementationType == typeof(AuditOutboxDispatcher));
+    }
+
+    [Fact]
+    public void AddEfCoreAuditOutbox_WhenAuditStoreRegistered_WrapsAuditStore()
+    {
+        var services = new ServiceCollection();
+        services.AddEfCoreAuditStore(options => options.UseSqlite("Data Source=:memory:"));
+
+        services.AddEfCoreAuditOutbox();
+        var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IAuditStore>().Should().BeOfType<OutboxAuditStore>();
     }
 
     [Fact]

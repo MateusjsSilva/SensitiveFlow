@@ -37,24 +37,35 @@ Use this page as the documentation index. The files are grouped by task so contr
 
 ## Recommended reading paths
 
-For a web API using EF Core:
+**Quick start (recommended):**
+
+1. [Getting started](getting-started.md) — composition package + EF provider + `AddSensitiveFlowWeb()`.
+2. [Package reference / `SensitiveFlow.AspNetCore.EFCore`](package-reference.md#sensitiveflowaspnetcoreefcore) — composition layer reference.
+3. [Attributes](attributes.md)
+
+**Full production web API:**
 
 1. [Getting started](getting-started.md)
 2. [Package reference](package-reference.md)
 3. [Attributes](attributes.md)
 4. [Audit](audit.md)
-5. [EF Core](efcore.md)
-6. [ASP.NET Core](aspnetcore.md)
-7. [JSON redaction](json.md)
-8. [TestKit](testkit.md)
+5. [Outbox](outbox-example.md)
+6. [EF Core](efcore.md)
+7. [ASP.NET Core](aspnetcore.md)
+8. [JSON redaction](json.md)
+9. [Logging](logging.md)
+10. [Diagnostics](diagnostics.md)
+11. [Policies, discovery, and health](policies-discovery-health.md)
+12. [TestKit](testkit.md)
 
-For production hardening:
+For data protection workflows:
 
-1. [Package reference](package-reference.md)
-2. [Diagnostics](diagnostics.md)
-3. [Audit](audit.md)
-4. [Retention](retention.md)
-5. [TestKit](testkit.md)
+1. [Anonymization](anonymization.md)
+2. [Retention](retention.md)
+
+For advanced composition (per-package control):
+
+1. [Package reference](package-reference.md) — per-package setup matrix with granular `Add*()` calls.
 
 For AI-assisted implementation:
 

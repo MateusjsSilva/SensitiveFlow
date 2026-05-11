@@ -1,11 +1,12 @@
 // ---------------------------------------------
 // SensitiveFlow - Console Sample
 //
-// Shows a real persistence setup:
-//   - SQLite via EF Core (durable AuditStore + TokenStore)
-//   - Serilog for structured log redaction
-//   - OpenTelemetry for activity traces
-//   - [PersonalData] / [SensitiveData] attributes + retention evaluation
+// Demonstrates core concepts without ASP.NET Core DI:
+//   - Manual EF Core + SQLite for durable AuditStore and TokenStore
+//   - Attribute-based classification ([PersonalData] / [SensitiveData])
+//   - Masking, pseudonymization, retention evaluation, and discovery
+//
+// For the recommended DI-based setup, see QuickStart.Sample.
 // ---------------------------------------------
 
 using System.Diagnostics;
@@ -29,7 +30,7 @@ using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.EFCore.Interceptors;
 using SensitiveFlow.Retention.Services;
 
-// ── Serilog ────────────────────────────────────────────────────────────────
+// -- Serilog ----------------------------------------------------------------
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .WriteTo.Console(outputTemplate:
@@ -39,7 +40,7 @@ Log.Logger = new LoggerConfiguration()
         restrictedToMinimumLevel: LogEventLevel.Information)
     .CreateLogger();
 
-// ── OpenTelemetry ───────────────────────────────────────────────────────────
+// -- OpenTelemetry -----------------------------------------------------------
 var activitySource = new ActivitySource("SensitiveFlow.Console.Sample");
 
 using var tracerProvider = Sdk.CreateTracerProviderBuilder()
@@ -48,7 +49,7 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .AddConsoleExporter()
     .Build();
 
-// ── EF Core: SQLite with durable AuditStore and TokenStore ─────────────────
+// -- EF Core: SQLite with durable AuditStore and TokenStore -----------------
 var options = new DbContextOptionsBuilder<SampleDbContext>()
     .UseSqlite("Data Source=sensitiveflow-console.db")
     .Options;
@@ -65,9 +66,9 @@ var pseudonymizer = new TokenPseudonymizer(tokenStore);
 var auditContext = new StaticAuditContext("console-runner", ipToken: null);
 var interceptor = new SensitiveDataAuditInterceptor(auditStore, auditContext);
 
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 Section("1. Annotating models with [PersonalData] / [SensitiveData]");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 var customer = new Customer
 {
@@ -83,9 +84,9 @@ Log.Information("New customer — name: {Name}, email: {Email}",
     customer.Name.MaskName(),
     customer.Email.MaskEmail());
 
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 Section("2. Persisting to SQLite and generating automatic audit trail");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 using (var activity = activitySource.StartActivity("SaveCustomer"))
 {
@@ -104,9 +105,9 @@ using (var activity = activitySource.StartActivity("SaveCustomer"))
     Log.Information("Customer {DataSubjectId} saved", customer.DataSubjectId);
 }
 
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 Section("3. Querying the durable audit trail from SQLite");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 var auditRecords = await auditStore.QueryByDataSubjectAsync(customer.DataSubjectId);
 Console.WriteLine($"  Audit records for {customer.DataSubjectId}:");
@@ -115,9 +116,9 @@ foreach (var r in auditRecords)
     Console.WriteLine($"    [{r.Timestamp:u}] {r.Operation,-10} {r.Entity}.{r.Field,-12} actor={r.ActorId ?? "-"}");
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-Section("4. IP pseudonymization — token survives to SQLite");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
+Section("4. IP pseudonymization -- token survives to SQLite");
+// --------------------------------------------------------------------------
 
 var rawIp   = "192.168.100.42";
 var ipToken = await pseudonymizer.PseudonymizeAsync(rawIp);
@@ -139,18 +140,18 @@ await auditStore.AppendAsync(new AuditRecord
 var resolvedIp = await pseudonymizer.ReverseAsync(ipToken);
 Console.WriteLine($"  Token {ipToken[..8]}... resolved to: {resolvedIp}");
 
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 Section("5. Masking and anonymization");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 Console.WriteLine($"  Name masked  : {customer.Name.MaskName()}");
 Console.WriteLine($"  Email masked : {customer.Email.MaskEmail()}");
 Console.WriteLine($"  Phone masked : {customer.Phone.MaskPhone()}");
 Console.WriteLine($"  TaxId anon.  : {new BrazilianTaxIdAnonymizer().Anonymize(customer.TaxId)}");
 
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 Section("6. Retention evaluation");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 var retentionEvaluator = new RetentionEvaluator(Enumerable.Empty<SensitiveFlow.Retention.Contracts.IRetentionExpirationHandler>());
 
@@ -165,9 +166,9 @@ catch (Exception ex)
     Console.WriteLine($"  Retention expired: {ex.Message}");
 }
 
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 Section("7. OpenTelemetry trace exported");
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 using (var span = activitySource.StartActivity("AuditQueryDemo"))
 {
@@ -209,15 +210,15 @@ Console.WriteLine($"  Retention dry-run actions: {retentionDryRun.Entries.Count}
 Log.Information("Console sample finished.");
 await Log.CloseAndFlushAsync();
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// -- Helpers ----------------------------------------------------------------
 
 static void Section(string title)
 {
     Console.WriteLine();
-    Console.WriteLine($"── {title} ──");
+    Console.WriteLine($"-- {title} --");
 }
 
-// ── Domain model ──────────────────────────────────────────────────────────
+// -- Domain model ----------------------------------------------------------
 
 public sealed class Customer
 {
@@ -240,7 +241,7 @@ public sealed class Customer
     public DateTimeOffset CreatedAt { get; set; }
 }
 
-// ── EF Core DbContext with durable AuditStore and TokenStore ──────────────
+// -- EF Core DbContext with durable AuditStore and TokenStore --------------
 
 public sealed class SampleDbContext : DbContext
 {
@@ -275,7 +276,7 @@ public sealed class TokenMappingEntity
     public string Token { get; set; } = string.Empty;
 }
 
-// ── Durable IAuditStore backed by EF Core / SQLite ────────────────────────
+// -- Durable IAuditStore backed by EF Core / SQLite ------------------------
 
 public sealed class EfCoreAuditStore : IAuditStore
 {
@@ -336,7 +337,7 @@ public sealed class EfCoreAuditStore : IAuditStore
     };
 }
 
-// ── Durable ITokenStore backed by EF Core / SQLite ────────────────────────
+// -- Durable ITokenStore backed by EF Core / SQLite ------------------------
 
 public sealed class EfCoreTokenStore : ITokenStore
 {
@@ -373,7 +374,7 @@ public sealed class EfCoreTokenStore : ITokenStore
     }
 }
 
-// ── Static IAuditContext for console (no HTTP context) ────────────────────
+// -- Static IAuditContext for console (no HTTP context) --------------------
 
 public sealed class StaticAuditContext : IAuditContext
 {

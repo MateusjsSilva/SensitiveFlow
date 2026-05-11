@@ -2,25 +2,20 @@
 
 SensitiveFlow is a .NET library that brings observability and control to sensitive data at runtime. It audits EF Core changes, redacts sensitive JSON/log output, and provides masking, pseudonymization, retention, export, and erasure utilities.
 
-## Installation
+## Quick Start (recommended)
 
-Install only the packages used by the app:
+Install the single composition package:
 
 ```bash
-dotnet add package SensitiveFlow.Core
-dotnet add package SensitiveFlow.Audit
-dotnet add package SensitiveFlow.Audit.EFCore
-dotnet add package SensitiveFlow.TokenStore.EFCore
-dotnet add package SensitiveFlow.EFCore
-dotnet add package SensitiveFlow.AspNetCore
-dotnet add package SensitiveFlow.Anonymization
-dotnet add package SensitiveFlow.Json
-dotnet add package SensitiveFlow.Logging
-dotnet add package SensitiveFlow.Retention
-dotnet add package SensitiveFlow.Diagnostics
+dotnet add package SensitiveFlow.AspNetCore.EFCore
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer # or your EF Core provider
 ```
 
-## Step 1 - Annotate your model
+This brings in the full recommended ASP.NET Core + EF Core stack. The database
+provider package remains app-owned, so the same SensitiveFlow setup works with any
+EF Core provider.
+
+### Step 1 - Annotate your model
 
 ```csharp
 using SensitiveFlow.Core.Attributes;
@@ -45,40 +40,37 @@ public class Customer
 
 `DataSubjectId` or `UserId` is required for EF Core audit correlation.
 
-## Step 2 - Register the recommended web stack
-
-This is the recommended ASP.NET Core + EF Core setup. For a smaller app, keep only the
-features you need: `Core` + `Anonymization` works without DI, EF audit needs an
-`IAuditStore`, and ASP.NET Core IP pseudonymization needs an `IPseudonymizer`.
+### Step 2 - Register SensitiveFlow
 
 ```csharp
-builder.Services.AddEfCoreAuditStore(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Audit")));
-builder.Services.AddAuditStoreRetry();
-builder.Services.AddSensitiveFlowDiagnostics();
+using SensitiveFlow.AspNetCore.EFCore.Extensions;
 
-builder.Services.AddEfCoreTokenStore(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")));
-builder.Services.AddCachingTokenStore();
+builder.Services.AddSensitiveFlowWeb(options =>
+{
+    options.UseProfile(SensitiveFlowProfile.Balanced);
 
-builder.Services.AddSensitiveFlowEFCore();
-builder.Services.AddSensitiveFlowAspNetCore();
-builder.Services.AddSensitiveFlowLogging();
-builder.Services.AddDataSubjectExport();
-builder.Services.AddDataSubjectErasure();
-builder.Services.AddRetention();
-builder.Services.AddRetentionExecutor();
+    options.UseEfCoreStores(
+        audit => audit.UseSqlServer(builder.Configuration.GetConnectionString("Audit")),
+        tokens => tokens.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")));
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-        options.JsonSerializerOptions.WithSensitiveDataRedaction());
+    options.EnableEfCoreAudit();
+    options.EnableAspNetCoreContext();
+    options.EnableLoggingRedaction();
+    options.EnableJsonRedaction();
+    options.EnableValidation();
+    options.EnableHealthChecks();
+
+    // Enable as needed:
+    // options.EnableOutbox();
+    // options.EnableDiagnostics();
+    // options.EnableAuditStoreRetry();
+    // options.EnableCachingTokenStore();
+    // options.EnableRetention().EnableRetentionExecutor();
+    // options.EnableDataSubjectExport().EnableDataSubjectErasure();
+});
 ```
 
-`AddEfCoreTokenStore(...)` registers both `ITokenStore` and the default
-`IPseudonymizer`. Keep that store durable because losing token mappings makes reversible
-pseudonymization impossible.
-
-## Step 3 - Wire your DbContext
+### Step 3 - Wire your DbContext and middleware
 
 ```csharp
 builder.Services.AddDbContext<AppDbContext>((provider, options) =>
@@ -86,28 +78,53 @@ builder.Services.AddDbContext<AppDbContext>((provider, options) =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("App"));
     options.AddInterceptors(provider.GetRequiredService<SensitiveDataAuditInterceptor>());
 });
-```
 
-## Step 4 - Add the middleware
+var app = builder.Build();
 
-```csharp
-app.UseSensitiveFlowAudit();
+// Place before UseAuthentication.
+app.UseSensitiveFlow();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHealthChecks("/health");
 ```
 
-Configure forwarded headers before `UseSensitiveFlowAudit` when the app runs behind a proxy/load balancer.
+### What you get
 
-## Runtime behavior
+| Feature | How it works |
+|---------|-------------|
+| EF Core audit | Every `SaveChangesAsync` on `[PersonalData]`/`[SensitiveData]` fields writes `AuditRecord` |
+| HTTP context | Middleware fills `ActorId`/`IpAddressToken` (pseudonymized) |
+| JSON redaction | `System.Text.Json` output is masked/redacted automatically |
+| Log redaction | `[Sensitive]` markers and annotated members are scrubbed |
+| Startup validation | Verifies configured infrastructure at startup |
+| Health checks | `/health` endpoint monitors audit and token stores |
 
-Every `SaveChangesAsync` call scans changed entities for `[PersonalData]` or `[SensitiveData]` and writes audit records through `IAuditStore`. HTTP middleware fills `ActorId`/`IpAddressToken`, JSON redaction protects serialized output, and retention/export/erasure services are called explicitly by your jobs or endpoints.
+### Next steps
 
-## Next Steps
-
-- [Package reference](package-reference.md): package-by-package setup matrix.
-- [Audit](audit.md): retry, buffering, query, retention, and snapshot concepts.
+- [Package reference](package-reference.md): full package-by-package reference and the `SensitiveFlow.AspNetCore.EFCore` composition layer.
+- [Audit](audit.md): retry, buffering, outbox, snapshots, and query concepts.
 - [EF Core](efcore.md): interceptor behavior and entity requirements.
 - [ASP.NET Core](aspnetcore.md): request context and IP pseudonymization.
 - [JSON redaction](json.md): `System.Text.Json` output protection.
 - [Anonymization](anonymization.md): token stores, masking, export, erasure, fingerprints.
 - [Retention](retention.md): scheduled retention evaluation and execution.
+
+## Advanced: per-package setup
+
+If you need precise control over which packages are installed and how each service
+is registered, see the [Package Reference](package-reference.md) for a full
+package-by-package setup matrix with individual registration calls.
+
+The composition package is the recommended path for new adopters. The granular
+extension methods (e.g. `AddEfCoreAuditStore`, `AddSensitiveFlowEFCore`) continue
+to work and are documented in the package reference for teams that need them.
+
+## Database schema
+
+SensitiveFlow does not create tables automatically. The app tables and the
+SensitiveFlow audit/token/outbox tables must exist before the first write.
+
+Use EF Core migrations, checked-in SQL scripts, or your deployment tooling to
+create schema in every environment. This is true for local development too, so
+local behavior matches production and missing schema fails early instead of being
+hidden by `EnsureCreated`.

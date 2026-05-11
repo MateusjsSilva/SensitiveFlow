@@ -45,15 +45,17 @@ Sensitive data flows through your application on every request: EF Core saves, H
 
 ## Quick Start
 
-### 1. Install packages
+### 1. Install the composition package
 
 ```bash
-dotnet add package SensitiveFlow.Core
-dotnet add package SensitiveFlow.Audit
-dotnet add package SensitiveFlow.Audit.EFCore
-dotnet add package SensitiveFlow.EFCore
-dotnet add package SensitiveFlow.AspNetCore
+dotnet add package SensitiveFlow.AspNetCore.EFCore
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer # or your EF Core provider
 ```
+
+This single package brings in the full recommended stack: Core, Audit, EF Core audit
+stores and outbox, Token store, Anonymization, JSON and logging redaction, Retention,
+Diagnostics, and Health Checks. Database provider packages stay app-owned, so the
+same setup works with SQL Server, PostgreSQL, SQLite, MySQL, or any EF Core provider.
 
 ### 2. Annotate your model
 
@@ -78,90 +80,112 @@ public class Customer
 }
 ```
 
-### 3. Register a durable audit store
+`DataSubjectId` or `UserId` is required for EF Core audit correlation.
 
-`IAuditStore` is the persistence contract -- you own the implementation so audit records go
-exactly where your infrastructure requires (SQL, MongoDB, Azure Table Storage, etc.).
-
-For EF Core-backed audit storage, use `SensitiveFlow.Audit.EFCore`. It registers an
-`IAuditStore` that also implements `IBatchAuditStore`, avoiding one database roundtrip
-per sensitive field.
+### 3. Register SensitiveFlow
 
 ```csharp
-builder.Services.AddEfCoreAuditStore(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AuditStorage")));
-builder.Services.AddAuditStoreRetry();
-```
+using SensitiveFlow.AspNetCore.EFCore.Extensions;
 
-> **Do not use an in-memory store in production.** Audit records must survive process
-> restarts. Losing audit history defeats the accountability the audit trail is meant
-> to provide.
-
-### 4. Register services
-
-```csharp
-builder.Services.AddEfCoreAuditStore(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AuditStorage")));
-builder.Services.AddAuditStoreRetry();
-builder.Services.AddSensitiveFlowEFCore();           // SensitiveFlow.EFCore
-builder.Services.AddSensitiveFlowAspNetCore();       // SensitiveFlow.AspNetCore
-builder.Services.AddSensitiveFlowLogging();          // SensitiveFlow.Logging
-builder.Services.AddSensitiveFlowValidation(o =>
+builder.Services.AddSensitiveFlowWeb(options =>
 {
-    o.RequireAuditStore = true;
-    o.RequireTokenStore = true;
+    options.UseProfile(SensitiveFlowProfile.Balanced);
+
+    // Provider-agnostic: use any EF Core provider referenced by your app.
+    options.UseEfCoreStores(
+        audit => audit.UseSqlServer(builder.Configuration.GetConnectionString("Audit")!),
+        tokens => tokens.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")!));
+
+    // You can also configure each store independently:
+    // options.UseEfCoreAuditStore(audit => audit.UseNpgsql(...));
+    // options.UseEfCoreTokenStore(tokens => tokens.UseSqlite(...));
+
+    // Enable the features your app needs
+    options.EnableEfCoreAudit();
+    options.EnableAspNetCoreContext();
+    options.EnableJsonRedaction();
+    options.EnableLoggingRedaction();
+    options.EnableValidation();
+    options.EnableHealthChecks();
+
+    // Production-grade features (opt-in)
+    // options.EnableOutbox();
+    // options.EnableDiagnostics();
+    // options.EnableAuditStoreRetry();
+    // options.EnableCachingTokenStore();
+    // options.EnableRetention().EnableRetentionExecutor();
+    // options.EnableDataSubjectExport().EnableDataSubjectErasure();
 });
 ```
 
-### 5. Add the middleware
+### 4. Wire your DbContext and middleware
 
 ```csharp
-// Before UseAuthentication -- makes the pseudonymized IP token available to all handlers.
-app.UseSensitiveFlowAudit();
+// DbContext setup
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+    options.UseSqlServer(connectionString)
+        .AddInterceptors(sp.GetRequiredService<SensitiveDataAuditInterceptor>()));
+
+var app = builder.Build();
+
+// Place before UseAuthentication so the pseudonymized IP token
+// is available throughout the request pipeline.
+app.UseSensitiveFlow();
+
+// Map health checks (registers under /health by default)
+app.MapHealthChecks("/health");
 ```
 
-### 6. Wire the interceptor into your DbContext
+That's it. Every `SaveChanges` on a field annotated with `[PersonalData]` or
+`[SensitiveData]` now produces an `AuditRecord` automatically, HTTP responses are
+JSON-redacted, logs are scrubbed, and health checks monitor the infrastructure.
+
+Schema is explicit: databases must already contain the app tables and the
+SensitiveFlow audit/token/outbox tables before the first write. SensitiveFlow does
+not create tables automatically, even in samples, because schema creation belongs
+to migrations or deployment tooling.
+
+### Optional: policies, reports, and diagnostics
 
 ```csharp
-optionsBuilder.AddInterceptors(app.Services.GetRequiredService<SensitiveDataAuditInterceptor>());
-```
-
-### Optional: policies, reports, and health checks
-
-```csharp
-builder.Services.AddSensitiveFlow(options =>
+// Custom policy overrides
+builder.Services.AddSensitiveFlowWeb(options =>
 {
     options.UseProfile(SensitiveFlowProfile.Strict);
-    options.Policies.ForCategory(DataCategory.Contact)
-        .MaskInLogs()
-        .RedactInJson()
-        .AuditOnChange();
+    // ... store config, features ...
 });
 
+// Discovery report (CLI or at startup)
 var report = SensitiveDataDiscovery.Scan(typeof(Customer).Assembly);
 File.WriteAllText("sensitiveflow-report.md", report.ToMarkdown());
 
-builder.Services.AddSensitiveFlowHealthChecks()
-    .AddAuditStoreCheck()
-    .AddTokenStoreCheck();
-
+// Startup validation
 var startupReport = app.Services.ValidateSensitiveFlow();
 ```
 
-Defaults:
+### Defaults
 
-- profile: `SensitiveFlowProfile.Balanced`
-- JSON redaction: `JsonRedactionMode.Mask`
-- redaction marker: `[REDACTED]`
-- logging: `[Sensitive]` markers are redacted; annotated structured object members are redacted unless policies request `MaskInLogs()`
-- retention anonymization marker: `[ANONYMIZED]`
-- health checks: `sensitiveflow-audit-store`, `sensitiveflow-token-store`, `sensitiveflow-audit-outbox`
-- audit outbox dispatcher: `PollInterval = 1s`, `BatchSize = 100`, `MaxAttempts = 5`, `BackoffStrategy = Exponential`, `DeadLetterAfterMax = true`
-- data-subject export: raw annotated values by default; use `[Redaction(Export = ...)]` to mask, redact, or omit specific fields
-- CLI: project/solution inputs are built first; `SF-CLI-001` warns when `AddInMemoryAuditOutbox()` is outside `#if DEBUG`
+| Area | Default |
+|------|---------|
+| Profile | `SensitiveFlowProfile.Balanced` |
+| JSON redaction mode | `JsonRedactionMode.Mask` |
+| Redaction marker | `[REDACTED]` |
+| Logging | `[Sensitive]` markers redacted; annotated members redacted unless `MaskInLogs()` |
+| Retention anonymization | `[ANONYMIZED]` |
+| Audit outbox (when enabled) | `PollInterval=1s`, `BatchSize=100`, `MaxAttempts=5`, `BackoffStrategy=Exponential` |
+| Data-subject export | Raw annotated values by default; use `[Redaction(Export = ...)]` to override |
+| Health checks | `sensitiveflow-audit-store`, `sensitiveflow-token-store`, `sensitiveflow-audit-outbox` |
 
-Every `SaveChanges` on a field annotated with `[PersonalData]` or `[SensitiveData]` now
-produces an `AuditRecord` automatically.
+### Advanced: fine-grained package-by-package setup
+
+The composition layer is the recommended path. If you need precise control over every
+registration, install individual packages and register each service manually. See the
+[Advanced Composition](docs/package-reference.md) guide for the full package-by-package
+setup matrix and individual registration calls.
+
+> **Do not use in-memory stores in production.** Audit records and token mappings must
+> survive process restarts. Losing audit history defeats accountability; losing token
+> mappings makes pseudonymized data irrecoverable.
 
 ## Documentation
 

@@ -6,6 +6,7 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 
 | Package | Use when | Minimum setup | Main risk |
 | --- | --- | --- | --- |
+| `SensitiveFlow.AspNetCore.EFCore` | **Recommended first package.** You're building an ASP.NET Core + EF Core app and want one composition entry point. | `builder.Services.AddSensitiveFlowWeb(options => { ... })`. | Hides individual registrations; switch to per-package setup when you need full control. |
 | `SensitiveFlow.Core` | You annotate models or implement contracts. | Add attributes to models. | None by itself; it does not enforce behavior. |
 | `SensitiveFlow.Audit` | You register custom audit stores or decorators. | `AddAuditStore<T>()` or first-party EF store plus optional retry/buffer. | In-memory/buffered data can be lost before durable write. |
 | `SensitiveFlow.Audit.EFCore` | You want first-party SQL audit storage. | `AddEfCoreAuditStore(...)`; create/migrate audit table. | Audit DB must be durable and backed up independently. |
@@ -24,6 +25,64 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
 | `SensitiveFlow.TestKit` | You implement custom stores or leak tests. | Inherit contract tests. | Contract tests need isolated fresh stores. |
 | `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly-project-or-directory>`. | Project/source inputs are built first, then compiled assemblies are scanned. |
+
+## SensitiveFlow.AspNetCore.EFCore
+
+Purpose:
+
+- **Recommended first package.** Official high-level composition for ASP.NET Core + EF Core apps. Provides a single `AddSensitiveFlowWeb()` entry point that wires the recommended stack: audit, token store, outbox, JSON and logging redaction, EF Core interception, ASP.NET Core context, validation, diagnostics, health checks, anonymization, and retention.
+
+Primary APIs:
+
+- `AddSensitiveFlowWeb(options => { ... })`
+- `UseSensitiveFlow()` (middleware — wraps `UseSensitiveFlowAudit()`)
+- `SensitiveFlowWebOptions` (fluent builder)
+  - `UseProfile(SensitiveFlowProfile profile)`
+  - `UseEfCoreStores(configureAuditStore, configureTokenStore)` (provider-agnostic shorthand)
+  - `UseEfCoreAuditStore(Action<DbContextOptionsBuilder>)`
+  - `UseEfCoreTokenStore(Action<DbContextOptionsBuilder>)`
+  - `EnableOutbox()`, `EnableDiagnostics()`, `EnableAuditStoreRetry()`
+  - `EnableCachingTokenStore()`
+  - `EnableDataSubjectExport()`, `EnableDataSubjectErasure()`
+  - `EnableLoggingRedaction()`, `EnableJsonRedaction()`
+  - `EnableEfCoreAudit()`, `EnableAspNetCoreContext()`
+  - `EnableValidation()`, `EnableHealthChecks()`
+  - `EnableRetention()`, `EnableRetentionExecutor()`
+
+Install when:
+
+- You're building an ASP.NET Core + EF Core app and want a single-line setup.
+- You're onboarding to SensitiveFlow and want sensible defaults without reading every package's setup docs.
+
+Recommended setup:
+
+```csharp
+builder.Services.AddSensitiveFlowWeb(options =>
+{
+    options.UseProfile(SensitiveFlowProfile.Balanced);
+    options.UseEfCoreStores(
+        audit => audit.UseSqlServer(builder.Configuration.GetConnectionString("Audit")!),
+        tokens => tokens.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")!));
+    options.EnableEfCoreAudit();
+    options.EnableAspNetCoreContext();
+    options.EnableJsonRedaction();
+    options.EnableLoggingRedaction();
+    options.EnableValidation();
+    options.EnableHealthChecks();
+});
+
+app.UseSensitiveFlow();
+app.MapHealthChecks("/health");
+```
+
+Operational notes:
+
+- This package depends on all other SensitiveFlow packages. Database provider packages remain app-owned, so the same API works with SQL Server, PostgreSQL, SQLite, MySQL, or any EF Core provider.
+- Every `Enable*()` method maps to the corresponding granular extension method (`AddEfCoreAuditStore`, `AddSensitiveFlowEFCore`, etc.).
+- SensitiveFlow does not create database tables automatically. If the audit/token/outbox tables do not exist, EF Core persistence will fail on first write. That is intentional: schema creation is an app/deployment responsibility.
+- Use migrations, checked-in SQL scripts, or your deployment tooling to create the app tables and SensitiveFlow infrastructure tables before startup.
+- When you outgrow the composition layer, switch to per-package setup for full control.
+- Health checks automatically include `AddAuditOutboxCheck()` when outbox is enabled.
 
 ## SensitiveFlow.Core
 

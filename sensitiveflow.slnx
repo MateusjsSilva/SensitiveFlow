@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/Console.Sample/Console.Sample.csproj" />
     <Project Path="samples/MinimalApi.Sample/MinimalApi.Sample.csproj" />
+    <Project Path="samples/QuickStart.Sample/QuickStart.Sample.csproj" />
     <Project Path="samples/Redis.Sample/Redis.Sample.csproj" />
     <Project Path="samples/WebApi.Sample/WebApi.Sample.csproj" />
   </Folder>
@@ -10,6 +11,7 @@
     <Project Path="src/SensitiveFlow.Analyzers.CodeFixes/SensitiveFlow.Analyzers.CodeFixes.csproj" />
     <Project Path="src/SensitiveFlow.Anonymization/SensitiveFlow.Anonymization.csproj" />
     <Project Path="src/SensitiveFlow.AspNetCore/SensitiveFlow.AspNetCore.csproj" />
+    <Project Path="src/SensitiveFlow.AspNetCore.EFCore/SensitiveFlow.AspNetCore.EFCore.csproj" />
     <Project Path="src/SensitiveFlow.Audit/SensitiveFlow.Audit.csproj" />
     <Project Path="src/SensitiveFlow.Audit.EFCore/SensitiveFlow.Audit.EFCore.csproj" />
     <Project Path="src/SensitiveFlow.Audit.EFCore.Outbox/SensitiveFlow.Audit.EFCore.Outbox.csproj" />
@@ -30,6 +32,7 @@
     <Project Path="tests/SensitiveFlow.Analyzers.Tests/SensitiveFlow.Analyzers.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Anonymization.Tests/SensitiveFlow.Anonymization.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.AspNetCore.Tests/SensitiveFlow.AspNetCore.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.AspNetCore.EFCore.Tests/SensitiveFlow.AspNetCore.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.EFCore.Tests/SensitiveFlow.Audit.EFCore.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.EFCore.ContainerTests/SensitiveFlow.Audit.EFCore.ContainerTests.csproj" />
     <Project Path="tests/SensitiveFlow.Audit.EFCore.Outbox.Tests/SensitiveFlow.Audit.EFCore.Outbox.Tests.csproj" />

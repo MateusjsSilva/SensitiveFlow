@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Audit.Decorators;
 using SensitiveFlow.Audit.EFCore;
 using SensitiveFlow.Audit.EFCore.Outbox.Stores;
 using SensitiveFlow.Audit.Outbox;
@@ -33,6 +34,8 @@ public static class OutboxEFCoreServiceCollectionExtensions
 
         services.AddSingleton<IAuditOutbox>(sp => (IAuditOutbox)sp.GetRequiredService<IDurableAuditOutbox>());
 
+        DecorateAuditStoreWhenRegistered(services);
+
         // Register the dispatcher
         var dispatcherOptions = new AuditOutboxDispatcherOptions();
         configureDispatcher?.Invoke(dispatcherOptions);
@@ -40,5 +43,41 @@ public static class OutboxEFCoreServiceCollectionExtensions
         services.AddHostedService<AuditOutboxDispatcher>();
 
         return services;
+    }
+
+    private static void DecorateAuditStoreWhenRegistered(IServiceCollection services)
+    {
+        var existing = services.FirstOrDefault(d => d.ServiceType == typeof(IAuditStore));
+        if (existing is null)
+        {
+            return;
+        }
+
+        services.Remove(existing);
+
+        if (existing.ImplementationType is not null)
+        {
+            services.Add(new ServiceDescriptor(existing.ImplementationType, existing.ImplementationType, existing.Lifetime));
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new OutboxAuditStore(
+                    (IAuditStore)sp.GetRequiredService(existing.ImplementationType),
+                    sp.GetRequiredService<IAuditOutbox>()),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationFactory is not null)
+        {
+            var factory = existing.ImplementationFactory;
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new OutboxAuditStore(
+                    (IAuditStore)factory(sp)!,
+                    sp.GetRequiredService<IAuditOutbox>()),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationInstance is IAuditStore instance)
+        {
+            services.AddSingleton<IAuditStore>(sp => new OutboxAuditStore(
+                instance,
+                sp.GetRequiredService<IAuditOutbox>()));
+        }
     }
 }
