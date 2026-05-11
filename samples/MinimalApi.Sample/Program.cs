@@ -13,12 +13,16 @@ using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Diagnostics;
+using SensitiveFlow.Core.Discovery;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.Diagnostics.Extensions;
 using SensitiveFlow.EFCore.Extensions;
 using SensitiveFlow.EFCore.Interceptors;
+using SensitiveFlow.HealthChecks.Extensions;
 using SensitiveFlow.Json.Configuration;
 using SensitiveFlow.Json.Enums;
 using SensitiveFlow.Json.Extensions;
@@ -71,9 +75,30 @@ try
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
+    builder.Services.AddSensitiveFlowValidation(options =>
+    {
+        options.RequireAuditStore = true;
+        options.RequireTokenStore = true;
+        options.RequireJsonRedaction = true;
+        options.RequireRetention = true;
+    });
     builder.Services.AddSensitiveFlowJsonRedaction(options => options.DefaultMode = JsonRedactionMode.Mask);
     builder.Services.AddRetention();
     builder.Services.AddRetentionExecutor();
+    builder.Services.AddSingleton(SensitiveFlowPolicyConfiguration.Create(options =>
+    {
+        options.UseProfile(SensitiveFlowProfile.Balanced);
+        options.Policies.ForCategory(DataCategory.Contact)
+            .MaskInLogs()
+            .RedactInJson()
+            .AuditOnChange();
+        options.Policies.ForSensitiveCategory(SensitiveDataCategory.Other)
+            .OmitInJson()
+            .RequireAudit();
+    }));
+    builder.Services.AddSensitiveFlowHealthChecks()
+        .AddAuditStoreCheck()
+        .AddTokenStoreCheck();
     builder.Services.ConfigureHttpJsonOptions(options =>
         options.SerializerOptions.WithSensitiveDataRedaction(
             new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
@@ -117,6 +142,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseSensitiveFlowAudit();
+    app.MapHealthChecks("/health/sensitiveflow");
 
     app.MapPost("/customers", async (
         CreateCustomerRequest request,
@@ -274,6 +300,49 @@ try
         });
     })
     .WithName("RunRetention");
+
+    app.MapPost("/retention/dry-run", async (
+        SampleDbContext db,
+        RetentionExecutor retention,
+        CancellationToken ct) =>
+    {
+        var customers = await db.Customers.AsNoTracking().ToListAsync(ct);
+        var report = await retention.DryRunAsync(
+            customers,
+            entity => ((Customer)entity).CreatedAt,
+            ct);
+
+        return Results.Ok(new
+        {
+            report.AnonymizedFieldCount,
+            report.DeletePendingEntityCount,
+            Entries = report.Entries.Select(e => new
+            {
+                e.FieldName,
+                e.ExpiredAt,
+                Action = e.Action.ToString(),
+            }),
+        });
+    })
+    .WithName("DryRunRetention");
+
+    app.MapGet("/sensitiveflow/discovery", () =>
+    {
+        var report = SensitiveDataDiscovery.Scan(typeof(Customer).Assembly);
+        return Results.Text(report.ToMarkdown(), "text/markdown");
+    })
+    .WithName("SensitiveFlowDiscovery");
+
+    app.MapGet("/sensitiveflow/diagnostics", (IServiceProvider services) =>
+    {
+        var report = services.ValidateSensitiveFlow();
+        return Results.Ok(new
+        {
+            report.IsValid,
+            report.Diagnostics,
+        });
+    })
+    .WithName("SensitiveFlowDiagnostics");
 
     app.Run();
 }

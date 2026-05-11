@@ -20,9 +20,12 @@ using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Masking;
 using SensitiveFlow.Anonymization.Pseudonymizers;
 using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Discovery;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.EFCore.Interceptors;
 using SensitiveFlow.Retention.Services;
 
@@ -173,6 +176,35 @@ using (var span = activitySource.StartActivity("AuditQueryDemo"))
     span?.SetTag("records.count", all.Count);
     Console.WriteLine($"  Total audit records in store: {all.Count}");
 }
+
+Section("8. Policy profile, discovery report, and retention dry-run");
+
+var policyOptions = SensitiveFlowPolicyConfiguration.Create(options =>
+{
+    options.UseProfile(SensitiveFlowProfile.Balanced);
+    options.Policies.ForCategory(DataCategory.Contact)
+        .MaskInLogs()
+        .RedactInJson()
+        .AuditOnChange();
+});
+Console.WriteLine($"  Active policy profile: {policyOptions.Profile}");
+
+var discovery = SensitiveDataDiscovery.Scan(typeof(Customer).Assembly);
+Console.WriteLine($"  Discovery entries found: {discovery.Entries.Count}");
+Console.WriteLine(discovery.ToMarkdown());
+
+var expiredCustomer = new Customer
+{
+    DataSubjectId = customer.DataSubjectId,
+    Name = customer.Name,
+    Email = customer.Email,
+    TaxId = customer.TaxId,
+    Phone = customer.Phone,
+    CreatedAt = DateTimeOffset.UtcNow.AddYears(-6),
+};
+var retentionDryRun = await new RetentionExecutor()
+    .DryRunAsync([expiredCustomer], entity => ((Customer)entity).CreatedAt);
+Console.WriteLine($"  Retention dry-run actions: {retentionDryRun.Entries.Count}");
 
 Log.Information("Console sample finished.");
 await Log.CloseAndFlushAsync();

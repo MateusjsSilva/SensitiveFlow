@@ -17,10 +17,12 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.Json` | You need automatic response serialization redaction. | `WithSensitiveDataRedaction()` on `System.Text.Json`. | Does not cover Newtonsoft.Json. |
 | `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; values must flow through known redaction paths. |
 | `SensitiveFlow.Diagnostics` | You want OpenTelemetry spans/metrics. | `AddSensitiveFlowDiagnostics()` after audit store/decorators. | Decorator order changes what latency is measured. |
+| `SensitiveFlow.HealthChecks` | You want ASP.NET Core health checks for SensitiveFlow infrastructure. | `AddSensitiveFlowHealthChecks().AddAuditStoreCheck().AddTokenStoreCheck()`. | Token stores without `IHealthProbe` are resolution-only checks to avoid mutating data. |
 | `SensitiveFlow.Retention` | You evaluate retention policies. | `AddRetention()` / `AddRetentionExecutor()` and run a scheduled job. | It will not delete database rows automatically. |
 | `SensitiveFlow.Analyzers` | You want compile-time guardrails. | Add analyzer package to application projects. | Warnings still require engineering judgment. |
 | `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
 | `SensitiveFlow.TestKit` | You implement custom stores or leak tests. | Inherit contract tests. | Contract tests need isolated fresh stores. |
+| `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly>`. | Scans compiled assemblies, not source directories. |
 
 ## SensitiveFlow.Core
 
@@ -31,9 +33,12 @@ Purpose:
 Primary APIs:
 
 - Attributes: `[PersonalData]`, `[SensitiveData]`, `[RetentionData]`.
+- Output attributes: `[Redact]`, `[Mask]`, `[Omit]`, `[Redaction]`.
 - Models: `AuditRecord`, `AuditSnapshot`.
-- Contracts: `IAuditStore`, `IBatchAuditStore`, `IAuditSnapshotStore`, `ITokenStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, `IAuditContext`.
-- Enums: `DataCategory`, `SensitiveDataCategory`, `RetentionPolicy`, `AuditOperation`, `AnonymizationType`.
+- Contracts: `IAuditStore`, `IBatchAuditStore`, `IAuditSnapshotStore`, `ITokenStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, `IAuditContext`, data-subject request interfaces, audit outbox interfaces.
+- Enums: `DataCategory`, `SensitiveDataCategory`, `DataSensitivity`, `RetentionPolicy`, `AuditOperation`, `AnonymizationType`.
+- Policies/profiles: `SensitiveFlowOptions`, `SensitiveFlowProfile`, `SensitiveFlowPolicyRegistry`.
+- Discovery/export: `SensitiveDataDiscovery`, `JsonDataExportFormatter`, `CsvDataExportFormatter`.
 - Cache: `SensitiveMemberCache`.
 
 Install when:

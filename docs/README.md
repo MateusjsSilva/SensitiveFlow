@@ -16,6 +16,7 @@ Use this page as the documentation index. The files are grouped by task so contr
 - [JSON redaction](json.md): `System.Text.Json` output protection.
 - [Logging](logging.md): `ILogger` redaction provider and limits.
 - [Diagnostics](diagnostics.md): OpenTelemetry ActivitySource/Meter integration.
+- [Policies, discovery, and health](policies-discovery-health.md): shared profiles, policy rules, discovery reports, startup validation, health checks, and CLI scans.
 
 ## Data protection workflows
 
@@ -28,6 +29,7 @@ Use this page as the documentation index. The files are grouped by task so contr
 - [Analyzers](analyzers.md): Roslyn diagnostics for privacy anti-patterns.
 - [TestKit](testkit.md): contract tests for `IAuditStore` and `ITokenStore`, plus leak assertions.
 - [Source generators](package-reference.md#sensitiveflowsourcegenerators): generated metadata overview.
+- [SensitiveFlow Tool](policies-discovery-health.md#cli-tool): `sensitiveflow scan` report generation.
 
 ## AI usage
 

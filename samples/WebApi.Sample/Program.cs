@@ -10,10 +10,14 @@ using SensitiveFlow.Audit.EFCore.Extensions;
 using SensitiveFlow.Audit.Extensions;
 using SensitiveFlow.AspNetCore.Extensions;
 using SensitiveFlow.Core.Diagnostics;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.Diagnostics.Extensions;
 using SensitiveFlow.EFCore.Extensions;
 using SensitiveFlow.EFCore.Interceptors;
+using SensitiveFlow.HealthChecks.Extensions;
 using SensitiveFlow.Json.Configuration;
 using SensitiveFlow.Json.Enums;
 using SensitiveFlow.Json.Extensions;
@@ -66,9 +70,30 @@ try
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
+    builder.Services.AddSensitiveFlowValidation(options =>
+    {
+        options.RequireAuditStore = true;
+        options.RequireTokenStore = true;
+        options.RequireJsonRedaction = true;
+        options.RequireRetention = true;
+    });
     builder.Services.AddSensitiveFlowJsonRedaction(options => options.DefaultMode = JsonRedactionMode.Mask);
     builder.Services.AddRetention();
     builder.Services.AddRetentionExecutor();
+    builder.Services.AddSingleton(SensitiveFlowPolicyConfiguration.Create(options =>
+    {
+        options.UseProfile(SensitiveFlowProfile.Strict);
+        options.Policies.ForCategory(DataCategory.Contact)
+            .MaskInLogs()
+            .RedactInJson()
+            .AuditOnChange();
+        options.Policies.ForSensitiveCategory(SensitiveDataCategory.Other)
+            .OmitInJson()
+            .RequireAudit();
+    }));
+    builder.Services.AddSensitiveFlowHealthChecks()
+        .AddAuditStoreCheck()
+        .AddTokenStoreCheck();
 
     builder.Services.AddOpenTelemetry()
         .WithTracing(tracing => tracing
@@ -114,6 +139,7 @@ try
     app.UseHttpsRedirection();
     app.UseSensitiveFlowAudit();
     app.UseAuthorization();
+    app.MapHealthChecks("/health/sensitiveflow");
     app.MapControllers();
 
     app.Run();

@@ -174,6 +174,46 @@ public sealed class SensitiveDataAssertTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    [Fact]
+    public void ContainsMaskedEmail_WhenPayloadHasMaskedEmail_Passes()
+    {
+        var act = () => SensitiveDataAssert.ContainsMaskedEmail("email=a****@example.com");
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ContainsMaskedEmail_WhenPayloadHasNoMaskedEmail_Throws()
+    {
+        var act = () => SensitiveDataAssert.ContainsMaskedEmail("email=alice@example.com");
+
+        act.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void JsonDoesNotExposeAnnotatedProperties_WhenSensitivePropertyIsOmitted_Passes()
+    {
+        var act = () => SensitiveDataAssert.JsonDoesNotExposeAnnotatedProperties("{\"Id\":\"1\"}", typeof(Customer));
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void JsonDoesNotExposeAnnotatedProperties_WhenSensitivePropertyExists_Throws()
+    {
+        var act = () => SensitiveDataAssert.JsonDoesNotExposeAnnotatedProperties("{\"Name\":\"Alice\"}", typeof(Customer));
+
+        act.Should().Throw<XunitException>().WithMessage("*Name*");
+    }
+
+    [Fact]
+    public void LogsDoNotContainSensitiveValues_WhenLogContainsKnownValue_Throws()
+    {
+        var act = () => SensitiveDataAssert.LogsDoNotContainSensitiveValues("failed for alice@example.com", ["alice@example.com"]);
+
+        act.Should().Throw<XunitException>();
+    }
+
     public class Customer
     {
         [PersonalData(Category = DataCategory.Identification)]

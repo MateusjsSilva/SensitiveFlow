@@ -16,12 +16,14 @@
     <Project Path="src/SensitiveFlow.Core/SensitiveFlow.Core.csproj" />
     <Project Path="src/SensitiveFlow.Diagnostics/SensitiveFlow.Diagnostics.csproj" />
     <Project Path="src/SensitiveFlow.EFCore/SensitiveFlow.EFCore.csproj" />
+    <Project Path="src/SensitiveFlow.HealthChecks/SensitiveFlow.HealthChecks.csproj" />
     <Project Path="src/SensitiveFlow.Json/SensitiveFlow.Json.csproj" />
     <Project Path="src/SensitiveFlow.Logging/SensitiveFlow.Logging.csproj" />
     <Project Path="src/SensitiveFlow.Retention/SensitiveFlow.Retention.csproj" />
     <Project Path="src/SensitiveFlow.SourceGenerators/SensitiveFlow.SourceGenerators.csproj" />
     <Project Path="src/SensitiveFlow.TestKit/SensitiveFlow.TestKit.csproj" />
     <Project Path="src/SensitiveFlow.TokenStore.EFCore/SensitiveFlow.TokenStore.EFCore.csproj" />
+    <Project Path="src/SensitiveFlow.Tool/SensitiveFlow.Tool.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SensitiveFlow.Analyzers.Tests/SensitiveFlow.Analyzers.Tests.csproj" />
@@ -35,6 +37,7 @@
     <Project Path="tests/SensitiveFlow.Core.Tests/SensitiveFlow.Core.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Diagnostics.Tests/SensitiveFlow.Diagnostics.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.EFCore.Tests/SensitiveFlow.EFCore.Tests.csproj" />
+    <Project Path="tests/SensitiveFlow.HealthChecks.Tests/SensitiveFlow.HealthChecks.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Integration.Tests/SensitiveFlow.Integration.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Json.Tests/SensitiveFlow.Json.Tests.csproj" />
     <Project Path="tests/SensitiveFlow.Logging.Tests/SensitiveFlow.Logging.Tests.csproj" />

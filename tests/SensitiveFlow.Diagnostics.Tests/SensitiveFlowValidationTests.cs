@@ -1,0 +1,52 @@
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Core.Interfaces;
+using SensitiveFlow.Core.Models;
+using SensitiveFlow.Diagnostics.Extensions;
+using SensitiveFlow.Diagnostics.Validation;
+
+namespace SensitiveFlow.Diagnostics.Tests;
+
+public sealed class SensitiveFlowValidationTests
+{
+    [Fact]
+    public void ValidateSensitiveFlow_WhenAuditStoreRequiredAndMissing_ReportsWarning()
+    {
+        var services = new ServiceCollection();
+        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = true);
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-001");
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WhenRequiredStoresExist_ReturnsNoStoreWarnings()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAuditStore, HealthyAuditStore>();
+        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = true);
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().NotContain(d => d.Code == "SF-CONFIG-001");
+    }
+
+    private sealed class HealthyAuditStore : IAuditStore
+    {
+        public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(DateTimeOffset? from = null, DateTimeOffset? to = null, int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+        }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(string dataSubjectId, DateTimeOffset? from = null, DateTimeOffset? to = null, int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+        }
+    }
+}

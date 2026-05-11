@@ -1,4 +1,5 @@
 using SensitiveFlow.Core.Reflection;
+using System.Text.Json;
 using Xunit.Sdk;
 
 namespace SensitiveFlow.TestKit.Assertions;
@@ -124,5 +125,65 @@ public static class SensitiveDataAssert
     {
         ArgumentNullException.ThrowIfNull(knownValues);
         DoesNotContainAny(payload, knownValues.ToArray());
+    }
+
+    /// <summary>
+    /// Fails the test if <paramref name="payload"/> does not contain an email-shaped masked value.
+    /// </summary>
+    public static void ContainsMaskedEmail(string payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+            payload,
+            @"[A-Za-z0-9]\*+@[^@\s]+\.[^@\s]+",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+        {
+            throw new XunitException("Payload did not contain a masked email value.");
+        }
+    }
+
+    /// <summary>
+    /// Fails the test if any annotated string value from <paramref name="entity"/> appears verbatim in <paramref name="payload"/>.
+    /// </summary>
+    public static void DoesNotContainRawValues(string payload, object entity)
+    {
+        DoesNotLeak(payload, entity);
+    }
+
+    /// <summary>
+    /// Fails the test if JSON exposes a property annotated as sensitive on <paramref name="annotatedType"/>.
+    /// </summary>
+    public static void JsonDoesNotExposeAnnotatedProperties(string json, Type annotatedType)
+    {
+        ArgumentNullException.ThrowIfNull(json);
+        ArgumentNullException.ThrowIfNull(annotatedType);
+
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        var exposed = SensitiveMemberCache.GetSensitiveProperties(annotatedType)
+            .Select(static p => p.Name)
+            .Where(name => document.RootElement.TryGetProperty(name, out _))
+            .ToArray();
+
+        if (exposed.Length > 0)
+        {
+            throw new XunitException(
+                "JSON exposed annotated sensitive properties:"
+                + Environment.NewLine
+                + string.Join(Environment.NewLine, exposed.Select(static p => "  - " + p)));
+        }
+    }
+
+    /// <summary>
+    /// Fails the test if any known sensitive value appears in log output.
+    /// </summary>
+    public static void LogsDoNotContainSensitiveValues(string logs, IEnumerable<string> values)
+    {
+        DoesNotLeakKnownValues(logs, values);
     }
 }

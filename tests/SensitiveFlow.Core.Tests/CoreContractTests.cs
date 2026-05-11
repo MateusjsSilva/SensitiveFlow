@@ -1,10 +1,14 @@
 using FluentAssertions;
 using NSubstitute;
 using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Discovery;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Exceptions;
+using SensitiveFlow.Core.Export;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Core.Profiles;
 using Xunit;
 
 namespace SensitiveFlow.Core.Tests;
@@ -23,6 +27,7 @@ public sealed class CoreContractTests
     {
         var attribute = new SensitiveDataAttribute();
         attribute.Category.Should().Be(SensitiveDataCategory.Other);
+        attribute.Sensitivity.Should().Be(DataSensitivity.High);
     }
 
     [Fact]
@@ -208,5 +213,62 @@ public sealed class CoreContractTests
 
         ctx.ActorId.Should().Be("actor-1");
         ctx.IpAddressToken.Should().Be("token-x");
+    }
+
+    [Fact]
+    public void SensitiveFlowOptions_StrictProfile_RequiresAuditForSensitiveCategories()
+    {
+        var options = new SensitiveFlowOptions().UseProfile(SensitiveFlowProfile.Strict);
+
+        var rule = options.Policies.Find(SensitiveDataCategory.Health);
+
+        rule.Should().NotBeNull();
+        (rule!.Actions & SensitiveFlowPolicyAction.OmitInJson).Should().Be(SensitiveFlowPolicyAction.OmitInJson);
+        (rule.Actions & SensitiveFlowPolicyAction.RequireAudit).Should().Be(SensitiveFlowPolicyAction.RequireAudit);
+    }
+
+    [Fact]
+    public void SensitiveDataDiscovery_Scan_ReturnsAnnotatedMembers()
+    {
+        var report = SensitiveDataDiscovery.Scan(typeof(CoreContractTests).Assembly);
+
+        report.Entries.Should().Contain(e => e.TypeName == nameof(DiscoveryCustomer)
+            && e.MemberName == nameof(DiscoveryCustomer.Email)
+            && e.Category == DataCategory.Contact);
+        report.ToMarkdown().Should().Contain("DiscoveryCustomer.Email");
+        report.ToJson().Should().Contain("DiscoveryCustomer");
+    }
+
+    [Fact]
+    public void SensitiveFlowExceptionSanitizer_RemovesCommonRawValues()
+    {
+        var exception = new SensitiveFlowConfigurationException(
+            "Failed for alice@example.com and 123.456.789-09.",
+            "SF_CONFIG_001");
+
+        var sanitized = SensitiveFlowExceptionSanitizer.Sanitize(exception);
+
+        sanitized.Code.Should().Be("SF_CONFIG_001");
+        sanitized.Message.Should().NotContain("alice@example.com");
+        sanitized.Message.Should().NotContain("123.456.789-09");
+    }
+
+    [Fact]
+    public void CsvDataExportFormatter_PrefixesFormulaValues()
+    {
+        var formatter = new CsvDataExportFormatter();
+
+        var csv = formatter.Format([
+            new Dictionary<string, object?> { ["Name"] = "=cmd" },
+        ]);
+
+        csv.Should().Contain("\"'=cmd\"");
+    }
+
+    private sealed class DiscoveryCustomer
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        [RetentionData(Years = 5, Policy = RetentionPolicy.AnonymizeOnExpiration)]
+        public string Email { get; set; } = string.Empty;
     }
 }

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sensitiveflow</ToolCommandName>
+    <PackageDescription>Command-line reporting tool for SensitiveFlow annotated models.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+  </ItemGroup>
+
+</Project>
+

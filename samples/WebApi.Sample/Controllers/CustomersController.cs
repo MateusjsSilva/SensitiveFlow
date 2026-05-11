@@ -184,6 +184,28 @@ public sealed class CustomersController : ControllerBase
         });
     }
 
+    [HttpPost("/retention/dry-run")]
+    public async Task<IActionResult> DryRunRetention(CancellationToken ct)
+    {
+        var customers = await _db.Customers.AsNoTracking().ToListAsync(ct);
+        var report = await _retention.DryRunAsync(
+            customers,
+            entity => ((Customer)entity).CreatedAt,
+            ct);
+
+        return Ok(new
+        {
+            report.AnonymizedFieldCount,
+            report.DeletePendingEntityCount,
+            Entries = report.Entries.Select(e => new
+            {
+                e.FieldName,
+                e.ExpiredAt,
+                Action = e.Action.ToString(),
+            }),
+        });
+    }
+
     private static CustomerResponse ToResponse(Customer c) => new(
         c.DataSubjectId,
         c.Name.MaskName(),

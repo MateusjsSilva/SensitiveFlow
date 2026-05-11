@@ -9,8 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `SensitiveDataAssert.DoesNotContainAny` — checks a payload against explicit string values without requiring an annotated entity.
-- `SensitiveDataAssert.DoesNotLeakKnownValues` — same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
+- `SensitiveFlow.Core` policy engine primitives: `SensitiveFlowOptions`, built-in profiles, category policy registry, output behavior attributes, contextual redaction attributes, data sensitivity levels, discovery reports, export formatters, audit correlation helpers, audit outbox interfaces, data-subject request interfaces, and privacy-safe exception types.
+- `SensitiveFlow.Tool` command-line project with `sensitiveflow scan <assembly-path> [output-directory]` for JSON/Markdown discovery reports.
+- `SensitiveFlow.HealthChecks` package with audit/token store health checks.
+- `SensitiveFlow.Diagnostics` startup validation via `AddSensitiveFlowValidation(...)` and `ValidateSensitiveFlow()`.
+- `SensitiveFlow.Retention` dry-run execution via `RetentionExecutor.DryRunAsync(...)`.
+- `SensitiveFlow.TestKit` expanded assertions: `ContainsMaskedEmail`, `DoesNotContainRawValues`, `JsonDoesNotExposeAnnotatedProperties`, and `LogsDoNotContainSensitiveValues`.
+- `SensitiveFlow.TestKit` contract test bases for `IAuditSnapshotStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, and `IRetentionExpirationHandler`.
+- `SensitiveDataAssert.DoesNotContainAny` - checks a payload against explicit string values without requiring an annotated entity.
+- `SensitiveDataAssert.DoesNotLeakKnownValues` - same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
 
 ## [1.0.0-preview.2] - 2026-05-10
 
@@ -80,5 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Central Package Management via `Directory.Packages.props`
 - Multi-target: `net8.0`, `net9.0`, and `net10.0`
 - Documentation: getting-started, attributes, legal-bases, consent, audit, data-subject-rights, retention, data-map, incidents, ripd, international-transfer, efcore, aspnetcore, migration
+
+
 
 

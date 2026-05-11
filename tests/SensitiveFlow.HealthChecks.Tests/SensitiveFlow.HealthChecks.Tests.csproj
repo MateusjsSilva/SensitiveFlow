@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.HealthChecks\SensitiveFlow.HealthChecks.csproj" />
+  </ItemGroup>
+</Project>

@@ -19,6 +19,32 @@ internal static class SymbolExtensions
         return false;
     }
 
+    public static bool HasSensitiveFlowIgnoreAttribute(this ISymbol symbol)
+    {
+        foreach (var attribute in symbol.GetAttributes())
+        {
+            if (attribute.AttributeClass?.Name == "SensitiveFlowIgnoreAttribute")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool HasAllowSensitiveLoggingAttribute(this ISymbol symbol)
+    {
+        foreach (var attribute in symbol.GetAttributes())
+        {
+            if (attribute.AttributeClass?.Name == "AllowSensitiveLoggingAttribute")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static bool IsSanitizationMethod(this IMethodSymbol method)
     {
         var name = method.Name;
@@ -42,6 +68,12 @@ internal static class SymbolExtensions
         if (operation is IPropertyReferenceOperation propertyReference &&
             propertyReference.Property.HasSensitiveDataAttribute())
         {
+            if (propertyReference.Property.HasSensitiveFlowIgnoreAttribute())
+            {
+                member = null;
+                return false;
+            }
+
             member = propertyReference.Property;
             return true;
         }
@@ -49,6 +81,12 @@ internal static class SymbolExtensions
         if (operation is IFieldReferenceOperation fieldReference &&
             fieldReference.Field.HasSensitiveDataAttribute())
         {
+            if (fieldReference.Field.HasSensitiveFlowIgnoreAttribute())
+            {
+                member = null;
+                return false;
+            }
+
             member = fieldReference.Field;
             return true;
         }

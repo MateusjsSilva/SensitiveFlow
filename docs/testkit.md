@@ -91,3 +91,22 @@ Same as `DoesNotContainAny` but accepts an `IEnumerable<string>` for readability
 var knownValues = new[] { customer.Email, customer.Phone, customer.TaxId };
 SensitiveDataAssert.DoesNotLeakKnownValues(body, knownValues);
 ```
+
+## Expanded contract suites
+
+Beyond `AuditStoreContractTests` and `TokenStoreContractTests`, TestKit now includes:
+
+- `AuditSnapshotStoreContractTests`
+- `PseudonymizerContractTests`
+- `MaskerContractTests`
+- `AnonymizerContractTests`
+- `RetentionExpirationHandlerContractTests`
+
+## Additional assertions
+
+```csharp
+SensitiveDataAssert.ContainsMaskedEmail(body);
+SensitiveDataAssert.DoesNotContainRawValues(body, customer);
+SensitiveDataAssert.JsonDoesNotExposeAnnotatedProperties(body, typeof(Customer));
+SensitiveDataAssert.LogsDoNotContainSensitiveValues(logSink.Output, knownValues);
+```

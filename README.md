@@ -33,6 +33,7 @@ Sensitive data flows through your application on every request: EF Core saves, H
 | `SensitiveFlow.AspNetCore` | Middleware for actor/IP context enrichment | Preview |
 | `SensitiveFlow.Logging` | ILogger decorator for PII redaction in logs | Preview |
 | `SensitiveFlow.Diagnostics` | OpenTelemetry bridge (ActivitySource + Meter) for audit/logging spans & metrics | Preview |
+| `SensitiveFlow.HealthChecks` | Microsoft health checks for audit/token infrastructure | Preview |
 | `SensitiveFlow.Anonymization` | Masking, anonymization, pseudonymization, erasure, data export, and deterministic fingerprints | Preview |
 | `SensitiveFlow.Json` | `System.Text.Json` modifier that masks/redacts/omits annotated properties at serialization time | Preview |
 | `SensitiveFlow.Retention` | Retention metadata and expiration hook contracts | Preview |
@@ -40,6 +41,7 @@ Sensitive data flows through your application on every request: EF Core saves, H
 | `SensitiveFlow.Analyzers.CodeFixes` | Quick-fix providers for SF0001/SF0002 (wrap with `.MaskEmail()` / `.MaskPhone()` / `.MaskName()`) | Preview |
 | `SensitiveFlow.SourceGenerators` | Source generator that precomputes sensitive/retention member metadata | Preview |
 | `SensitiveFlow.TestKit` | xUnit conformance bases for `IAuditStore` / `ITokenStore` plus a `SensitiveDataAssert` leak-detection helper | Preview |
+| `SensitiveFlow.Tool` | `dotnet tool` command for discovery reports from annotated assemblies | Preview |
 
 ## Quick Start
 
@@ -104,6 +106,11 @@ builder.Services.AddAuditStoreRetry();
 builder.Services.AddSensitiveFlowEFCore();           // SensitiveFlow.EFCore
 builder.Services.AddSensitiveFlowAspNetCore();       // SensitiveFlow.AspNetCore
 builder.Services.AddSensitiveFlowLogging();          // SensitiveFlow.Logging
+builder.Services.AddSensitiveFlowValidation(o =>
+{
+    o.RequireAuditStore = true;
+    o.RequireTokenStore = true;
+});
 ```
 
 ### 5. Add the middleware
@@ -117,6 +124,28 @@ app.UseSensitiveFlowAudit();
 
 ```csharp
 optionsBuilder.AddInterceptors(app.Services.GetRequiredService<SensitiveDataAuditInterceptor>());
+```
+
+### Optional: policies, reports, and health checks
+
+```csharp
+var options = SensitiveFlowPolicyConfiguration.Create(options =>
+{
+    options.UseProfile(SensitiveFlowProfile.Strict);
+    options.Policies.ForCategory(DataCategory.Contact)
+        .MaskInLogs()
+        .RedactInJson()
+        .AuditOnChange();
+});
+
+var report = SensitiveDataDiscovery.Scan(typeof(Customer).Assembly);
+File.WriteAllText("sensitiveflow-report.md", report.ToMarkdown());
+
+builder.Services.AddSensitiveFlowHealthChecks()
+    .AddAuditStoreCheck()
+    .AddTokenStoreCheck();
+
+var startupReport = app.Services.ValidateSensitiveFlow();
 ```
 
 Every `SaveChanges` on a field annotated with `[PersonalData]` or `[SensitiveData]` now
