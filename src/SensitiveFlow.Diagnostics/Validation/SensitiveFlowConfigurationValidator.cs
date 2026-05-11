@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Core.Discovery;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Policies;
 using SensitiveFlow.Core.Profiles;
@@ -52,6 +53,10 @@ public sealed class SensitiveFlowConfigurationValidator
             diagnostics.Add(Warning("SF-CONFIG-005", "Retention validation was requested, but no retention services were detected."));
         }
 
+        AddEfCoreDiagnostics(provider, diagnostics);
+        AddRetentionDiagnostics(provider, diagnostics);
+        AddAspNetCoreDiagnostics(provider, diagnostics);
+
         var sensitiveFlowOptions = provider.GetService<SensitiveFlowOptions>();
         if (sensitiveFlowOptions is not null)
         {
@@ -59,6 +64,88 @@ public sealed class SensitiveFlowConfigurationValidator
         }
 
         return new SensitiveFlowConfigurationReport(diagnostics);
+    }
+
+    private static void AddEfCoreDiagnostics(
+        IServiceProvider provider,
+        ICollection<SensitiveFlowConfigurationDiagnostic> diagnostics)
+    {
+        var interceptorType = Type.GetType("SensitiveFlow.EFCore.Interceptors.SensitiveDataAuditInterceptor, SensitiveFlow.EFCore");
+        if (interceptorType is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (provider.GetService(interceptorType) is not null && provider.GetService<IAuditStore>() is null)
+            {
+                diagnostics.Add(Warning("SF-CONFIG-009", "SensitiveDataAuditInterceptor is registered, but no IAuditStore registration was found."));
+            }
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains(nameof(IAuditStore), StringComparison.Ordinal))
+        {
+            diagnostics.Add(Warning("SF-CONFIG-009", "SensitiveDataAuditInterceptor is registered, but no IAuditStore registration was found."));
+        }
+    }
+
+    private static void AddRetentionDiagnostics(
+        IServiceProvider provider,
+        ICollection<SensitiveFlowConfigurationDiagnostic> diagnostics)
+    {
+        var hasRetentionAnnotations = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(static a => !a.IsDynamic)
+            .SelectMany(static assembly =>
+            {
+                try
+                {
+                    return SensitiveDataDiscovery.Scan(assembly).Entries;
+                }
+                catch
+                {
+                    return [];
+                }
+            })
+            .Any(static entry => entry.RetentionPolicy is not null);
+
+        if (!hasRetentionAnnotations)
+        {
+            return;
+        }
+
+        var executorType = Type.GetType("SensitiveFlow.Retention.Services.RetentionExecutor, SensitiveFlow.Retention");
+        var handlerType = Type.GetType("SensitiveFlow.Retention.Contracts.IRetentionExpirationHandler, SensitiveFlow.Retention");
+        var hasExecutor = executorType is not null && provider.GetService(executorType) is not null;
+        var hasHandlers = handlerType is not null && provider.GetServices(handlerType).Any();
+
+        if (!hasExecutor && !hasHandlers)
+        {
+            diagnostics.Add(Warning("SF-CONFIG-010", "Retention annotations were found in loaded assemblies, but no RetentionExecutor or IRetentionExpirationHandler registration was found."));
+        }
+    }
+
+    private static void AddAspNetCoreDiagnostics(
+        IServiceProvider provider,
+        ICollection<SensitiveFlowConfigurationDiagnostic> diagnostics)
+    {
+        var diagnosticsType = Type.GetType("SensitiveFlow.AspNetCore.Diagnostics.SensitiveFlowAspNetCorePipelineDiagnostics, SensitiveFlow.AspNetCore");
+        var aspNetCoreDiagnostics = diagnosticsType is null ? null : provider.GetService(diagnosticsType);
+        if (aspNetCoreDiagnostics is null)
+        {
+            return;
+        }
+
+        var middlewareRegistered = (bool)(diagnosticsType!.GetProperty("AuditMiddlewareRegistered")?.GetValue(aspNetCoreDiagnostics) ?? false);
+        if (!middlewareRegistered)
+        {
+            diagnostics.Add(Warning("SF-CONFIG-011", "SensitiveFlow ASP.NET Core services are registered, but UseSensitiveFlowAudit() has not marked the pipeline."));
+        }
+
+        var observedAuthenticatedUser = (bool)(diagnosticsType.GetProperty("ObservedAuthenticatedUserBeforeAuditMiddleware")?.GetValue(aspNetCoreDiagnostics) ?? false);
+        if (observedAuthenticatedUser)
+        {
+            diagnostics.Add(Warning("SF-CONFIG-012", "SensitiveFlow audit middleware observed an already-authenticated user before it ran; it may be registered after authentication."));
+        }
     }
 
     private static void AddPolicyDiagnostics(

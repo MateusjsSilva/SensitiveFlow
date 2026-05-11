@@ -2,10 +2,10 @@
 
 ## Policy engine and profiles
 
-Use `SensitiveFlowOptions` when an application wants one central place to declare how categories should be handled.
+Use `SensitiveFlowOptions` when an application wants one central place to declare how categories should be handled. Applications that reference `SensitiveFlow.Diagnostics` can register the shared options with `AddSensitiveFlow(...)`.
 
 ```csharp
-var options = SensitiveFlowPolicyConfiguration.Create(options =>
+builder.Services.AddSensitiveFlow(options =>
 {
     options.UseProfile(SensitiveFlowProfile.Balanced);
 
@@ -82,10 +82,11 @@ The report includes type, member, annotation kind, category, sensitivity, and re
 
 ## CLI tool
 
-`SensitiveFlow.Tool` exposes the same report generator for CI and documentation jobs. It accepts either one compiled assembly or a directory and scans `.dll` files recursively, skipping `obj` folders.
+`SensitiveFlow.Tool` exposes the same report generator for CI and documentation jobs. It accepts a compiled assembly, a project/solution file, or a directory. When the input is a `.csproj`, `.sln`, `.slnx`, or a directory containing a single project/solution, the tool runs `dotnet build -c Release` first and then scans the compiled assemblies.
 
 ```bash
 dotnet tool install SensitiveFlow.Tool
+sensitiveflow scan ./src/MyApp/MyApp.csproj ./artifacts/privacy
 sensitiveflow scan ./bin/Release/net10.0/MyApp.dll ./artifacts/privacy
 sensitiveflow scan ./src/MyApp/bin/Release/net10.0 ./artifacts/privacy
 ```
@@ -109,7 +110,7 @@ builder.Services.AddSensitiveFlowHealthChecks()
 
 ## Startup validation
 
-`SensitiveFlow.Diagnostics` includes a startup self-test for common misconfiguration.
+`SensitiveFlow.Diagnostics` includes a startup self-test for common misconfiguration. It checks required stores, policy-driven JSON/logging/audit requirements, EF Core audit interceptor registration, loaded retention annotations, and ASP.NET Core middleware registration markers when those packages are present.
 
 ```csharp
 builder.Services.AddSensitiveFlowValidation(options =>
@@ -126,3 +127,7 @@ Example warnings:
 - `SF-CONFIG-001`: no `IAuditStore` registration found.
 - `SF-CONFIG-002`: no durable `ITokenStore` registration found.
 - `SF-CONFIG-003`: `IPseudonymizer` registered without `ITokenStore`.
+- `SF-CONFIG-009`: EF Core audit interceptor registered without `IAuditStore`.
+- `SF-CONFIG-010`: retention annotations found without `RetentionExecutor` or handlers.
+- `SF-CONFIG-011`: ASP.NET Core services registered but `UseSensitiveFlowAudit()` was not marked.
+- `SF-CONFIG-012`: middleware observed an authenticated user before it ran, which can indicate it was placed after authentication.

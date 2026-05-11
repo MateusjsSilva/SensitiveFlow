@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using SensitiveFlow.AspNetCore.Diagnostics;
 using SensitiveFlow.Core.Interfaces;
 
 namespace SensitiveFlow.AspNetCore;
@@ -15,17 +16,27 @@ public sealed class SensitiveFlowAuditMiddleware
 
     private readonly RequestDelegate _next;
     private readonly IPseudonymizer _pseudonymizer;
+    private readonly SensitiveFlowAspNetCorePipelineDiagnostics? _diagnostics;
 
     /// <summary>Initializes a new instance of <see cref="SensitiveFlowAuditMiddleware"/>.</summary>
-    public SensitiveFlowAuditMiddleware(RequestDelegate next, IPseudonymizer pseudonymizer)
+    public SensitiveFlowAuditMiddleware(
+        RequestDelegate next,
+        IPseudonymizer pseudonymizer,
+        SensitiveFlowAspNetCorePipelineDiagnostics? diagnostics = null)
     {
         _next = next;
         _pseudonymizer = pseudonymizer;
+        _diagnostics = diagnostics;
     }
 
     /// <summary>Pseudonymizes the remote IP and stores the token before passing to the next middleware.</summary>
     public async Task InvokeAsync(HttpContext context)
     {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            _diagnostics?.MarkAuthenticatedUserObserved();
+        }
+
         var ip = context.Connection.RemoteIpAddress?.ToString();
         if (!string.IsNullOrEmpty(ip))
         {

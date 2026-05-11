@@ -137,6 +137,33 @@ If your audit store can persist multiple records in one logical operation, imple
 
 `SensitiveDataAuditInterceptor` will call `AppendRangeAsync` once per `SaveChanges` when the store supports batching. That keeps the audit write path closer to the entity save and avoids one roundtrip per sensitive field.
 
+## Audit redaction context
+
+By default, audit records do not store raw field values. If a model uses contextual audit redaction, the EF Core interceptor honors it:
+
+```csharp
+[PersonalData(Category = DataCategory.Contact)]
+[Redaction(Audit = OutputRedactionAction.Mask)]
+public string Email { get; set; } = string.Empty;
+
+[SensitiveData(Category = SensitiveDataCategory.Other)]
+[Redaction(Audit = OutputRedactionAction.Omit)]
+public string InternalNote { get; set; } = string.Empty;
+```
+
+`Audit = Omit` suppresses the per-field audit record. `Redact`, `Mask`, and `Pseudonymize` write a protected value into `AuditRecord.Details`; pseudonymization uses the registered `IPseudonymizer` when one is available and falls back to the default redaction marker otherwise.
+
+## Audit outbox
+
+`SensitiveFlow.Audit` ships a concrete in-memory outbox for tests/local development and an `OutboxAuditStore` decorator for production-owned durable outboxes:
+
+```csharp
+builder.Services.AddAuditStore<MyDurableAuditStore>();
+builder.Services.AddAuditOutbox<MyDurableAuditOutbox>();
+```
+
+Use `AddInMemoryAuditOutbox()` only for tests and local samples. It is not durable.
+
 ## Retrying transient failures
 
 Audit appends sit in the hot path of `SaveChanges`. A brief network blip or lock contention against the audit store would otherwise cascade into a `SaveChangesAsync` failure. Wrap your store with the bundled `RetryingAuditStore`:

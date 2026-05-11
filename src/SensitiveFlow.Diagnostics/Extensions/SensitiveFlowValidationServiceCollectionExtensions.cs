@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.Diagnostics.Validation;
 
 namespace SensitiveFlow.Diagnostics.Extensions;
@@ -8,6 +9,22 @@ namespace SensitiveFlow.Diagnostics.Extensions;
 /// </summary>
 public static class SensitiveFlowValidationServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers the shared SensitiveFlow options object used by policies,
+    /// profiles, and diagnostics.
+    /// </summary>
+    public static IServiceCollection AddSensitiveFlow(
+        this IServiceCollection services,
+        Action<SensitiveFlowOptions>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        var options = new SensitiveFlowOptions();
+        configure?.Invoke(options);
+        services.AddSingleton(options);
+        return services;
+    }
+
     /// <summary>Registers startup validation options and validator services.</summary>
     public static IServiceCollection AddSensitiveFlowValidation(
         this IServiceCollection services,

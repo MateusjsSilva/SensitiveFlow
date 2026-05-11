@@ -129,7 +129,7 @@ optionsBuilder.AddInterceptors(app.Services.GetRequiredService<SensitiveDataAudi
 ### Optional: policies, reports, and health checks
 
 ```csharp
-var options = SensitiveFlowPolicyConfiguration.Create(options =>
+builder.Services.AddSensitiveFlow(options =>
 {
     options.UseProfile(SensitiveFlowProfile.Strict);
     options.Policies.ForCategory(DataCategory.Contact)

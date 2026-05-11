@@ -22,7 +22,7 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.Analyzers` | You want compile-time guardrails. | Add analyzer package to application projects. | Warnings still require engineering judgment. |
 | `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
 | `SensitiveFlow.TestKit` | You implement custom stores or leak tests. | Inherit contract tests. | Contract tests need isolated fresh stores. |
-| `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly-or-directory>`. | Scans compiled assemblies, not source directories. |
+| `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly-project-or-directory>`. | Project/source inputs are built first, then compiled assemblies are scanned. |
 
 ## SensitiveFlow.Core
 
@@ -62,8 +62,12 @@ Primary APIs:
 - `AddAuditStore<TStore>()`
 - `AddAuditStoreRetry(...)`
 - `AddBufferedAuditStore(...)`
+- `AddAuditOutbox<TOutbox>()`
+- `AddInMemoryAuditOutbox()`
 - `RetryingAuditStore`
 - `BufferedAuditStore`
+- `OutboxAuditStore`
+- `JsonAuditOutboxSerializer`
 - `InMemoryAuditSnapshotStore`
 
 Install when:
@@ -83,6 +87,7 @@ Operational notes:
 
 - `RetryingAuditStore` does not swallow exhausted failures.
 - `BufferedAuditStore` is advanced. It can lose records on process crash before flush. Avoid using it with scoped stores until lifetime semantics are hardened.
+- `AddInMemoryAuditOutbox()` is for tests/local development. Production outboxes should implement `IAuditOutbox` durably and use `AddAuditOutbox<TOutbox>()`.
 
 ## SensitiveFlow.Audit.EFCore
 

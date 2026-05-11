@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using SensitiveFlow.AspNetCore.Context;
+using SensitiveFlow.AspNetCore.Diagnostics;
 using SensitiveFlow.Core.Interfaces;
 
 namespace SensitiveFlow.AspNetCore.Extensions;
@@ -18,6 +19,7 @@ public static class AspNetCoreServiceCollectionExtensions
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
+        services.AddSingleton<SensitiveFlowAspNetCorePipelineDiagnostics>();
         return services;
     }
 
@@ -28,6 +30,9 @@ public static class AspNetCoreServiceCollectionExtensions
     /// </summary>
     public static IApplicationBuilder UseSensitiveFlowAudit(this IApplicationBuilder app)
     {
+        app.ApplicationServices
+            .GetService<SensitiveFlowAspNetCorePipelineDiagnostics>()
+            ?.MarkAuditMiddlewareRegistered();
         app.UseMiddleware<SensitiveFlowAuditMiddleware>();
         return app;
     }

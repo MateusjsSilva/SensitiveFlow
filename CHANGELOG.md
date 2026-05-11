@@ -13,12 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SensitiveFlow.Tool` command-line project with `sensitiveflow scan <assembly-or-directory> [output-directory]` for JSON/Markdown discovery reports.
 - `SensitiveFlow.HealthChecks` package with audit/token store health checks.
 - `SensitiveFlow.Diagnostics` startup validation via `AddSensitiveFlowValidation(...)` and `ValidateSensitiveFlow()`.
+- `SensitiveFlow.Diagnostics` happy-path `AddSensitiveFlow(...)` registration for shared profiles/policies.
 - `SensitiveFlow.Retention` dry-run execution via `RetentionExecutor.DryRunAsync(...)`.
 - `SensitiveFlow.TestKit` expanded assertions: `ContainsMaskedEmail`, `DoesNotContainRawValues`, `JsonDoesNotExposeAnnotatedProperties`, and `LogsDoNotContainSensitiveValues`.
 - `SensitiveFlow.TestKit` contract test bases for `IAuditSnapshotStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, and `IRetentionExpirationHandler`.
 - `SensitiveFlow.Json` now honors output attributes, contextual API response redaction, and category policies before falling back to the configured default mode.
 - `SensitiveFlow.Logging` now redacts annotated structured object members by default and applies `.MaskInLogs()` policies when a policy registry is supplied through `SensitiveLoggingOptions`.
 - `DataSubjectExporter` now honors contextual `[Redaction(Export = ...)]` attributes while keeping raw export as the default.
+- `SensitiveDataAuditInterceptor` now honors contextual `[Redaction(Audit = ...)]` for per-field audit records.
+- `SensitiveFlow.Tool` now builds project/solution inputs before scanning compiled assemblies.
+- `SensitiveFlow.Audit` now includes `JsonAuditOutboxSerializer`, `InMemoryAuditOutbox`, and `OutboxAuditStore`.
+- Startup diagnostics now detect EF Core interceptor registration without `IAuditStore`, loaded retention annotations without executor/handlers, and ASP.NET Core audit middleware registration/order markers when available.
 - `SensitiveDataAssert.DoesNotContainAny` - checks a payload against explicit string values without requiring an annotated entity.
 - `SensitiveDataAssert.DoesNotLeakKnownValues` - same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
 
