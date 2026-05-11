@@ -18,7 +18,7 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.Json` | You need automatic response serialization redaction. | `WithSensitiveDataRedaction()` on `System.Text.Json`. | Does not cover Newtonsoft.Json. |
 | `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; scalar values still need explicit markers or structured metadata. |
 | `SensitiveFlow.Diagnostics` | You want OpenTelemetry spans/metrics. | `AddSensitiveFlowDiagnostics()` after audit store/decorators. | Decorator order changes what latency is measured. |
-| `SensitiveFlow.HealthChecks` | You want ASP.NET Core health checks for SensitiveFlow infrastructure. | `AddSensitiveFlowHealthChecks().AddAuditStoreCheck().AddTokenStoreCheck()`. | Token stores without `IHealthProbe` are resolution-only checks to avoid mutating data. |
+| `SensitiveFlow.HealthChecks` | You want ASP.NET Core health checks for SensitiveFlow infrastructure. | `AddSensitiveFlowHealthChecks().AddAuditStoreCheck().AddTokenStoreCheck().AddAuditOutboxCheck()`. | Token stores without `IHealthProbe` are resolution-only checks to avoid mutating data; in-memory audit outbox is `Degraded` outside Development. |
 | `SensitiveFlow.Retention` | You evaluate retention policies. | `AddRetention()` / `AddRetentionExecutor()` and run a scheduled job. | It will not delete database rows automatically. |
 | `SensitiveFlow.Analyzers` | You want compile-time guardrails. | Add analyzer package to application projects. | Warnings still require engineering judgment. |
 | `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
@@ -88,7 +88,8 @@ Operational notes:
 
 - `RetryingAuditStore` does not swallow exhausted failures.
 - `BufferedAuditStore` is advanced. It can lose records on process crash before flush. Avoid using it with scoped stores until lifetime semantics are hardened.
-- `AddInMemoryAuditOutbox()` is for tests/local development. Production outboxes should implement `IAuditOutbox` durably and use `AddAuditOutbox<TOutbox>()`.
+- `AddInMemoryAuditOutbox()` is obsolete for production and should only be used in tests/local development.
+- Production outboxes should implement `IDurableAuditOutbox` and use `AddAuditOutbox<TOutbox>()` plus at least one `IAuditOutboxPublisher`.
 
 ## SensitiveFlow.Audit.EFCore
 
@@ -194,13 +195,23 @@ Delivery guarantee:
 - On exception, entries are marked `IsDeadLettered` or retried based on `MaxAttempts`.
 - Dead-lettered entries and retry history are queryable for operational dashboards and alerting.
 
+Defaults:
+
+| Option | Default |
+| --- | --- |
+| `PollInterval` | `1s` |
+| `BatchSize` | `100` |
+| `MaxAttempts` | `5` |
+| `BackoffStrategy` | `Exponential` |
+| `DeadLetterAfterMax` | `true` |
+
 Operational notes:
 
 - Audit and outbox data live in the same `AuditDbContext` (configurable persistence strategy).
 - Dispatcher runs as a `HostedService` — activate after application startup.
-- Multiple instances of your application can run simultaneously; polling is coordinated via outbox entry state transitions (no distributed locking required).
+- Multiple instances of your application can run simultaneously, but you should validate duplicate-delivery tolerance because outbox delivery is at-least-once.
 - Monitor the `AuditOutboxEntry` table for growth, dead-lettered entries, and retry counts in operational dashboards.
-- SQL Server and PostgreSQL container coverage in `tests/SensitiveFlow.Audit.EFCore.Outbox.Tests`.
+- SQLite coverage lives in `tests/SensitiveFlow.Audit.EFCore.Outbox.Tests`; provider-specific container coverage should be added when SQL Server/PostgreSQL migrations are introduced.
 
 ## SensitiveFlow.Audit.Snapshots.EFCore
 

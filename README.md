@@ -155,7 +155,10 @@ Defaults:
 - redaction marker: `[REDACTED]`
 - logging: `[Sensitive]` markers are redacted; annotated structured object members are redacted unless policies request `MaskInLogs()`
 - retention anonymization marker: `[ANONYMIZED]`
-- health checks: `sensitiveflow-audit-store`, `sensitiveflow-token-store`
+- health checks: `sensitiveflow-audit-store`, `sensitiveflow-token-store`, `sensitiveflow-audit-outbox`
+- audit outbox dispatcher: `PollInterval = 1s`, `BatchSize = 100`, `MaxAttempts = 5`, `BackoffStrategy = Exponential`, `DeadLetterAfterMax = true`
+- data-subject export: raw annotated values by default; use `[Redaction(Export = ...)]` to mask, redact, or omit specific fields
+- CLI: project/solution inputs are built first; `SF-CLI-001` warns when `AddInMemoryAuditOutbox()` is outside `#if DEBUG`
 
 Every `SaveChanges` on a field annotated with `[PersonalData]` or `[SensitiveData]` now
 produces an `AuditRecord` automatically.

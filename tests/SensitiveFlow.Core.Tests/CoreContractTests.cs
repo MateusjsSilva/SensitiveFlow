@@ -236,6 +236,7 @@ public sealed class CoreContractTests
         SensitiveFlowDefaults.AnonymousValue.Should().Be("[ANONYMIZED]");
         SensitiveFlowDefaults.AuditStoreHealthCheckName.Should().Be("sensitiveflow-audit-store");
         SensitiveFlowDefaults.TokenStoreHealthCheckName.Should().Be("sensitiveflow-token-store");
+        SensitiveFlowDefaults.AuditOutboxHealthCheckName.Should().Be("sensitiveflow-audit-outbox");
     }
 
     [Theory]
@@ -249,6 +250,15 @@ public sealed class CoreContractTests
 
         options.Profile.Should().Be(profile);
         options.Policies.Rules.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void SensitiveFlowOptions_UnknownProfile_Throws()
+    {
+        var act = () => new SensitiveFlowOptions().UseProfile((SensitiveFlowProfile)999);
+
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("profile");
     }
 
     [Fact]
@@ -333,6 +343,61 @@ public sealed class CoreContractTests
         ]);
 
         csv.Should().Contain("\"'=cmd\"");
+    }
+
+    [Fact]
+    public void CsvDataExportFormatter_HandlesEmptyNullAndQuotedValues()
+    {
+        var formatter = new CsvDataExportFormatter();
+
+        formatter.Format([]).Should().BeEmpty();
+        var csv = formatter.Format([
+            new Dictionary<string, object?>
+            {
+                ["Name"] = "Maria \"M\"",
+                ["Phone"] = null,
+            },
+            new Dictionary<string, object?>
+            {
+                ["Extra"] = "+formula",
+            },
+        ]);
+
+        csv.Should().Contain("\"Maria \"\"M\"\"\"");
+        csv.Should().Contain("\"Phone\"");
+        csv.Should().Contain("\"'+formula\"");
+    }
+
+    [Fact]
+    public void CsvDataExportFormatter_NullRows_Throws()
+    {
+        var formatter = new CsvDataExportFormatter();
+
+        var act = () => formatter.Format(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("rows");
+    }
+
+    [Fact]
+    public void AuditOutboxEntry_DefaultsAreStable()
+    {
+        var before = DateTimeOffset.UtcNow.AddSeconds(-1);
+        var record = new AuditRecord
+        {
+            DataSubjectId = "subject-1",
+            Entity = "Customer",
+            Field = "Email",
+        };
+
+        var entry = new AuditOutboxEntry { Record = record };
+
+        entry.Id.Should().NotBeEmpty();
+        entry.Record.Should().Be(record);
+        entry.Attempts.Should().Be(0);
+        entry.EnqueuedAt.Should().BeOnOrAfter(before);
+        entry.LastAttemptAt.Should().BeNull();
+        entry.LastError.Should().BeNull();
     }
 
     private sealed class DiscoveryCustomer

@@ -8,9 +8,11 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Diagnostics\SensitiveFlow.Diagnostics.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore\SensitiveFlow.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.EFCore\SensitiveFlow.EFCore.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Json\SensitiveFlow.Json.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Retention\SensitiveFlow.Retention.csproj" />
   </ItemGroup>
 </Project>

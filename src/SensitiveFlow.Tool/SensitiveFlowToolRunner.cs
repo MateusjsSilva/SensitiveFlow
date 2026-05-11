@@ -34,6 +34,8 @@ public static class SensitiveFlowToolRunner
             : Directory.GetCurrentDirectory();
         Directory.CreateDirectory(outputDirectory);
 
+        EmitSourceWarnings(inputPath, error);
+
         var buildResult = TryBuildSourceInput(inputPath, output, error);
         if (buildResult.ExitCode != 0)
         {
@@ -144,6 +146,68 @@ public static class SensitiveFlowToolRunner
 
         var projects = Directory.EnumerateFiles(inputPath, "*.csproj", SearchOption.TopDirectoryOnly).ToArray();
         return projects.Length == 1 ? projects[0] : null;
+    }
+
+    private static void EmitSourceWarnings(string inputPath, TextWriter error)
+    {
+        foreach (var sourceFile in ResolveSourceFiles(inputPath))
+        {
+            WarnIfInMemoryOutboxIsNotDebugOnly(sourceFile, error);
+        }
+    }
+
+    private static IEnumerable<string> ResolveSourceFiles(string inputPath)
+    {
+        var root = File.Exists(inputPath)
+            ? Path.GetDirectoryName(inputPath)
+            : inputPath;
+
+        if (root is null || !Directory.Exists(root))
+        {
+            yield break;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                || file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            yield return file;
+        }
+    }
+
+    private static void WarnIfInMemoryOutboxIsNotDebugOnly(string sourceFile, TextWriter error)
+    {
+        var conditionalStack = new Stack<bool>();
+        var lines = File.ReadLines(sourceFile);
+        var lineNumber = 0;
+
+        foreach (var rawLine in lines)
+        {
+            lineNumber++;
+            var line = rawLine.Trim();
+
+            if (line.StartsWith("#if", StringComparison.Ordinal))
+            {
+                conditionalStack.Push(line.Contains("DEBUG", StringComparison.Ordinal) && !line.Contains("!DEBUG", StringComparison.Ordinal));
+            }
+            else if (line.StartsWith("#else", StringComparison.Ordinal) && conditionalStack.Count > 0)
+            {
+                conditionalStack.Push(!conditionalStack.Pop());
+            }
+            else if (line.StartsWith("#endif", StringComparison.Ordinal) && conditionalStack.Count > 0)
+            {
+                conditionalStack.Pop();
+            }
+
+            if (!conditionalStack.Contains(true) && rawLine.Contains("AddInMemoryAuditOutbox(", StringComparison.Ordinal))
+            {
+                error.WriteLine($"SF-CLI-001: AddInMemoryAuditOutbox() found outside #if DEBUG: {sourceFile}:{lineNumber}");
+            }
+        }
     }
 
     private static IEnumerable<Assembly> ResolveAssemblies(string inputPath)

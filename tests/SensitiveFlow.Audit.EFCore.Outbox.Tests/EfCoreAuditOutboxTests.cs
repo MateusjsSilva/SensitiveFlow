@@ -68,6 +68,17 @@ public sealed class EfCoreAuditOutboxTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DequeueBatchAsync_WithNonPositiveMax_Throws()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+
+        var act = () => outbox.DequeueBatchAsync(0);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithParameterName("max");
+    }
+
+    [Fact]
     public async Task DequeueBatchAsync_IgnoresProcessedEntries()
     {
         var outbox = new EfCoreAuditOutbox(_factory!);
@@ -109,6 +120,29 @@ public sealed class EfCoreAuditOutboxTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task MarkProcessedAsync_WithEmptyIds_ReturnsWithoutChangingPendingCount()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+        await outbox.EnqueueAsync(SampleRecord());
+
+        await outbox.MarkProcessedAsync([]);
+
+        var count = await outbox.GetPendingCountAsync();
+        count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MarkProcessedAsync_WithNullIds_Throws()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+
+        var act = () => outbox.MarkProcessedAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("ids");
+    }
+
+    [Fact]
     public async Task MarkFailedAsync_IncrementsAttemptsAndSetsError()
     {
         var outbox = new EfCoreAuditOutbox(_factory!);
@@ -127,6 +161,26 @@ public sealed class EfCoreAuditOutboxTests : IAsyncLifetime
         entry.Attempts.Should().Be(1);
         entry.LastError.Should().Be(errorMsg);
         entry.LastAttemptAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task MarkFailedAsync_WithBlankError_Throws()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+
+        var act = () => outbox.MarkFailedAsync(Guid.NewGuid(), " ");
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task MarkFailedAsync_ForMissingEntry_DoesNotThrow()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+
+        await outbox.MarkFailedAsync(Guid.NewGuid(), "timeout");
+
+        (await outbox.GetPendingCountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -157,6 +211,61 @@ public sealed class EfCoreAuditOutboxTests : IAsyncLifetime
 
         batch2.Should().HaveCount(1);
         batch2[0].Id.Should().NotBe(deadLetterId);
+    }
+
+    [Fact]
+    public async Task MarkDeadLetteredAsync_SetsDeadLetterStateAndRemovesFromPending()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+        await outbox.EnqueueAsync(SampleRecord());
+        var entry = (await outbox.DequeueBatchAsync(10)).Single();
+
+        await outbox.MarkDeadLetteredAsync(entry.Id, "publisher failed too many times");
+
+        (await outbox.GetPendingCountAsync()).Should().Be(0);
+        var deadLetters = await outbox.GetDeadLetteredAsync();
+        deadLetters.Should().ContainSingle(e => e.Id == entry.Id);
+    }
+
+    [Fact]
+    public async Task MarkDeadLetteredAsync_WithBlankReason_Throws()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+
+        var act = () => outbox.MarkDeadLetteredAsync(Guid.NewGuid(), "");
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task GetDeadLetteredAsync_AppliesSkipAndTake()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+        for (var i = 0; i < 3; i++)
+        {
+            await outbox.EnqueueAsync(SampleRecord());
+        }
+
+        var entries = await outbox.DequeueBatchAsync(10);
+        foreach (var entry in entries)
+        {
+            await outbox.MarkDeadLetteredAsync(entry.Id, "failed");
+        }
+
+        var page = await outbox.GetDeadLetteredAsync(skip: 1, take: 1);
+
+        page.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task EnqueueAsync_WithNullRecord_Throws()
+    {
+        var outbox = new EfCoreAuditOutbox(_factory!);
+
+        var act = () => outbox.EnqueueAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("record");
     }
 
     private static AuditRecord SampleRecord() => new()

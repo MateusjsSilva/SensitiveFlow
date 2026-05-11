@@ -246,6 +246,97 @@ public sealed class RedactingLoggerStructuredTests
         projected["Email"].Should().Be("m****@example.com");
     }
 
+    [Fact]
+    public void Log_StructuredObject_AllowSensitiveLoggingPreservesValue()
+    {
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Customer", new AllowedLogShape()),
+            },
+            null,
+            (s, _) => string.Empty);
+
+        var projected = spy.LastState.Single(kv => kv.Key == "Customer").Value
+            .Should().BeAssignableTo<IReadOnlyDictionary<string, object?>>().Subject;
+        projected["Email"].Should().Be("maria@example.com");
+        projected["TaxId"].Should().Be("[REDACTED]");
+    }
+
+    [Fact]
+    public void Log_StructuredObject_ExplicitAttributesCoverOmitRedactAndMaskKinds()
+    {
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Shape", new AttributeLogShape()),
+            },
+            null,
+            (s, _) => string.Empty);
+
+        var projected = spy.LastState.Single(kv => kv.Key == "Shape").Value
+            .Should().BeAssignableTo<IReadOnlyDictionary<string, object?>>().Subject;
+        projected.Should().NotContainKey("Omitted");
+        projected["Redacted"].Should().Be("[REDACTED]");
+        projected["Phone"].Should().Be("(**) *****-**89");
+        projected["Name"].Should().Be("M**** S****");
+        projected["Code"].Should().Be("A***");
+        projected["Single"].Should().Be("*");
+        projected["Number"].Should().Be("[REDACTED]");
+    }
+
+    [Fact]
+    public void Log_StructuredObject_ContextualMaskInfersPhoneNameGenericAndShortEmail()
+    {
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Shape", new InferredMaskLogShape()),
+            },
+            null,
+            (s, _) => string.Empty);
+
+        var projected = spy.LastState.Single(kv => kv.Key == "Shape").Value
+            .Should().BeAssignableTo<IReadOnlyDictionary<string, object?>>().Subject;
+        projected["PhoneNumber"].Should().Be("(**) *****-**89");
+        projected["FullName"].Should().Be("M**** S****");
+        projected["SecretCode"].Should().Be("A***");
+        projected["Email"].Should().Be("a**");
+        projected["Empty"].Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void Log_StructuredObject_IgnoresNullStringValueTypeAndUnannotatedObjects()
+    {
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Null", null),
+                new("String", "raw"),
+                new("Number", 123),
+                new("Object", new UnannotatedLogShape()),
+            },
+            null,
+            (s, _) => string.Empty);
+
+        spy.LastState.Single(kv => kv.Key == "Null").Value.Should().BeNull();
+        spy.LastState.Should().Contain(kv => kv.Key == "String" && (string?)kv.Value == "raw");
+        spy.LastState.Should().Contain(kv => kv.Key == "Number" && (int?)kv.Value == 123);
+        spy.LastState.Single(kv => kv.Key == "Object").Value.Should().BeOfType<UnannotatedLogShape>();
+    }
+
     private sealed class SpyLogger : ILogger
     {
         public string? LastMessage { get; private set; }
@@ -304,5 +395,76 @@ public sealed class RedactingLoggerStructuredTests
         [SensitiveData(Category = SensitiveDataCategory.Other)]
         [Redaction(Logs = OutputRedactionAction.Omit)]
         public string TaxId { get; set; } = "12345678900";
+    }
+
+    private sealed class AllowedLogShape
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        [AllowSensitiveLogging("Diagnostic correlation value in restricted logs.")]
+        public string Email { get; set; } = "maria@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string TaxId { get; set; } = "12345678900";
+    }
+
+    private sealed class AttributeLogShape
+    {
+        [PersonalData]
+        [Omit]
+        public string Omitted { get; set; } = "hide";
+
+        [PersonalData]
+        [Redact]
+        public string Redacted { get; set; } = "secret";
+
+        [PersonalData]
+        [Mask(MaskKind.Phone)]
+        public string Phone { get; set; } = "(11) 99999-8889";
+
+        [PersonalData]
+        [Mask(MaskKind.Name)]
+        public string Name { get; set; } = "Maria Silva";
+
+        [PersonalData]
+        [Mask]
+        public string Code { get; set; } = "ABCD";
+
+        [PersonalData]
+        [Mask]
+        public string Single { get; set; } = "Z";
+
+        [PersonalData]
+        [Mask]
+        public int Number { get; set; } = 42;
+
+        public string Public { get; set; } = "visible";
+    }
+
+    private sealed class InferredMaskLogShape
+    {
+        [PersonalData]
+        [Redaction(Logs = OutputRedactionAction.Mask)]
+        public string PhoneNumber { get; set; } = "(11) 99999-8889";
+
+        [PersonalData]
+        [Redaction(Logs = OutputRedactionAction.Mask)]
+        public string FullName { get; set; } = "Maria Silva";
+
+        [PersonalData]
+        [Redaction(Logs = OutputRedactionAction.Mask)]
+        public string SecretCode { get; set; } = "ABCD";
+
+        [PersonalData]
+        [Redaction(Logs = OutputRedactionAction.Mask)]
+        public string Email { get; set; } = "a@x";
+
+        [PersonalData]
+        [Redaction(Logs = OutputRedactionAction.Mask)]
+        public string Empty { get; set; } = string.Empty;
+    }
+
+    private sealed class UnannotatedLogShape
+    {
+        public string Value { get; set; } = "plain";
     }
 }

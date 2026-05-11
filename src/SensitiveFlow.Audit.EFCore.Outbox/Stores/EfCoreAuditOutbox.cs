@@ -135,13 +135,15 @@ public sealed class EfCoreAuditOutbox : IDurableAuditOutbox
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var deadLettered = await ctx.Set<AuditOutboxEntryEntity>()
             .Where(e => e.IsDeadLettered)
-            .OrderByDescending(e => e.EnqueuedAt)
-            .Skip(skip)
-            .Take(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return deadLettered.Select(ToOutboxEntry).ToList();
+        return deadLettered
+            .OrderByDescending(e => e.EnqueuedAt)
+            .Skip(skip)
+            .Take(take)
+            .Select(ToOutboxEntry)
+            .ToList();
     }
 
     private static AuditOutboxEntry ToOutboxEntry(AuditOutboxEntryEntity entity)

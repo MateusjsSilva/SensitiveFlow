@@ -39,8 +39,9 @@ SensitiveFlow defaults are intentionally conservative and documented in `Sensiti
 | Retention anonymization marker | `[ANONYMIZED]` |
 | Audit health check name | `sensitiveflow-audit-store` |
 | Token health check name | `sensitiveflow-token-store` |
+| Audit outbox health check name | `sensitiveflow-audit-outbox` |
 | Logging redactor | redacts marked values to `[REDACTED]` |
-| CLI scan input | compiled assembly file or directory containing `.dll` files |
+| CLI scan input | compiled assembly, project/solution file, or directory containing a single project/solution or `.dll` files |
 
 Precedence for JSON output is:
 
@@ -96,6 +97,8 @@ The tool writes:
 - `sensitiveflow-report.json`
 - `sensitiveflow-report.md`
 
+The CLI also scans source files for production footguns. `SF-CLI-001` is emitted when `AddInMemoryAuditOutbox()` appears outside a `#if DEBUG` branch. The warning does not fail the scan, but it should be treated as release-blocking for production apps.
+
 ## Health checks
 
 `SensitiveFlow.HealthChecks` integrates with `Microsoft.Extensions.Diagnostics.HealthChecks`.
@@ -103,10 +106,11 @@ The tool writes:
 ```csharp
 builder.Services.AddSensitiveFlowHealthChecks()
     .AddAuditStoreCheck()
-    .AddTokenStoreCheck();
+    .AddTokenStoreCheck()
+    .AddAuditOutboxCheck();
 ```
 
-`IAuditStore` is checked with a read-only `QueryAsync(take: 1)` probe. `ITokenStore` is resolution-only by default because the contract has no read-only ping; stores can implement `IHealthProbe` for a real non-mutating probe.
+`IAuditStore` is checked with a read-only `QueryAsync(take: 1)` probe. `ITokenStore` is resolution-only by default because the contract has no read-only ping; stores can implement `IHealthProbe` for a real non-mutating probe. `IAuditOutbox` is healthy when a durable or custom outbox is registered, and reports `Degraded` when `InMemoryAuditOutbox` is used outside Development.
 
 ## Startup validation
 
@@ -131,3 +135,5 @@ Example warnings:
 - `SF-CONFIG-010`: retention annotations found without `RetentionExecutor` or handlers.
 - `SF-CONFIG-011`: ASP.NET Core services registered but `UseSensitiveFlowAudit()` was not marked.
 - `SF-CONFIG-012`: middleware observed an authenticated user before it ran, which can indicate it was placed after authentication.
+- `SF-CONFIG-013`: in-memory audit outbox registered outside Development.
+- `SF-CONFIG-014`: durable audit outbox registered without any `IAuditOutboxPublisher`.

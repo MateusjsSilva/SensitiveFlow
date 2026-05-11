@@ -155,13 +155,8 @@ public sealed class SensitiveFlowConfigurationValidator
         ICollection<SensitiveFlowConfigurationDiagnostic> diagnostics)
     {
         var outbox = provider.GetService<IAuditOutbox>();
-        if (outbox is null)
-        {
-            return;
-        }
-
         var environment = provider.GetService<IHostEnvironment>();
-        if (outbox.GetType().FullName == "SensitiveFlow.Audit.Outbox.InMemoryAuditOutbox"
+        if (outbox?.GetType().FullName == "SensitiveFlow.Audit.Outbox.InMemoryAuditOutbox"
             && environment?.IsDevelopment() == false)
         {
             diagnostics.Add(Warning("SF-CONFIG-013", "In-memory audit outbox is configured outside Development. Use AddEfCoreAuditOutbox() or AddAuditOutbox<TOutbox>()."));

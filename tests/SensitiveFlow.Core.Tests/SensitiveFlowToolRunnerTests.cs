@@ -72,5 +72,127 @@ public sealed class SensitiveFlowToolRunnerTests
         exitCode.Should().Be(5);
         error.ToString().Should().Contain("dotnet build failed");
     }
+
+    [Fact]
+    public void Run_ScanDirectoryWithSingleInvalidProject_BuildsThatProject()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sensitiveflow-tool-project-dir-tests", Guid.NewGuid().ToString("N"));
+        var outputDirectory = Path.Combine(root, "report");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "AnnotatedProject.csproj"), """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>not-a-real-tfm</TargetFramework>
+              </PropertyGroup>
+            </Project>
+            """);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", root, outputDirectory], output, error);
+
+        exitCode.Should().Be(5);
+        output.ToString().Should().Contain("Building source project before scan");
+        error.ToString().Should().Contain("dotnet build failed");
+    }
+
+    [Fact]
+    public void Run_ScanDirectoryWithInvalidSolution_BuildsThatSolution()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sensitiveflow-tool-sln-dir-tests", Guid.NewGuid().ToString("N"));
+        var outputDirectory = Path.Combine(root, "report");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "Broken.slnx"), "<Solution><Project Path=\"Missing.csproj\" /></Solution>");
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", root, outputDirectory], output, error);
+
+        exitCode.Should().Be(5);
+        output.ToString().Should().Contain("Broken.slnx");
+        error.ToString().Should().Contain("dotnet build failed");
+    }
+
+    [Fact]
+    public void Run_ScanMissingInput_ReturnsNotFoundError()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var missingPath = Path.Combine(Path.GetTempPath(), "sensitiveflow-missing", Guid.NewGuid().ToString("N"));
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", missingPath], output, error);
+
+        exitCode.Should().Be(3);
+        error.ToString().Should().Contain("not found");
+    }
+
+    [Fact]
+    public void Run_ScanDirectoryWithoutAssemblies_ReturnsNoAssembliesError()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "sensitiveflow-tool-empty", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", directory], output, error);
+
+        exitCode.Should().Be(4);
+        error.ToString().Should().Contain("No assemblies found");
+    }
+
+    [Fact]
+    public void Run_ScanSourceInput_WarnsWhenInMemoryOutboxIsNotDebugOnly()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sensitiveflow-tool-source-warning", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "Program.cs"), "services.AddInMemoryAuditOutbox();");
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", root], output, error);
+
+        exitCode.Should().Be(4);
+        error.ToString().Should().Contain("SF-CLI-001");
+    }
+
+    [Fact]
+    public void Run_ScanSourceInput_DoesNotWarnWhenInMemoryOutboxIsDebugOnly()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sensitiveflow-tool-source-debug", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "Program.cs"), """
+            #if DEBUG
+            services.AddInMemoryAuditOutbox();
+            #endif
+            """);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", root], output, error);
+
+        exitCode.Should().Be(4);
+        error.ToString().Should().NotContain("SF-CLI-001");
+    }
+
+    [Fact]
+    public void Run_ScanSourceInput_WarnsWhenInMemoryOutboxIsInElseBranch()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sensitiveflow-tool-source-else", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "Program.cs"), """
+            #if DEBUG
+            services.AddEfCoreAuditOutbox();
+            #else
+            services.AddInMemoryAuditOutbox();
+            #endif
+            """);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", root], output, error);
+
+        exitCode.Should().Be(4);
+        error.ToString().Should().Contain("SF-CLI-001");
+    }
 }
 #endif

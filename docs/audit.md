@@ -50,7 +50,7 @@ public interface IAuditStore
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
         int skip = 0,
-        int take = int.MaxValue,
+        int take = 100,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
@@ -58,7 +58,7 @@ public interface IAuditStore
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
         int skip = 0,
-        int take = int.MaxValue,
+        int take = 100,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -207,6 +207,26 @@ public sealed class KafkaAuditOutbox : IDurableAuditOutbox
 builder.Services.AddAuditStore<MyAuditStore>();
 builder.Services.AddAuditOutbox<KafkaAuditOutbox>();
 ```
+
+### Audit outbox guarantees and defaults
+
+| Outbox | Intended use | Delivery guarantee | Survives restart | Notes |
+| --- | --- | --- | --- | --- |
+| `InMemoryAuditOutbox` | tests/local development | best effort / at-most-once | no | Deprecated for production. Diagnostics emit `SF-CONFIG-013` outside Development, and the audit-outbox health check reports `Degraded`. |
+| `SensitiveFlow.Audit.EFCore.Outbox` | production durable delivery | at-least-once | yes | EF Core storage, dispatcher retries, and dead-letter state. |
+| custom `IDurableAuditOutbox` | application-specific backend | defined by your implementation | should be yes | Register at least one `IAuditOutboxPublisher`; otherwise diagnostics emit `SF-CONFIG-014`. |
+
+Dispatcher defaults:
+
+| Option | Default |
+| --- | --- |
+| `PollInterval` | `1s` |
+| `BatchSize` | `100` |
+| `MaxAttempts` | `5` |
+| `BackoffStrategy` | `Exponential` |
+| `DeadLetterAfterMax` | `true` |
+
+Custom durable outboxes must implement `MarkDeadLetteredAsync(...)` in addition to enqueue, dequeue, processed, and failed acknowledgement methods. Register at least one `IAuditOutboxPublisher` so the dispatcher has a delivery target.
 
 ## Retrying transient failures
 
