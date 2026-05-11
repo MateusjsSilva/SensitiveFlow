@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `SensitiveDataAssert.DoesNotContainAny` — checks a payload against explicit string values without requiring an annotated entity.
+- `SensitiveDataAssert.DoesNotLeakKnownValues` — same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
+
 ## [1.0.0-preview.2] - 2026-05-10
 
 ### Added

@@ -60,3 +60,34 @@ SensitiveDataAssert.DoesNotLeak(logSink.Output, request, loadedEntity, currentUs
 - Values that never lived on the entity in the first place (free-form notes, computed fields)
 
 For those, write specific assertions on the field values you expect to see.
+
+## SensitiveDataAssert.DoesNotContainAny
+
+Checks a payload against explicit string values — no entity or annotation needed. Use this when you know exactly which values should not leak.
+
+```csharp
+using SensitiveFlow.TestKit.Assertions;
+
+[Fact]
+public async Task GetCustomer_DoesNotLeakEmailOrPhone()
+{
+    var customer = new Customer { Email = "alice@example.com", Phone = "555-1234" };
+    await SeedAsync(customer);
+
+    var response = await _client.GetAsync($"/customers/{customer.Id}");
+    var body = await response.Content.ReadAsStringAsync();
+
+    SensitiveDataAssert.DoesNotContainAny(body, customer.Email, customer.Phone);
+}
+```
+
+Empty and null values are silently skipped — they would otherwise match every string.
+
+## SensitiveDataAssert.DoesNotLeakKnownValues
+
+Same as `DoesNotContainAny` but accepts an `IEnumerable<string>` for readability when you already have a collection of known sensitive values.
+
+```csharp
+var knownValues = new[] { customer.Email, customer.Phone, customer.TaxId };
+SensitiveDataAssert.DoesNotLeakKnownValues(body, knownValues);
+```
