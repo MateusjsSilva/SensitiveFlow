@@ -1,9 +1,12 @@
 ﻿# SensitiveFlow
 
 [![CI](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/ci.yml)
+[![Container Tests](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/container-tests.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/container-tests.yml)
 [![CodeQL](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/codeql.yml)
+[![NuGet](https://img.shields.io/nuget/v/SensitiveFlow.Core?label=nuget)](https://www.nuget.org/packages/SensitiveFlow.Core)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/SensitiveFlow.Core)](https://www.nuget.org/packages/SensitiveFlow.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![NuGet](https://img.shields.io/nuget/v/SensitiveFlow.Core)](https://www.nuget.org/packages/SensitiveFlow.Core)
+[![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-blue)](https://dotnet.microsoft.com)
 
 **SensitiveFlow** is a .NET library that brings observability and control to sensitive data. It focuses on runtime behavior -- automatic auditing, log redaction, and masking -- not compliance paperwork.
 
