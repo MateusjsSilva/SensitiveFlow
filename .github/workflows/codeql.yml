@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.slnx'
+      - '**/*.csproj'
+      - 'Directory.Build.props'
+      - 'Directory.Build.targets'
+      - 'Directory.Packages.props'
+      - '.github/workflows/codeql.yml'
   schedule:
     - cron: '0 6 * * 1'
 
@@ -12,6 +21,8 @@ jobs:
   analyze:
     name: Analyze (csharp)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       security-events: write
       packages: read

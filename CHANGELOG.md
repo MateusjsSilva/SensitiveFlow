@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-preview.2] - 2026-05-10
+
+### Added
+
+- Logo (`assets/logo.png`) added to repository and configured as `PackageIcon` for all NuGet packages.
+- `SECURITY.md` with supported versions table, vulnerability reporting process, and security scope.
+- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
+- `RELEASE.md` with full versioning scheme and publishing process.
+- Legal disclaimer in README: "SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself."
+- New README badges: Container Tests, NuGet Downloads, .NET 8 | 9 | 10.
+
+### Changed
+
+- CI matrix now includes `net9.0` alongside `net8.0` and `net10.0`.
+- All GitHub Actions workflows force Node.js 24 (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`) to resolve deprecation warnings.
+- Container tests moved out of `ci.yml` into dedicated `container-tests.yml` (manual + weekly) and `release.yml` (before publish).
+- `bug_report.md` issue template translated to English.
+- `CONTRIBUTING.md` updated with link to `RELEASE.md`.
+- CI optimized: PRs run only `net10.x` for fast feedback; pushes to `main`/`develop` run full matrix (`net8.x`, `net9.x`, `net10.x`).
+
 ## [1.0.0-preview.1] - 2026-05-10
 
 ### Added

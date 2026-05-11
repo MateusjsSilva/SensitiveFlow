@@ -1,5 +1,9 @@
 ﻿# SensitiveFlow
 
+<p align="center">
+  <img src="assets/logo.png" alt="SensitiveFlow logo" width="200" />
+</p>
+
 [![CI](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/ci.yml)
 [![Container Tests](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/container-tests.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/container-tests.yml)
 [![CodeQL](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/MateusjsSilva/SensitiveFlow/actions/workflows/codeql.yml)
@@ -9,6 +13,8 @@
 [![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-blue)](https://dotnet.microsoft.com)
 
 **SensitiveFlow** is a .NET library that brings observability and control to sensitive data. It focuses on runtime behavior -- automatic auditing, log redaction, and masking -- not compliance paperwork.
+
+> **Important:** SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself. You are responsible for how you use these primitives in your application.
 
 ## Why SensitiveFlow?
 

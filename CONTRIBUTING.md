@@ -41,3 +41,7 @@ Use conventional commits:
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+## Release Process
+
+See [RELEASE.md](RELEASE.md) for the full release workflow, versioning scheme, and how to publish to NuGet.
