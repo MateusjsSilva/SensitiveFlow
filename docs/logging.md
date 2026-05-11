@@ -1,6 +1,6 @@
 # Log Redaction
 
-`SensitiveFlow.Logging` prevents PII from reaching log sinks by intercepting messages before they are written.
+`SensitiveFlow.Logging` prevents sensitive values from reaching log sinks by intercepting messages before they are written.
 
 ## Installation
 
@@ -12,7 +12,9 @@ dotnet add package SensitiveFlow.Logging
 
 `RedactingLogger` is an `ILogger` decorator. It wraps any existing `ILogger` and, before forwarding a message, replaces every occurrence of the pattern `[Sensitive]<value>` with a fixed redaction marker.
 
-The pattern matches immediately after the `[Sensitive]` tag up to the first whitespace, comma, or closing brace — enough to redact a structured log parameter value without disturbing the rest of the message template.
+The pattern matches immediately after the `[Sensitive]` tag up to the first whitespace, comma, or closing brace, enough to redact a structured log parameter value without disturbing the rest of the message template.
+
+For structured object values, the logger also inspects public properties annotated with `[PersonalData]` or `[SensitiveData]`. Annotated object members are redacted by default. If you pass a `SensitiveFlowPolicyRegistry`, categories configured with `.MaskInLogs()` are masked instead.
 
 ## Marking sensitive values
 
@@ -23,13 +25,31 @@ logger.LogInformation("User {[Sensitive]Email} logged in from {Ip}", email, ip);
 // Logged as: "User [REDACTED] logged in from 192.168.1.1"
 ```
 
-Only `[Sensitive]`-tagged values are redacted. Other parameters pass through unchanged.
+`[Sensitive]`-tagged values are always redacted. Structured object members are redacted when they carry SensitiveFlow annotations. Other parameters pass through unchanged.
+
+```csharp
+var sensitiveFlow = SensitiveFlowPolicyConfiguration.Create(options =>
+{
+    options.Policies.ForCategory(DataCategory.Contact).MaskInLogs();
+});
+
+builder.Services.AddSensitiveFlowLogging(options =>
+{
+    options.Policies = sensitiveFlow.Policies;
+});
+
+logger.LogInformation("Customer {@Customer}", customer);
+```
 
 ## Registration
 
 ```csharp
 builder.Services.AddSensitiveFlowLogging();          // uses [REDACTED] marker
 builder.Services.AddSensitiveFlowLogging("***");     // custom marker
+builder.Services.AddSensitiveFlowLogging(options =>
+{
+    options.Policies = sensitiveFlow.Policies;
+});
 ```
 
 This registers `DefaultSensitiveValueRedactor` as a singleton `ISensitiveValueRedactor`.
@@ -68,7 +88,7 @@ public interface ISensitiveValueRedactor
 }
 ```
 
-Example — hash-based redaction for deterministic deduplication:
+Example hash-based redaction for deterministic deduplication:
 
 ```csharp
 public sealed class HashRedactor : ISensitiveValueRedactor
@@ -93,6 +113,15 @@ redactor.Redact("secret@example.com"); // returns "[REDACTED]"
 ```
 
 The marker must be a non-whitespace string; an empty or whitespace-only value throws `ArgumentException`.
+
+## Defaults
+
+| Option | Default |
+| --- | --- |
+| `SensitiveLoggingOptions.RedactedPlaceholder` | `SensitiveFlowDefaults.RedactedPlaceholder` (`[REDACTED]`) |
+| `SensitiveLoggingOptions.RedactAnnotatedObjects` | `true` |
+| `SensitiveLoggingOptions.DefaultAnnotatedMemberAction` | `OutputRedactionAction.Redact` |
+| `SensitiveLoggingOptions.Policies` | `null` |
 
 ## OpenTelemetry metrics
 

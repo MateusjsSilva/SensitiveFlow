@@ -153,6 +153,7 @@ Defaults:
 - profile: `SensitiveFlowProfile.Balanced`
 - JSON redaction: `JsonRedactionMode.Mask`
 - redaction marker: `[REDACTED]`
+- logging: `[Sensitive]` markers are redacted; annotated structured object members are redacted unless policies request `MaskInLogs()`
 - retention anonymization marker: `[ANONYMIZED]`
 - health checks: `sensitiveflow-audit-store`, `sensitiveflow-token-store`
 

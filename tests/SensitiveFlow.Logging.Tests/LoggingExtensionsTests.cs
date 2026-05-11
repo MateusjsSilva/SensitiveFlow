@@ -2,6 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using SensitiveFlow.Core.Enums;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Logging.Configuration;
 using SensitiveFlow.Logging.Extensions;
 using SensitiveFlow.Logging.Loggers;
 using SensitiveFlow.Logging.Redaction;
@@ -57,6 +60,23 @@ public sealed class LoggingExtensionsTests
         var redactor = provider.GetRequiredService<ISensitiveValueRedactor>();
 
         redactor.Redact("anything").Should().Be("***");
+    }
+
+    [Fact]
+    public void AddSensitiveFlowLogging_Options_RegistersPolicyRegistry()
+    {
+        var services = new ServiceCollection();
+        var policies = new SensitiveFlowPolicyRegistry();
+        policies.ForCategory(DataCategory.Contact).MaskInLogs();
+
+        services.AddSensitiveFlowLogging(options =>
+        {
+            options.Policies = policies;
+        });
+
+        var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<SensitiveLoggingOptions>().Policies.Should().BeSameAs(policies);
     }
 
     [Fact]

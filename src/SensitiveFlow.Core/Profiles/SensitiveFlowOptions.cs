@@ -8,7 +8,10 @@ namespace SensitiveFlow.Core.Profiles;
 /// </summary>
 public sealed class SensitiveFlowOptions
 {
-    /// <summary>Gets the active profile.</summary>
+    /// <summary>
+    /// Gets the active profile. The default is <see cref="SensitiveFlowDefaults.Profile"/>
+    /// (<see cref="SensitiveFlowProfile.Balanced"/>).
+    /// </summary>
     public SensitiveFlowProfile Profile { get; private set; } = SensitiveFlowDefaults.Profile;
 
     /// <summary>Gets the policy registry.</summary>

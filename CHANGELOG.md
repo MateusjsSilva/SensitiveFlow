@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SensitiveFlow.TestKit` expanded assertions: `ContainsMaskedEmail`, `DoesNotContainRawValues`, `JsonDoesNotExposeAnnotatedProperties`, and `LogsDoNotContainSensitiveValues`.
 - `SensitiveFlow.TestKit` contract test bases for `IAuditSnapshotStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, and `IRetentionExpirationHandler`.
 - `SensitiveFlow.Json` now honors output attributes, contextual API response redaction, and category policies before falling back to the configured default mode.
+- `SensitiveFlow.Logging` now redacts annotated structured object members by default and applies `.MaskInLogs()` policies when a policy registry is supplied through `SensitiveLoggingOptions`.
+- `DataSubjectExporter` now honors contextual `[Redaction(Export = ...)]` attributes while keeping raw export as the default.
 - `SensitiveDataAssert.DoesNotContainAny` - checks a payload against explicit string values without requiring an annotated entity.
 - `SensitiveDataAssert.DoesNotLeakKnownValues` - same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
 

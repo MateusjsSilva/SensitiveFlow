@@ -80,7 +80,10 @@ try
     });
 
     builder.Services.AddSingleton(sensitiveFlowOptions);
-    builder.Services.AddSensitiveFlowLogging();
+    builder.Services.AddSensitiveFlowLogging(options =>
+    {
+        options.Policies = sensitiveFlowOptions.Policies;
+    });
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
     builder.Services.AddSensitiveFlowValidation(options =>

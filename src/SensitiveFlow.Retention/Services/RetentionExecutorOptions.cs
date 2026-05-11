@@ -20,7 +20,8 @@ public sealed class RetentionExecutorOptions
 
     /// <summary>
     /// Default placeholder used by <see cref="AnonymousValueFactory"/> for string properties.
-    /// Value types collapse to <c>default(T)</c>.
+    /// The default value is <see cref="SensitiveFlowDefaults.AnonymousValue"/>. Value types
+    /// collapse to <c>default(T)</c>.
     /// </summary>
     public string AnonymousStringMarker { get; set; } = SensitiveFlowDefaults.AnonymousValue;
 

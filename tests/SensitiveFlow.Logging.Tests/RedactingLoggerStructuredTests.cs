@@ -1,6 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Logging.Configuration;
 using SensitiveFlow.Logging.Loggers;
 using SensitiveFlow.Logging.Redaction;
 
@@ -176,6 +180,72 @@ public sealed class RedactingLoggerStructuredTests
         spy.LastMessage.Should().NotContain("joao@example.com");
     }
 
+    [Fact]
+    public void Log_StructuredObject_DefaultRedactsAnnotatedMembers()
+    {
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Customer", new CustomerLogShape()),
+            },
+            null,
+            (s, _) => string.Join(", ", s.Select(kv => $"{kv.Key}={kv.Value}")));
+
+        var customer = spy.LastState.Should().ContainSingle(kv => kv.Key == "Customer").Subject.Value;
+        var projected = customer.Should().BeAssignableTo<IReadOnlyDictionary<string, object?>>().Subject;
+        projected["Email"].Should().Be("[REDACTED]");
+        projected["PublicNote"].Should().Be("visible");
+    }
+
+    [Fact]
+    public void Log_StructuredObject_PolicyMasksCategoryInLogs()
+    {
+        var policies = new SensitiveFlowPolicyRegistry();
+        policies.ForCategory(DataCategory.Contact).MaskInLogs();
+
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(
+            spy,
+            new DefaultSensitiveValueRedactor(),
+            new SensitiveLoggingOptions { Policies = policies });
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Customer", new CustomerLogShape()),
+            },
+            null,
+            (s, _) => string.Empty);
+
+        var projected = spy.LastState.Single(kv => kv.Key == "Customer").Value
+            .Should().BeAssignableTo<IReadOnlyDictionary<string, object?>>().Subject;
+        projected["Email"].Should().Be("m****@example.com");
+        projected["TaxId"].Should().Be("[REDACTED]");
+    }
+
+    [Fact]
+    public void Log_StructuredObject_ContextualLogActionCanOmit()
+    {
+        var spy = new StateSpyLogger();
+        var logger = new RedactingLogger(spy, new DefaultSensitiveValueRedactor());
+
+        logger.Log(LogLevel.Information, new EventId(0),
+            new List<KeyValuePair<string, object?>>
+            {
+                new("Customer", new ContextualLogShape()),
+            },
+            null,
+            (s, _) => string.Empty);
+
+        var projected = spy.LastState.Single(kv => kv.Key == "Customer").Value
+            .Should().BeAssignableTo<IReadOnlyDictionary<string, object?>>().Subject;
+        projected.Should().NotContainKey("TaxId");
+        projected["Email"].Should().Be("m****@example.com");
+    }
+
     private sealed class SpyLogger : ILogger
     {
         public string? LastMessage { get; private set; }
@@ -190,5 +260,49 @@ public sealed class RedactingLoggerStructuredTests
         {
             LastMessage = formatter(state, exception);
         }
+    }
+
+    private sealed class StateSpyLogger : ILogger
+    {
+        public IReadOnlyList<KeyValuePair<string, object?>> LastState { get; private set; } = [];
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
+            {
+                LastState = pairs.ToArray();
+            }
+        }
+    }
+
+    private sealed class CustomerLogShape
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = "maria@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string TaxId { get; set; } = "12345678900";
+
+        public string PublicNote { get; set; } = "visible";
+    }
+
+    private sealed class ContextualLogShape
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        [Redaction(Logs = OutputRedactionAction.Mask)]
+        public string Email { get; set; } = "maria@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [Redaction(Logs = OutputRedactionAction.Omit)]
+        public string TaxId { get; set; } = "12345678900";
     }
 }

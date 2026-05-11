@@ -15,14 +15,14 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.AspNetCore` | You need actor/IP context from HTTP requests. | `AddSensitiveFlowAspNetCore()` and `UseSensitiveFlowAudit()`. | Requires a durable `IPseudonymizer`/`ITokenStore` for reversible IP tokens. |
 | `SensitiveFlow.Anonymization` | You mask, pseudonymize, export, erase, or fingerprint values. | Register an `ITokenStore` for reversible tokens; use services/extensions. | Masking/pseudonymization are still personal data. |
 | `SensitiveFlow.Json` | You need automatic response serialization redaction. | `WithSensitiveDataRedaction()` on `System.Text.Json`. | Does not cover Newtonsoft.Json. |
-| `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; values must flow through known redaction paths. |
+| `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; scalar values still need explicit markers or structured metadata. |
 | `SensitiveFlow.Diagnostics` | You want OpenTelemetry spans/metrics. | `AddSensitiveFlowDiagnostics()` after audit store/decorators. | Decorator order changes what latency is measured. |
 | `SensitiveFlow.HealthChecks` | You want ASP.NET Core health checks for SensitiveFlow infrastructure. | `AddSensitiveFlowHealthChecks().AddAuditStoreCheck().AddTokenStoreCheck()`. | Token stores without `IHealthProbe` are resolution-only checks to avoid mutating data. |
 | `SensitiveFlow.Retention` | You evaluate retention policies. | `AddRetention()` / `AddRetentionExecutor()` and run a scheduled job. | It will not delete database rows automatically. |
 | `SensitiveFlow.Analyzers` | You want compile-time guardrails. | Add analyzer package to application projects. | Warnings still require engineering judgment. |
 | `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
 | `SensitiveFlow.TestKit` | You implement custom stores or leak tests. | Inherit contract tests. | Contract tests need isolated fresh stores. |
-| `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly>`. | Scans compiled assemblies, not source directories. |
+| `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly-or-directory>`. | Scans compiled assemblies, not source directories. |
 
 ## SensitiveFlow.Core
 
@@ -265,6 +265,7 @@ Operational notes:
 - Only anonymization may remove data from personal-data scope. Masking and pseudonymization remain personal data.
 - `TokenPseudonymizer` is reversible only if `ITokenStore` remains durable.
 - `CachingTokenStore` stores original values in process memory.
+- `DataSubjectExporter` returns raw values by default and only masks/redacts/omits fields that opt in with `[Redaction(Export = ...)]`.
 
 ## SensitiveFlow.Json
 
@@ -309,6 +310,7 @@ Primary APIs:
 - `AddSensitiveFlowLogging(...)`
 - `AddSensitiveFlowLogging<TProvider>(...)`
 - `RedactingLoggerProvider`
+- `SensitiveLoggingOptions`
 - `ISensitiveValueRedactor`
 - `DefaultSensitiveValueRedactor`
 
@@ -319,7 +321,10 @@ Install when:
 Operational notes:
 
 - This is not full semantic PII detection.
-- Prefer structured logging and pass values through known redaction paths.
+- `[Sensitive]` template markers are always redacted.
+- Structured object values with `[PersonalData]` or `[SensitiveData]` members are redacted by default.
+- Pass `SensitiveLoggingOptions.Policies` to make `.MaskInLogs()` category policies mask annotated structured object members.
+- Prefer structured logging and pass scalar values through known redaction paths.
 
 ## SensitiveFlow.Diagnostics
 

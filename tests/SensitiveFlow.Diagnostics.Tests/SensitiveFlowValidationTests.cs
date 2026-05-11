@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.Diagnostics.Extensions;
 using SensitiveFlow.Diagnostics.Validation;
 
@@ -61,6 +63,48 @@ public sealed class SensitiveFlowValidationTests
         var report = new ServiceCollection().BuildServiceProvider().ValidateSensitiveFlow();
 
         report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-001");
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WhenPolicyRequiresAuditAndStoreMissing_ReportsWarning()
+    {
+        var services = new ServiceCollection();
+        var options = new SensitiveFlowOptions();
+        options.Policies.ForSensitiveCategory(SensitiveDataCategory.Other).RequireAudit();
+        services.AddSingleton(options);
+        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = false);
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-006");
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WhenPolicyRequiresJsonAndJsonOptionsMissing_ReportsWarning()
+    {
+        var services = new ServiceCollection();
+        var options = new SensitiveFlowOptions();
+        options.Policies.ForCategory(DataCategory.Contact).RedactInJson();
+        services.AddSingleton(options);
+        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = false);
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-007");
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WhenPolicyRequiresLogMaskingAndRedactorMissing_ReportsWarning()
+    {
+        var services = new ServiceCollection();
+        var options = new SensitiveFlowOptions();
+        options.Policies.ForCategory(DataCategory.Contact).MaskInLogs();
+        services.AddSingleton(options);
+        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = false);
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-008");
     }
 
     private sealed class HealthyAuditStore : IAuditStore

@@ -19,7 +19,7 @@ public sealed class JsonRedactionOptions
     /// <summary>
     /// Replacement string used by <see cref="JsonRedactionMode.Redacted"/> and as the
     /// fallback for non-string values in <see cref="JsonRedactionMode.Mask"/>.
-    /// Defaults to <c>"[REDACTED]"</c>.
+    /// Defaults to <see cref="SensitiveFlowDefaults.RedactedPlaceholder"/>.
     /// </summary>
     public string RedactedPlaceholder { get; set; } = SensitiveFlowDefaults.RedactedPlaceholder;
 

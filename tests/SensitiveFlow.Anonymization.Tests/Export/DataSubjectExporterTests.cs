@@ -54,6 +54,16 @@ public sealed class DataSubjectExporterTests
     }
 
     [Fact]
+    public void Export_RespectsContextualExportRedaction()
+    {
+        var exported = _exporter.Export(new ContextualExportCustomer());
+
+        exported.Should().ContainKey("Email").WhoseValue.Should().Be("m****@example.com");
+        exported.Should().ContainKey("TaxId").WhoseValue.Should().Be("[REDACTED]");
+        exported.Should().NotContainKey("SecretNote");
+    }
+
+    [Fact]
     public void Export_OnNullEntity_Throws()
     {
         Action act = () => _exporter.Export(null!);
@@ -93,5 +103,20 @@ public sealed class DataSubjectExporterTests
         {
             set { _ = value; }
         }
+    }
+
+    public class ContextualExportCustomer
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        [Redaction(Export = OutputRedactionAction.Mask)]
+        public string Email { get; set; } = "maria@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [Redaction(Export = OutputRedactionAction.Redact)]
+        public string TaxId { get; set; } = "12345678900";
+
+        [PersonalData(Category = DataCategory.Other)]
+        [Redaction(Export = OutputRedactionAction.Omit)]
+        public string SecretNote { get; set; } = "hide me";
     }
 }
