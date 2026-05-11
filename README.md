@@ -14,6 +14,8 @@
 
 **SensitiveFlow** is a .NET library that brings observability and control to sensitive data. It focuses on runtime behavior -- automatic auditing, log redaction, and masking -- not compliance paperwork.
 
+> **Important:** SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself. You are responsible for how you use these primitives in your application.
+
 ## Why SensitiveFlow?
 
 Sensitive data flows through your application on every request: EF Core saves, HTTP responses, log lines. SensitiveFlow makes that flow visible and controlled at the infrastructure level, without requiring manual instrumentation.
