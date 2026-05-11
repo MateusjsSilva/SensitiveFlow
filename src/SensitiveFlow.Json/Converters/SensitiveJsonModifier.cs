@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using SensitiveFlow.Anonymization.Extensions;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Policies;
 using SensitiveFlow.Core.Reflection;
 using SensitiveFlow.Json.Attributes;
 using SensitiveFlow.Json.Configuration;
@@ -56,7 +58,7 @@ public static class SensitiveJsonModifier
                     continue;
                 }
 
-                var mode = ResolveMode(clrProperty, options.DefaultMode);
+                var mode = ResolveMode(clrProperty, options);
 
                 if (mode == JsonRedactionMode.None)
                 {
@@ -74,10 +76,85 @@ public static class SensitiveJsonModifier
         };
     }
 
-    private static JsonRedactionMode ResolveMode(PropertyInfo property, JsonRedactionMode defaultMode)
+    private static JsonRedactionMode ResolveMode(PropertyInfo property, JsonRedactionOptions options)
     {
         var overrideAttr = property.GetCustomAttribute<JsonRedactionAttribute>(inherit: true);
-        return overrideAttr?.Mode ?? defaultMode;
+        if (overrideAttr is not null)
+        {
+            return overrideAttr.Mode;
+        }
+
+        var contextual = property.GetCustomAttribute<RedactionAttribute>(inherit: true);
+        var contextualAction = contextual?.ForContext(Core.Enums.RedactionContext.ApiResponse)
+            ?? Core.Enums.OutputRedactionAction.None;
+        if (contextualAction != Core.Enums.OutputRedactionAction.None)
+        {
+            return ToJsonMode(contextualAction);
+        }
+
+        if (property.GetCustomAttribute<OmitAttribute>(inherit: true) is not null)
+        {
+            return JsonRedactionMode.Omit;
+        }
+
+        if (property.GetCustomAttribute<RedactAttribute>(inherit: true) is not null)
+        {
+            return JsonRedactionMode.Redacted;
+        }
+
+        if (property.GetCustomAttribute<MaskAttribute>(inherit: true) is not null)
+        {
+            return JsonRedactionMode.Mask;
+        }
+
+        var policyMode = ResolvePolicyMode(property, options.Policies);
+        return policyMode ?? options.DefaultMode;
+    }
+
+    private static JsonRedactionMode? ResolvePolicyMode(PropertyInfo property, SensitiveFlowPolicyRegistry? policies)
+    {
+        if (policies is null)
+        {
+            return null;
+        }
+
+        var personal = property.GetCustomAttribute<PersonalDataAttribute>(inherit: true);
+        var personalRule = personal is null ? null : policies.Find(personal.Category);
+        if (personalRule is not null)
+        {
+            return ToJsonMode(personalRule.Actions);
+        }
+
+        var sensitive = property.GetCustomAttribute<SensitiveDataAttribute>(inherit: true);
+        var sensitiveRule = sensitive is null ? null : policies.Find(sensitive.Category);
+        return sensitiveRule is null ? null : ToJsonMode(sensitiveRule.Actions);
+    }
+
+    private static JsonRedactionMode? ToJsonMode(SensitiveFlowPolicyAction actions)
+    {
+        if ((actions & SensitiveFlowPolicyAction.OmitInJson) == SensitiveFlowPolicyAction.OmitInJson)
+        {
+            return JsonRedactionMode.Omit;
+        }
+
+        if ((actions & SensitiveFlowPolicyAction.RedactInJson) == SensitiveFlowPolicyAction.RedactInJson)
+        {
+            return JsonRedactionMode.Redacted;
+        }
+
+        return null;
+    }
+
+    private static JsonRedactionMode ToJsonMode(Core.Enums.OutputRedactionAction action)
+    {
+        return action switch
+        {
+            Core.Enums.OutputRedactionAction.Omit => JsonRedactionMode.Omit,
+            Core.Enums.OutputRedactionAction.Redact => JsonRedactionMode.Redacted,
+            Core.Enums.OutputRedactionAction.Mask => JsonRedactionMode.Mask,
+            Core.Enums.OutputRedactionAction.None => JsonRedactionMode.None,
+            _ => JsonRedactionMode.Redacted,
+        };
     }
 
     private static void ApplyRedactingGetter(JsonPropertyInfo jsonProperty, JsonRedactionMode mode, string placeholder)

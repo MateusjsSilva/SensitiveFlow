@@ -67,6 +67,19 @@ try
     builder.Services.AddDataSubjectExport();
     builder.Services.AddDataSubjectErasure();
 
+    var sensitiveFlowOptions = SensitiveFlowPolicyConfiguration.Create(options =>
+    {
+        options.UseProfile(SensitiveFlowProfile.Strict);
+        options.Policies.ForCategory(DataCategory.Contact)
+            .MaskInLogs()
+            .RedactInJson()
+            .AuditOnChange();
+        options.Policies.ForSensitiveCategory(SensitiveDataCategory.Other)
+            .OmitInJson()
+            .RequireAudit();
+    });
+
+    builder.Services.AddSingleton(sensitiveFlowOptions);
     builder.Services.AddSensitiveFlowLogging();
     builder.Services.AddSensitiveFlowEFCore();
     builder.Services.AddSensitiveFlowAspNetCore();
@@ -77,20 +90,13 @@ try
         options.RequireJsonRedaction = true;
         options.RequireRetention = true;
     });
-    builder.Services.AddSensitiveFlowJsonRedaction(options => options.DefaultMode = JsonRedactionMode.Mask);
+    builder.Services.AddSensitiveFlowJsonRedaction(options =>
+    {
+        options.DefaultMode = JsonRedactionMode.Mask;
+        options.Policies = sensitiveFlowOptions.Policies;
+    });
     builder.Services.AddRetention();
     builder.Services.AddRetentionExecutor();
-    builder.Services.AddSingleton(SensitiveFlowPolicyConfiguration.Create(options =>
-    {
-        options.UseProfile(SensitiveFlowProfile.Strict);
-        options.Policies.ForCategory(DataCategory.Contact)
-            .MaskInLogs()
-            .RedactInJson()
-            .AuditOnChange();
-        options.Policies.ForSensitiveCategory(SensitiveDataCategory.Other)
-            .OmitInJson()
-            .RequireAudit();
-    }));
     builder.Services.AddSensitiveFlowHealthChecks()
         .AddAuditStoreCheck()
         .AddTokenStoreCheck();
@@ -110,7 +116,11 @@ try
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
             options.JsonSerializerOptions.WithSensitiveDataRedaction(
-                new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
+                new JsonRedactionOptions
+                {
+                    DefaultMode = JsonRedactionMode.Mask,
+                    Policies = sensitiveFlowOptions.Policies,
+                }));
     builder.Services.AddOpenApi();
 
     var app = builder.Build();

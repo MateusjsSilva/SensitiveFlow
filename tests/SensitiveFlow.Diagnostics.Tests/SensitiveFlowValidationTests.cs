@@ -32,6 +32,37 @@ public sealed class SensitiveFlowValidationTests
         report.Diagnostics.Should().NotContain(d => d.Code == "SF-CONFIG-001");
     }
 
+    [Fact]
+    public void ValidateSensitiveFlow_WhenTokenStoreRequiredAndMissing_ReportsWarning()
+    {
+        var services = new ServiceCollection();
+        services.AddSensitiveFlowValidation(o => o.RequireTokenStore = true);
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-002");
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WhenPseudonymizerWithoutTokenStore_ReportsWarning()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IPseudonymizer, FakePseudonymizer>();
+        services.AddSensitiveFlowValidation();
+
+        var report = services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-003");
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WithoutRegisteredValidator_UsesDefaultValidator()
+    {
+        var report = new ServiceCollection().BuildServiceProvider().ValidateSensitiveFlow();
+
+        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-001");
+    }
+
     private sealed class HealthyAuditStore : IAuditStore
     {
         public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
@@ -48,5 +79,24 @@ public sealed class SensitiveFlowValidationTests
         {
             return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
         }
+    }
+
+    private sealed class FakePseudonymizer : IPseudonymizer
+    {
+        public string Pseudonymize(string value) => "token";
+
+        public Task<string> PseudonymizeAsync(string value, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult("token");
+        }
+
+        public string Reverse(string token) => "value";
+
+        public Task<string> ReverseAsync(string token, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult("value");
+        }
+
+        public bool CanPseudonymize(string value) => true;
     }
 }

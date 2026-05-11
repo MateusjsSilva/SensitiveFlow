@@ -10,12 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `SensitiveFlow.Core` policy engine primitives: `SensitiveFlowOptions`, built-in profiles, category policy registry, output behavior attributes, contextual redaction attributes, data sensitivity levels, discovery reports, export formatters, audit correlation helpers, audit outbox interfaces, data-subject request interfaces, and privacy-safe exception types.
-- `SensitiveFlow.Tool` command-line project with `sensitiveflow scan <assembly-path> [output-directory]` for JSON/Markdown discovery reports.
+- `SensitiveFlow.Tool` command-line project with `sensitiveflow scan <assembly-or-directory> [output-directory]` for JSON/Markdown discovery reports.
 - `SensitiveFlow.HealthChecks` package with audit/token store health checks.
 - `SensitiveFlow.Diagnostics` startup validation via `AddSensitiveFlowValidation(...)` and `ValidateSensitiveFlow()`.
 - `SensitiveFlow.Retention` dry-run execution via `RetentionExecutor.DryRunAsync(...)`.
 - `SensitiveFlow.TestKit` expanded assertions: `ContainsMaskedEmail`, `DoesNotContainRawValues`, `JsonDoesNotExposeAnnotatedProperties`, and `LogsDoNotContainSensitiveValues`.
 - `SensitiveFlow.TestKit` contract test bases for `IAuditSnapshotStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, and `IRetentionExpirationHandler`.
+- `SensitiveFlow.Json` now honors output attributes, contextual API response redaction, and category policies before falling back to the configured default mode.
 - `SensitiveDataAssert.DoesNotContainAny` - checks a payload against explicit string values without requiring an annotated entity.
 - `SensitiveDataAssert.DoesNotLeakKnownValues` - same as `DoesNotContainAny` but accepts `IEnumerable<string>` for readability.
 

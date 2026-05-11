@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NSubstitute;
 using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Correlation;
 using SensitiveFlow.Core.Discovery;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Exceptions;
@@ -228,6 +229,67 @@ public sealed class CoreContractTests
     }
 
     [Fact]
+    public void SensitiveFlowDefaults_AreDocumented()
+    {
+        SensitiveFlowDefaults.Profile.Should().Be(SensitiveFlowProfile.Balanced);
+        SensitiveFlowDefaults.RedactedPlaceholder.Should().Be("[REDACTED]");
+        SensitiveFlowDefaults.AnonymousValue.Should().Be("[ANONYMIZED]");
+        SensitiveFlowDefaults.AuditStoreHealthCheckName.Should().Be("sensitiveflow-audit-store");
+        SensitiveFlowDefaults.TokenStoreHealthCheckName.Should().Be("sensitiveflow-token-store");
+    }
+
+    [Theory]
+    [InlineData(SensitiveFlowProfile.Development)]
+    [InlineData(SensitiveFlowProfile.Balanced)]
+    [InlineData(SensitiveFlowProfile.Strict)]
+    [InlineData(SensitiveFlowProfile.AuditOnly)]
+    public void SensitiveFlowOptions_AllBuiltInProfiles_AddRules(SensitiveFlowProfile profile)
+    {
+        var options = new SensitiveFlowOptions().UseProfile(profile);
+
+        options.Profile.Should().Be(profile);
+        options.Policies.Rules.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void SensitiveFlowPolicyConfiguration_Create_AppliesCallback()
+    {
+        var options = SensitiveFlowPolicyConfiguration.Create(o =>
+            o.Policies.ForCategory(DataCategory.Contact).RedactInJson());
+
+        options.Policies.Find(DataCategory.Contact)!.Actions
+            .Should().Be(SensitiveFlowPolicyAction.RedactInJson);
+    }
+
+    [Fact]
+    public void JsonDataExportFormatter_FormatsRows()
+    {
+        var formatter = new JsonDataExportFormatter();
+
+        var json = formatter.Format([
+            new Dictionary<string, object?> { ["Email"] = "alice@example.com" },
+        ]);
+
+        json.Should().Contain("alice@example.com");
+    }
+
+    [Fact]
+    public void SensitiveFlowCorrelation_StoresAsyncLocalSnapshot()
+    {
+        var snapshot = new AuditCorrelationSnapshot
+        {
+            CorrelationId = "corr-1",
+            RequestId = "req-1",
+            TraceId = "trace-1",
+        };
+
+        SensitiveFlowCorrelation.Current = snapshot;
+
+        SensitiveFlowCorrelation.Current.Should().Be(snapshot);
+        SensitiveFlowCorrelation.Current = null;
+    }
+
+    [Fact]
     public void SensitiveDataDiscovery_Scan_ReturnsAnnotatedMembers()
     {
         var report = SensitiveDataDiscovery.Scan(typeof(CoreContractTests).Assembly);
@@ -237,6 +299,14 @@ public sealed class CoreContractTests
             && e.Category == DataCategory.Contact);
         report.ToMarkdown().Should().Contain("DiscoveryCustomer.Email");
         report.ToJson().Should().Contain("DiscoveryCustomer");
+    }
+
+    [Fact]
+    public void SensitiveDataDiscovery_ScanMany_ReturnsAnnotatedMembers()
+    {
+        var report = SensitiveDataDiscovery.Scan([typeof(CoreContractTests).Assembly]);
+
+        report.Entries.Should().Contain(e => e.TypeName == nameof(DiscoveryCustomer));
     }
 
     [Fact]

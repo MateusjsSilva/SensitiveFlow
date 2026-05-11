@@ -148,6 +148,14 @@ builder.Services.AddSensitiveFlowHealthChecks()
 var startupReport = app.Services.ValidateSensitiveFlow();
 ```
 
+Defaults:
+
+- profile: `SensitiveFlowProfile.Balanced`
+- JSON redaction: `JsonRedactionMode.Mask`
+- redaction marker: `[REDACTED]`
+- retention anonymization marker: `[ANONYMIZED]`
+- health checks: `sensitiveflow-audit-store`, `sensitiveflow-token-store`
+
 Every `SaveChanges` on a field annotated with `[PersonalData]` or `[SensitiveData]` now
 produces an `AuditRecord` automatically.
 

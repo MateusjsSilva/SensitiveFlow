@@ -39,6 +39,7 @@ Primary APIs:
 - Enums: `DataCategory`, `SensitiveDataCategory`, `DataSensitivity`, `RetentionPolicy`, `AuditOperation`, `AnonymizationType`.
 - Policies/profiles: `SensitiveFlowOptions`, `SensitiveFlowProfile`, `SensitiveFlowPolicyRegistry`.
 - Discovery/export: `SensitiveDataDiscovery`, `JsonDataExportFormatter`, `CsvDataExportFormatter`.
+- Defaults: `SensitiveFlowDefaults` documents the default profile, redaction marker, anonymization marker, and health-check names.
 - Cache: `SensitiveMemberCache`.
 
 Install when:

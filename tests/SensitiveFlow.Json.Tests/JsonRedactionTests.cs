@@ -9,6 +9,7 @@ using SensitiveFlow.Json.Attributes;
 using SensitiveFlow.Json.Configuration;
 using SensitiveFlow.Json.Enums;
 using SensitiveFlow.Json.Extensions;
+using SensitiveFlow.Core.Policies;
 
 namespace SensitiveFlow.Json.Tests;
 
@@ -301,6 +302,57 @@ public sealed class JsonRedactionTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    [Fact]
+    public void OutputAttributes_TakePrecedenceOverDefaultMode()
+    {
+        var json = JsonSerializer.Serialize(new OutputAttributeCustomer
+        {
+            Email = "alice@example.com",
+            TaxId = "12345678900",
+            Secret = "hidden",
+        }, Build(new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
+
+        json.Should().Contain("\"Email\":\"[REDACTED]\"");
+        json.Should().Contain("\"TaxId\":\"1**********\"");
+        json.Should().NotContain("Secret");
+        json.Should().NotContain("hidden");
+    }
+
+    [Fact]
+    public void ContextualRedaction_ApiResponseMode_TakesPrecedenceOverDefaultMode()
+    {
+        var json = JsonSerializer.Serialize(new ContextualCustomer
+        {
+            Email = "alice@example.com",
+        }, Build(new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
+
+        json.Should().NotContain("Email");
+        json.Should().NotContain("alice@example.com");
+    }
+
+    [Fact]
+    public void Policies_ResolveJsonActionsByCategory()
+    {
+        var policies = new SensitiveFlowPolicyRegistry();
+        policies.ForCategory(DataCategory.Contact).RedactInJson();
+        policies.ForSensitiveCategory(SensitiveDataCategory.Other).OmitInJson();
+
+        var json = JsonSerializer.Serialize(new PolicyCustomer
+        {
+            Email = "alice@example.com",
+            TaxId = "12345678900",
+            Name = "Alice",
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Mask,
+            Policies = policies,
+        }));
+
+        json.Should().Contain("\"Email\":\"[REDACTED]\"");
+        json.Should().NotContain("TaxId");
+        json.Should().Contain("\"Name\":\"A****\"");
+    }
+
     public class Customer
     {
         public int Id { get; set; }
@@ -381,4 +433,38 @@ public sealed class JsonRedactionTests
     }
 
     public sealed record Payload(string Value);
+
+    public class OutputAttributeCustomer
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        [Redact]
+        public string Email { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [Mask(MaskKind.Generic)]
+        public string TaxId { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [Omit]
+        public string Secret { get; set; } = string.Empty;
+    }
+
+    public class ContextualCustomer
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        [Redaction(ApiResponse = OutputRedactionAction.Omit, Logs = OutputRedactionAction.Mask)]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class PolicyCustomer
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public string TaxId { get; set; } = string.Empty;
+
+        [PersonalData(Category = DataCategory.Identification)]
+        public string Name { get; set; } = string.Empty;
+    }
 }

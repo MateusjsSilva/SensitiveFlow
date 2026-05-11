@@ -9,7 +9,7 @@ namespace SensitiveFlow.Core.Profiles;
 public sealed class SensitiveFlowOptions
 {
     /// <summary>Gets the active profile.</summary>
-    public SensitiveFlowProfile Profile { get; private set; } = SensitiveFlowProfile.Balanced;
+    public SensitiveFlowProfile Profile { get; private set; } = SensitiveFlowDefaults.Profile;
 
     /// <summary>Gets the policy registry.</summary>
     public SensitiveFlowPolicyRegistry Policies { get; } = new();
@@ -50,4 +50,3 @@ public sealed class SensitiveFlowOptions
         return this;
     }
 }
-

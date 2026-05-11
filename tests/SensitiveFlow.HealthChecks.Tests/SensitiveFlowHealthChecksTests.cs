@@ -4,6 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.HealthChecks.Checks;
 using SensitiveFlow.HealthChecks.Extensions;
 
 namespace SensitiveFlow.HealthChecks.Tests;
@@ -46,6 +47,26 @@ public sealed class SensitiveFlowHealthChecksTests
         result.Status.Should().Be(HealthStatus.Healthy);
     }
 
+    [Fact]
+    public async Task AuditStoreCheck_WhenProbeFails_ReturnsUnhealthy()
+    {
+        var check = new AuditStoreHealthCheck(new FailingAuditStore());
+
+        var result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.Should().Be(HealthStatus.Unhealthy);
+    }
+
+    [Fact]
+    public async Task TokenStoreCheck_WhenProbeFails_ReturnsUnhealthy()
+    {
+        var check = new TokenStoreHealthCheck(new FailingTokenStore());
+
+        var result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.Should().Be(HealthStatus.Unhealthy);
+    }
+
     private sealed class HealthyAuditStore : IAuditStore
     {
         public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
@@ -74,6 +95,42 @@ public sealed class SensitiveFlowHealthChecksTests
         public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
         {
             return Task.FromResult("value");
+        }
+    }
+
+    private sealed class FailingAuditStore : IAuditStore
+    {
+        public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("append failed");
+        }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(DateTimeOffset? from = null, DateTimeOffset? to = null, int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("query failed");
+        }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(string dataSubjectId, DateTimeOffset? from = null, DateTimeOffset? to = null, int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("query failed");
+        }
+    }
+
+    private sealed class FailingTokenStore : ITokenStore, IHealthProbe
+    {
+        public Task ProbeAsync(CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("probe failed");
+        }
+
+        public Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("token failed");
+        }
+
+        public Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("token failed");
         }
     }
 }

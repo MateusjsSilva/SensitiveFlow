@@ -1,4 +1,6 @@
 using SensitiveFlow.Json.Enums;
+using SensitiveFlow.Core.Policies;
+using SensitiveFlow.Core.Profiles;
 
 namespace SensitiveFlow.Json.Configuration;
 
@@ -19,5 +21,11 @@ public sealed class JsonRedactionOptions
     /// fallback for non-string values in <see cref="JsonRedactionMode.Mask"/>.
     /// Defaults to <c>"[REDACTED]"</c>.
     /// </summary>
-    public string RedactedPlaceholder { get; set; } = "[REDACTED]";
+    public string RedactedPlaceholder { get; set; } = SensitiveFlowDefaults.RedactedPlaceholder;
+
+    /// <summary>
+    /// Optional category policy registry. When present, JSON actions from policies are used
+    /// before <see cref="DefaultMode"/> and after per-property attributes.
+    /// </summary>
+    public SensitiveFlowPolicyRegistry? Policies { get; set; }
 }

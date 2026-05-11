@@ -27,6 +27,46 @@ Built-in profiles:
 - `Strict`: omission/redaction and required audit for sensitive categories.
 - `AuditOnly`: audit-focused hints without forcing output behavior.
 
+## Defaults
+
+SensitiveFlow defaults are intentionally conservative and documented in `SensitiveFlowDefaults`:
+
+| Setting | Default |
+| --- | --- |
+| Profile | `SensitiveFlowProfile.Balanced` |
+| JSON redaction mode | `JsonRedactionMode.Mask` |
+| Full redaction placeholder | `[REDACTED]` |
+| Retention anonymization marker | `[ANONYMIZED]` |
+| Audit health check name | `sensitiveflow-audit-store` |
+| Token health check name | `sensitiveflow-token-store` |
+| Logging redactor | redacts marked values to `[REDACTED]` |
+| CLI scan input | compiled assembly file or directory containing `.dll` files |
+
+Precedence for JSON output is:
+
+1. `[JsonRedaction]`
+2. `[Redaction(ApiResponse = ...)]`
+3. `[Omit]`, `[Redact]`, `[Mask]`
+4. category policies (`OmitInJson`, then `RedactInJson`)
+5. `JsonRedactionOptions.DefaultMode`
+
+Pass policies into JSON redaction explicitly:
+
+```csharp
+var sensitiveFlow = SensitiveFlowPolicyConfiguration.Create(options =>
+{
+    options.UseProfile(SensitiveFlowProfile.Balanced);
+    options.Policies.ForCategory(DataCategory.Contact).RedactInJson();
+});
+
+builder.Services.AddSingleton(sensitiveFlow);
+builder.Services.AddSensitiveFlowJsonRedaction(options =>
+{
+    options.DefaultMode = JsonRedactionMode.Mask;
+    options.Policies = sensitiveFlow.Policies;
+});
+```
+
 ## Discovery report
 
 `SensitiveDataDiscovery` scans compiled assemblies for `[PersonalData]`, `[SensitiveData]`, and `[RetentionData]`.
@@ -42,11 +82,12 @@ The report includes type, member, annotation kind, category, sensitivity, and re
 
 ## CLI tool
 
-`SensitiveFlow.Tool` exposes the same report generator for CI and documentation jobs.
+`SensitiveFlow.Tool` exposes the same report generator for CI and documentation jobs. It accepts either one compiled assembly or a directory and scans `.dll` files recursively, skipping `obj` folders.
 
 ```bash
 dotnet tool install SensitiveFlow.Tool
 sensitiveflow scan ./bin/Release/net10.0/MyApp.dll ./artifacts/privacy
+sensitiveflow scan ./src/MyApp/bin/Release/net10.0 ./artifacts/privacy
 ```
 
 The tool writes:
