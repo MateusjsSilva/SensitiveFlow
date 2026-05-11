@@ -29,11 +29,6 @@ Use this page as the documentation index. The files are grouped by task so contr
 - [TestKit](testkit.md): contract tests for `IAuditStore` and `ITokenStore`, plus leak assertions.
 - [Source generators](package-reference.md#sensitiveflowsourcegenerators): generated metadata overview.
 
-## Production and release planning
-
-- [TestKit](testkit.md): reusable conformance tests for custom stores.
-- [Backend examples](backends-example.md): production-oriented persistence examples.
-
 ## AI usage
 
 - [AI skill guide](ai-skill-sensitiveflow.md): instructions for AI agents that need to apply SensitiveFlow correctly in an application.

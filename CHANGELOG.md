@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issue templates and pull request template
 - `.editorconfig` with C# coding conventions
 - Central Package Management via `Directory.Packages.props`
-- Multi-target: `net8.0` and `net10.0`
+- Multi-target: `net8.0`, `net9.0`, and `net10.0`
 - Documentation: getting-started, attributes, legal-bases, consent, audit, data-subject-rights, retention, data-map, incidents, ripd, international-transfer, efcore, aspnetcore, migration
 
 

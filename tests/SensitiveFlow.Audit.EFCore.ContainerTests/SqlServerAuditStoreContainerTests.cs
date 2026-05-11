@@ -27,7 +27,7 @@ public sealed class SqlServerAuditStoreContainerTests : IClassFixture<SqlServerF
 
     public async Task InitializeAsync()
     {
-        _connectionString = _fixture.GetConnectionString();
+        _connectionString = _fixture.GetConnectionString() + ";Database=SensitiveFlowAuditTest";
 
         var services = new ServiceCollection();
         services.AddEfCoreAuditStore(options => options.UseSqlServer(_connectionString));

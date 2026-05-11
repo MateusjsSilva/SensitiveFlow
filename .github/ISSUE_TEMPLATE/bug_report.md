@@ -1,38 +1,38 @@
 ---
 name: Bug report
-about: Relate um comportamento incorreto
+about: Report incorrect behavior
 title: '[BUG] '
 labels: bug
 assignees: ''
 ---
 
-## Descrição
+## Description
 
-Descrição clara e concisa do bug.
+Clear and concise description of the bug.
 
-## Reprodução
+## Reproduction
 
-Passos para reproduzir:
+Steps to reproduce:
 
 1. ...
 2. ...
 
-## Comportamento esperado
+## Expected behavior
 
-O que deveria acontecer.
+What should happen.
 
-## Comportamento atual
+## Current behavior
 
-O que está acontecendo.
+What is actually happening.
 
-## Código mínimo reproduzível
+## Minimal reproducible code
 
 ```csharp
-// Cole aqui o código que demonstra o bug
+// Paste the code that demonstrates the bug here
 ```
 
-## Ambiente
+## Environment
 
-- Pacote e versão: `SensitiveFlow.X v1.0.0`
-- .NET version: `net8.0` / `net10.0`
+- Package and version: `SensitiveFlow.X v1.0.0`
+- .NET version: `net8.0` / `net9.0` / `net10.0`
 - OS: Windows / Linux / macOS

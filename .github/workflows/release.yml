@@ -31,6 +31,13 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --filter "Category!=Container"
 
+      - name: Container Tests
+        run: >
+          dotnet test
+          tests/SensitiveFlow.Audit.EFCore.ContainerTests/SensitiveFlow.Audit.EFCore.ContainerTests.csproj
+          --configuration Release
+          --no-build
+
       - name: Extract version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
