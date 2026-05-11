@@ -11,10 +11,14 @@ public static class SensitiveFlowToolRunner
 {
     /// <summary>Runs the CLI command.</summary>
     public static int Run(string[] args, TextWriter output, TextWriter error)
+        => Run(args, output, error, SensitiveFlowToolHost.Instance);
+
+    internal static int Run(string[] args, TextWriter output, TextWriter error, ISensitiveFlowToolHost host)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
+        ArgumentNullException.ThrowIfNull(host);
 
         if (args.Length < 2 || !string.Equals(args[0], "scan", StringComparison.OrdinalIgnoreCase))
         {
@@ -23,7 +27,7 @@ public static class SensitiveFlowToolRunner
         }
 
         var inputPath = Path.GetFullPath(args[1]);
-        if (!File.Exists(inputPath) && !Directory.Exists(inputPath))
+        if (!host.FileExists(inputPath) && !host.DirectoryExists(inputPath))
         {
             error.WriteLine($"Assembly, project, solution, or directory not found: {inputPath}");
             return 3;
@@ -31,19 +35,19 @@ public static class SensitiveFlowToolRunner
 
         var outputDirectory = args.Length >= 3
             ? Path.GetFullPath(args[2])
-            : Directory.GetCurrentDirectory();
-        Directory.CreateDirectory(outputDirectory);
+            : host.CurrentDirectory;
+        host.CreateDirectory(outputDirectory);
 
-        EmitSourceWarnings(inputPath, error);
+        EmitSourceWarnings(inputPath, error, host);
 
-        var buildResult = TryBuildSourceInput(inputPath, output, error);
+        var buildResult = TryBuildSourceInput(inputPath, output, error, host);
         if (buildResult.ExitCode != 0)
         {
             return buildResult.ExitCode;
         }
 
         var scanPath = buildResult.ScanPath ?? inputPath;
-        var assemblies = ResolveAssemblies(scanPath).ToArray();
+        var assemblies = ResolveAssemblies(scanPath, host).ToArray();
         if (assemblies.Length == 0)
         {
             error.WriteLine($"No assemblies found to scan: {scanPath}");
@@ -55,73 +59,54 @@ public static class SensitiveFlowToolRunner
         var jsonPath = Path.Combine(outputDirectory, "sensitiveflow-report.json");
         var markdownPath = Path.Combine(outputDirectory, "sensitiveflow-report.md");
 
-        File.WriteAllText(jsonPath, report.ToJson());
-        File.WriteAllText(markdownPath, report.ToMarkdown());
+        host.WriteAllText(jsonPath, report.ToJson());
+        host.WriteAllText(markdownPath, report.ToMarkdown());
 
         output.WriteLine($"SensitiveFlow report written: {jsonPath}");
         output.WriteLine($"SensitiveFlow report written: {markdownPath}");
         return 0;
     }
 
-    private static BuildSourceResult TryBuildSourceInput(string inputPath, TextWriter output, TextWriter error)
+    private static BuildSourceResult TryBuildSourceInput(string inputPath, TextWriter output, TextWriter error, ISensitiveFlowToolHost host)
     {
-        var buildTarget = ResolveBuildTarget(inputPath);
+        var buildTarget = ResolveBuildTarget(inputPath, host);
         if (buildTarget is null)
         {
             return new BuildSourceResult(0, null);
         }
 
         output.WriteLine($"Building source project before scan: {buildTarget}");
-        var psi = new ProcessStartInfo("dotnet", $"build \"{buildTarget}\" -c Release --nologo")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-
-        using var process = Process.Start(psi);
-        if (process is null)
+        var result = host.Build(buildTarget, TimeSpan.FromMinutes(2));
+        if (!result.Started)
         {
             error.WriteLine("Failed to start dotnet build.");
             return new BuildSourceResult(5, null);
         }
 
-        var stdoutTask = process.StandardOutput.ReadToEndAsync();
-        var stderrTask = process.StandardError.ReadToEndAsync();
-        if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+        if (result.TimedOut)
         {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-            }
-
             error.WriteLine("dotnet build timed out.");
             return new BuildSourceResult(5, null);
         }
 
-        var stdout = stdoutTask.GetAwaiter().GetResult();
-        var stderr = stderrTask.GetAwaiter().GetResult();
-        if (process.ExitCode != 0)
+        if (result.ExitCode != 0)
         {
-            error.WriteLine(stdout);
-            error.WriteLine(stderr);
-            error.WriteLine($"dotnet build failed with exit code {process.ExitCode}.");
+            error.WriteLine(result.StandardOutput);
+            error.WriteLine(result.StandardError);
+            error.WriteLine($"dotnet build failed with exit code {result.ExitCode}.");
             return new BuildSourceResult(5, null);
         }
 
-        var scanPath = Directory.Exists(inputPath)
+        var scanPath = host.DirectoryExists(inputPath)
             ? inputPath
             : Path.GetDirectoryName(buildTarget);
 
         return new BuildSourceResult(0, scanPath);
     }
 
-    private static string? ResolveBuildTarget(string inputPath)
+    private static string? ResolveBuildTarget(string inputPath, ISensitiveFlowToolHost host)
     {
-        if (File.Exists(inputPath))
+        if (host.FileExists(inputPath))
         {
             var extension = Path.GetExtension(inputPath);
             return extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
@@ -131,43 +116,43 @@ public static class SensitiveFlowToolRunner
                 : null;
         }
 
-        if (!Directory.Exists(inputPath))
+        if (!host.DirectoryExists(inputPath))
         {
             return null;
         }
 
-        var solution = Directory.EnumerateFiles(inputPath, "*.slnx", SearchOption.TopDirectoryOnly)
-            .Concat(Directory.EnumerateFiles(inputPath, "*.sln", SearchOption.TopDirectoryOnly))
+        var solution = host.EnumerateFiles(inputPath, "*.slnx", SearchOption.TopDirectoryOnly)
+            .Concat(host.EnumerateFiles(inputPath, "*.sln", SearchOption.TopDirectoryOnly))
             .FirstOrDefault();
         if (solution is not null)
         {
             return solution;
         }
 
-        var projects = Directory.EnumerateFiles(inputPath, "*.csproj", SearchOption.TopDirectoryOnly).ToArray();
+        var projects = host.EnumerateFiles(inputPath, "*.csproj", SearchOption.TopDirectoryOnly).ToArray();
         return projects.Length == 1 ? projects[0] : null;
     }
 
-    private static void EmitSourceWarnings(string inputPath, TextWriter error)
+    private static void EmitSourceWarnings(string inputPath, TextWriter error, ISensitiveFlowToolHost host)
     {
-        foreach (var sourceFile in ResolveSourceFiles(inputPath))
+        foreach (var sourceFile in ResolveSourceFiles(inputPath, host))
         {
-            WarnIfInMemoryOutboxIsNotDebugOnly(sourceFile, error);
+            WarnIfInMemoryOutboxIsNotDebugOnly(sourceFile, error, host);
         }
     }
 
-    private static IEnumerable<string> ResolveSourceFiles(string inputPath)
+    private static IEnumerable<string> ResolveSourceFiles(string inputPath, ISensitiveFlowToolHost host)
     {
-        var root = File.Exists(inputPath)
+        var root = host.FileExists(inputPath)
             ? Path.GetDirectoryName(inputPath)
             : inputPath;
 
-        if (root is null || !Directory.Exists(root))
+        if (root is null || !host.DirectoryExists(root))
         {
             yield break;
         }
 
-        foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+        foreach (var file in host.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
         {
             if (file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                 || file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
@@ -179,10 +164,10 @@ public static class SensitiveFlowToolRunner
         }
     }
 
-    private static void WarnIfInMemoryOutboxIsNotDebugOnly(string sourceFile, TextWriter error)
+    private static void WarnIfInMemoryOutboxIsNotDebugOnly(string sourceFile, TextWriter error, ISensitiveFlowToolHost host)
     {
         var conditionalStack = new Stack<bool>();
-        var lines = File.ReadLines(sourceFile);
+        var lines = host.ReadLines(sourceFile);
         var lineNumber = 0;
 
         foreach (var rawLine in lines)
@@ -210,21 +195,21 @@ public static class SensitiveFlowToolRunner
         }
     }
 
-    private static IEnumerable<Assembly> ResolveAssemblies(string inputPath)
+    private static IEnumerable<Assembly> ResolveAssemblies(string inputPath, ISensitiveFlowToolHost host)
     {
-        if (File.Exists(inputPath))
+        if (host.FileExists(inputPath))
         {
-            yield return Assembly.LoadFrom(inputPath);
+            yield return host.LoadAssembly(inputPath);
             yield break;
         }
 
-        foreach (var file in Directory.EnumerateFiles(inputPath, "*.dll", SearchOption.AllDirectories)
+        foreach (var file in host.EnumerateFiles(inputPath, "*.dll", SearchOption.AllDirectories)
             .Where(static p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
         {
             Assembly assembly;
             try
             {
-                assembly = Assembly.LoadFrom(file);
+                assembly = host.LoadAssembly(file);
             }
             catch (BadImageFormatException)
             {
@@ -236,4 +221,92 @@ public static class SensitiveFlowToolRunner
     }
 
     private sealed record BuildSourceResult(int ExitCode, string? ScanPath);
+}
+
+internal interface ISensitiveFlowToolHost
+{
+    string CurrentDirectory { get; }
+
+    bool FileExists(string path);
+
+    bool DirectoryExists(string path);
+
+    void CreateDirectory(string path);
+
+    IEnumerable<string> EnumerateFiles(string path, string searchPattern, SearchOption searchOption);
+
+    IEnumerable<string> ReadLines(string path);
+
+    void WriteAllText(string path, string contents);
+
+    Assembly LoadAssembly(string path);
+
+    SensitiveFlowToolBuildResult Build(string buildTarget, TimeSpan timeout);
+}
+
+internal sealed record SensitiveFlowToolBuildResult(
+    bool Started,
+    bool TimedOut,
+    int ExitCode,
+    string StandardOutput,
+    string StandardError);
+
+internal sealed class SensitiveFlowToolHost : ISensitiveFlowToolHost
+{
+    public static SensitiveFlowToolHost Instance { get; } = new();
+
+    public string CurrentDirectory => Directory.GetCurrentDirectory();
+
+    public bool FileExists(string path) => File.Exists(path);
+
+    public bool DirectoryExists(string path) => Directory.Exists(path);
+
+    public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+    public IEnumerable<string> EnumerateFiles(string path, string searchPattern, SearchOption searchOption)
+        => Directory.EnumerateFiles(path, searchPattern, searchOption);
+
+    public IEnumerable<string> ReadLines(string path) => File.ReadLines(path);
+
+    public void WriteAllText(string path, string contents) => File.WriteAllText(path, contents);
+
+    public Assembly LoadAssembly(string path) => Assembly.LoadFrom(path);
+
+    public SensitiveFlowToolBuildResult Build(string buildTarget, TimeSpan timeout)
+    {
+        var psi = new ProcessStartInfo("dotnet", $"build \"{buildTarget}\" -c Release --nologo")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        using var process = Process.Start(psi);
+        if (process is null)
+        {
+            return new SensitiveFlowToolBuildResult(false, false, 5, string.Empty, string.Empty);
+        }
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(timeout))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            return new SensitiveFlowToolBuildResult(true, true, 5, string.Empty, string.Empty);
+        }
+
+        return new SensitiveFlowToolBuildResult(
+            true,
+            false,
+            process.ExitCode,
+            stdoutTask.GetAwaiter().GetResult(),
+            stderrTask.GetAwaiter().GetResult());
+    }
 }
