@@ -14,7 +14,7 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       matrix:
-        dotnet: ['8.x', '9.x', '10.x']
+        dotnet: ${{ github.event_name == 'pull_request' && fromJSON('["10.x"]') || fromJSON('["8.x","9.x","10.x"]') }}
 
     steps:
       - uses: actions/checkout@v4
