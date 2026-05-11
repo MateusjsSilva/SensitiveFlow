@@ -59,7 +59,7 @@ public sealed class CustomersController : ControllerBase
 
         _logger.LogInformation("Customer created - name: {Name}, email: {[Sensitive]Email}",
             customer.Name.MaskName(),
-            customer.Email);
+            customer.Email.MaskEmail());
 
         return CreatedAtAction(nameof(Get), new { id = customer.DataSubjectId }, ToResponse(customer));
     }
@@ -86,7 +86,7 @@ public sealed class CustomersController : ControllerBase
         }, ct);
 
         _logger.LogInformation("Customer {Id} accessed - email: {[Sensitive]Email}",
-            id, customer.Email);
+            id.SanitizeForLog(), customer.Email.MaskEmail());
 
         return Ok(ToResponse(customer));
     }

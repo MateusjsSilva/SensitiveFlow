@@ -178,7 +178,7 @@ try
 
         logger.LogInformation("Customer created - name: {Name}, email: {[Sensitive]Email}",
             customer.Name.MaskName(),
-            customer.Email);
+            customer.Email.MaskEmail());
 
         return Results.Created($"/customers/{customer.DataSubjectId}", ToResponse(customer));
     })
@@ -211,7 +211,7 @@ try
         }, ct);
 
         logger.LogInformation("Customer {Id} accessed - email: {[Sensitive]Email}",
-            id, customer.Email);
+            id.SanitizeForLog(), customer.Email.MaskEmail());
 
         return Results.Ok(ToResponse(customer));
     })

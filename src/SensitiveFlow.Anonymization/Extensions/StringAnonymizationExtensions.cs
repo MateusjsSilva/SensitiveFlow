@@ -70,6 +70,20 @@ public static class StringAnonymizationExtensions
     public static string MaskName(this string value) =>
         NameMasker.Mask(value);
 
+    /// <summary>
+    /// Sanitizes a string for safe use in log messages by stripping carriage returns
+    /// and line feeds. This prevents log-forging attacks where malicious input
+    /// containing newlines could forge additional log entries.
+    /// </summary>
+    /// <remarks>
+    /// Call this on any user-provided value before passing it to a logger
+    /// when the value is not already masked or pseudonymized.
+    /// </remarks>
+    public static string SanitizeForLog(this string? value) =>
+        string.IsNullOrEmpty(value)
+            ? string.Empty
+            : value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
     // ── Pseudonymization (data remains personal) ───────────────────────────────
 
     /// <summary>
