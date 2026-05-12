@@ -29,13 +29,15 @@ public sealed class AuditRecord
 
 | Value | Description |
 |-------|-------------|
-| `Access` | Field was read |
+| `Access` | Field was read or accessed |
 | `Create` | Record was inserted |
 | `Update` | Field value was changed |
 | `Delete` | Record was removed |
-| `Export` | Data was exported |
-| `Anonymize` | Data was anonymized |
-| `Pseudonymize` | Data was pseudonymized |
+| `Export` | Data was exported for subject access requests |
+| `Anonymize` | Data was anonymized or pseudonymized |
+| `Pseudonymize` | Data was pseudonymized (tokenized) |
+| `Share` | Data was shared with a third party |
+| `Revoke` | Data sharing was revoked or consent withdrawn |
 
 ## IAuditStore
 
@@ -155,7 +157,7 @@ public string InternalNote { get; set; } = string.Empty;
 
 ## Audit outbox
 
-`SensitiveFlow.Audit` ships a concrete in-memory outbox for tests/local development. Production systems must use a durable audit outbox to ensure reliable delivery to downstream systems (e.g., SIEM, compliance dashboards, data lakes).
+`SensitiveFlow.Audit` ships a concrete in-memory outbox for tests/local development. Production systems must use a durable audit outbox to ensure reliable delivery to downstream systems (e.g., SIEM, data lakes, audit dashboards).
 
 ### In-memory outbox (tests only)
 
@@ -164,7 +166,7 @@ builder.Services.AddAuditStore<MyDurableAuditStore>();
 builder.Services.AddInMemoryAuditOutbox();  // Deprecated – use for tests/dev only
 ```
 
-⚠️ `InMemoryAuditOutbox` is **deprecated for production**. It loses all enqueued records on process restart and is not suitable for compliance/audit scenarios. The `SensitiveFlowConfigurationValidator` will emit `SF-CONFIG-013` if it detects an in-memory outbox outside a Development environment.
+⚠️ `InMemoryAuditOutbox` is **deprecated for production**. It loses all enqueued records on process restart. The `SensitiveFlowConfigurationValidator` will emit `SF-CONFIG-013` if it detects an in-memory outbox outside a Development environment.
 
 ### Durable outbox with EF Core (production-ready)
 

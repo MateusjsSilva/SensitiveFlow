@@ -125,7 +125,7 @@ try
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SensitiveFlow Web API Sample</title>
+  <title>SensitiveFlow Employee Management Sample</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 1100px; color: #172033; }
     main { display: grid; gap: 1rem; }
@@ -140,25 +140,26 @@ try
 </head>
 <body>
 <main>
-  <h1>SensitiveFlow Web API Sample</h1>
+  <h1>SensitiveFlow Employee Management Sample</h1>
   <section class="note">
-    <strong>Sample database.</strong> This sample creates its local SQLite tables on startup so the routes work immediately.
-    Production apps should use EF Core migrations or deployment-owned SQL scripts instead.
+    <strong>Sensitive data in action.</strong> This sample demonstrates how SensitiveFlow protects employee data (salary, contact info).
+    Notice how sensitive fields are automatically redacted in responses and logs.
   </section>
   <div class="grid">
     <form id="create">
-      <h2>Create customer</h2>
-      <label>Name <input name="name" value="Alice Example"></label>
-      <label>Email <input name="email" value="alice@example.test"></label>
-      <label>Phone <input name="phone" value="+1 555 0100"></label>
-      <label>Tax ID <input name="taxId" value="12345678900"></label>
-      <button type="submit">POST /customers</button>
+      <h2>Create employee</h2>
+      <label>Full Name <input name="fullname" value="John Smith"></label>
+      <label>Email <input name="email" value="john.smith@company.test"></label>
+      <label>Phone <input name="phone" value="+1 555 0150"></label>
+      <label>Annual Salary <input name="annualsalary" type="number" value="75000"></label>
+      <label>Department <input name="department" value="Engineering"></label>
+      <button type="submit">POST /employees</button>
     </form>
     <form id="lookup">
-      <h2>Customer workflows</h2>
-      <label>Customer ID or DataSubjectId <input name="id" placeholder="Paste id or dataSubjectId"></label>
-      <button type="button" id="list">GET /customers</button>
-      <button type="submit">GET /customers/{id}</button>
+      <h2>Employee workflows</h2>
+      <label>Employee ID or DataSubjectId <input name="id" placeholder="Paste id or dataSubjectId"></label>
+      <button type="button" id="list">GET /employees</button>
+      <button type="submit">GET /employees/{id}</button>
       <button type="button" data-action="json">JSON redaction</button>
       <button type="button" data-action="audit">Audit trail</button>
       <button type="button" data-action="export">Export</button>
@@ -197,8 +198,15 @@ const requireId = () => {
 };
 document.querySelector('#create').addEventListener('submit', async event => {
   event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget));
-  await show(await fetch('/customers', {
+  const fd = new FormData(event.currentTarget);
+  const data = {
+    fullName: fd.get('fullname'),
+    email: fd.get('email'),
+    phone: fd.get('phone'),
+    annualSalary: parseFloat(fd.get('annualsalary')),
+    department: fd.get('department')
+  };
+  await show(await fetch('/employees', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(data)
@@ -207,7 +215,7 @@ document.querySelector('#create').addEventListener('submit', async event => {
 document.querySelector('#lookup').addEventListener('submit', async event => {
   event.preventDefault();
   if (!requireId()) return;
-  await show(await fetch(`/customers/${idValue()}`));
+  await show(await fetch(`/employees/${idValue()}`));
 });
 document.querySelectorAll('[data-action]').forEach(button => {
   button.addEventListener('click', async () => {
@@ -215,16 +223,16 @@ document.querySelectorAll('[data-action]').forEach(button => {
     const id = idValue();
     const action = button.dataset.action;
     const map = {
-      json: [`/customers/${id}/json`, 'GET'],
-      audit: [`/customers/${id}/audit`, 'GET'],
-      export: [`/customers/${id}/export`, 'GET'],
-      erase: [`/customers/${id}/erase`, 'POST']
+      json: [`/employees/${id}/json`, 'GET'],
+      audit: [`/employees/${id}/audit`, 'GET'],
+      export: [`/employees/${id}/export`, 'GET'],
+      erase: [`/employees/${id}/erase`, 'POST']
     };
     const [url, method] = map[action];
     await show(await fetch(url, { method }));
   });
 });
-document.querySelector('#list').addEventListener('click', async () => show(await fetch('/customers')));
+document.querySelector('#list').addEventListener('click', async () => show(await fetch('/employees')));
 document.querySelector('#dryRun').addEventListener('click', async () => show(await fetch('/retention/dry-run', { method: 'POST' })));
 document.querySelector('#runRetention').addEventListener('click', async () => show(await fetch('/retention/run', { method: 'POST' })));
 document.querySelector('#health').addEventListener('click', async () => show(await fetch('/health/sensitiveflow')));
@@ -249,10 +257,9 @@ static async Task InitializeSampleDatabasesAsync(IServiceProvider services)
 {
     using var scope = services.CreateScope();
 
-    await scope.ServiceProvider
-        .GetRequiredService<SampleDbContext>()
-        .Database
-        .EnsureCreatedAsync();
+    using var appDb = scope.ServiceProvider
+        .GetRequiredService<SampleDbContext>();
+    await appDb.Database.EnsureCreatedAsync();
 
     await using var auditDb = await scope.ServiceProvider
         .GetRequiredService<IDbContextFactory<AuditDbContext>>()

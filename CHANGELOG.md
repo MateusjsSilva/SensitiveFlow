@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Durable outbox prevents audit record loss on process restart or failure — critical for compliance.
+- Durable outbox prevents audit record loss on process restart or failure.
 - Transactional outbox pattern ensures audit writes and outbox enqueuing happen atomically.
 
 ## [1.0.0-preview.2] - 2026-05-10
@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` with supported versions table, vulnerability reporting process, and security scope.
 - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
 - `RELEASE.md` with full versioning scheme and publishing process.
-- Legal disclaimer in README: "SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself."
+- Disclaimer in README: "SensitiveFlow is a tool to help you manage sensitive data safely, not a guarantee of complete data protection by itself."
 - New README badges: Container Tests, NuGet Downloads, .NET 8 | 9 | 10.
 
 ### Changed

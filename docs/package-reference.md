@@ -10,7 +10,7 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 | `SensitiveFlow.Core` | You annotate models or implement contracts. | Add attributes to models. | None by itself; it does not enforce behavior. |
 | `SensitiveFlow.Audit` | You register custom audit stores or decorators. | `AddAuditStore<T>()` or first-party EF store plus optional retry/buffer. | In-memory/buffered data can be lost before durable write. |
 | `SensitiveFlow.Audit.EFCore` | You want first-party SQL audit storage. | `AddEfCoreAuditStore(...)`; create/migrate audit table. | Audit DB must be durable and backed up independently. |
-| `SensitiveFlow.Audit.EFCore.Outbox` | You need durable, reliable delivery of audit records to downstream systems (SIEM, data lakes, compliance dashboards). | `AddEfCoreAuditOutbox()` and register `IAuditOutboxPublisher` implementations. | Outbox table must be monitored for dead-lettered entries (failed delivery after max retries). |
+| `SensitiveFlow.Audit.EFCore.Outbox` | You need durable, reliable delivery of audit records to downstream systems (SIEM, data lakes, audit dashboards). | `AddEfCoreAuditOutbox()` and register `IAuditOutboxPublisher` implementations. | Outbox table must be monitored for dead-lettered entries (failed delivery after max retries). |
 | `SensitiveFlow.Audit.Snapshots.EFCore` | You want durable aggregate-level audit snapshots. | `AddEfCoreAuditSnapshotStore(...)`; create/migrate snapshot table. | Snapshots can be large; monitor storage growth. |
 | `SensitiveFlow.TokenStore.EFCore` | You want first-party SQL token storage for reversible pseudonymization. | `AddEfCoreTokenStore(...)`; create/migrate token table. | Losing token mappings makes pseudonymized data irrecoverable. |
 | `SensitiveFlow.EFCore` | You want automatic audit on `SaveChanges`. | `AddSensitiveFlowEFCore()` and `AddInterceptors(...)`. | Missing interceptor means no automatic audit. |
@@ -37,17 +37,18 @@ Primary APIs:
 - `AddSensitiveFlowWeb(options => { ... })`
 - `UseSensitiveFlow()` (middleware — wraps `UseSensitiveFlowAudit()`)
 - `SensitiveFlowWebOptions` (fluent builder)
-  - `UseProfile(SensitiveFlowProfile profile)`
-  - `UseEfCoreStores(configureAuditStore, configureTokenStore)` (provider-agnostic shorthand)
-  - `UseEfCoreAuditStore(Action<DbContextOptionsBuilder>)`
-  - `UseEfCoreTokenStore(Action<DbContextOptionsBuilder>)`
-  - `EnableOutbox()`, `EnableDiagnostics()`, `EnableAuditStoreRetry()`
-  - `EnableCachingTokenStore()`
-  - `EnableDataSubjectExport()`, `EnableDataSubjectErasure()`
-  - `EnableLoggingRedaction()`, `EnableJsonRedaction()`
-  - `EnableEfCoreAudit()`, `EnableAspNetCoreContext()`
-  - `EnableValidation()`, `EnableHealthChecks()`
-  - `EnableRetention()`, `EnableRetentionExecutor()`
+  - `UseProfile(SensitiveFlowProfile profile)` — set security profile (Permissive, Balanced, Strict)
+  - `ConfigurePolicies(Action<SensitiveFlowPolicies>)` — override individual category policies beyond the profile
+  - `UseEfCoreStores(configureAuditStore, configureTokenStore)` — provider-agnostic shorthand for both stores
+  - `UseEfCoreAuditStore(Action<DbContextOptionsBuilder>)` — explicitly configure audit DB
+  - `UseEfCoreTokenStore(Action<DbContextOptionsBuilder>)` — explicitly configure token DB
+  - `EnableOutbox()`, `EnableDiagnostics()`, `EnableAuditStoreRetry()` — outbox/observability
+  - `EnableCachingTokenStore()` — in-memory cache for pseudonymization lookups
+  - `EnableDataSubjectExport()`, `EnableDataSubjectErasure()` — data subject rights
+  - `EnableLoggingRedaction()`, `EnableJsonRedaction()` — output protection
+  - `EnableEfCoreAudit()`, `EnableAspNetCoreContext()` — audit source enrichment
+  - `EnableValidation()`, `EnableHealthChecks()` — runtime checks
+  - `EnableRetention()`, `EnableRetentionExecutor()` — data lifecycle management
 
 Install when:
 
@@ -188,7 +189,7 @@ Operational notes:
 
 Purpose:
 
-- First-party EF Core-backed **durable audit outbox** for reliable, transactional delivery of audit records to downstream systems (SIEM, data lakes, compliance dashboards, Kafka, webhooks, etc.).
+- First-party EF Core-backed **durable audit outbox** for reliable, transactional delivery of audit records to downstream systems (SIEM, data lakes, audit dashboards, Kafka, webhooks, etc.).
 
 Primary APIs:
 
@@ -202,7 +203,7 @@ Primary APIs:
 Install when:
 
 - You need **guaranteed, at-least-once delivery** of audit records to a remote system.
-- Your business/compliance requirements demand that no audit record is lost if the application crashes.
+- Your business requirements demand that no audit record is lost if the application crashes.
 
 Recommended setup:
 

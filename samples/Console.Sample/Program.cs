@@ -231,7 +231,7 @@ public sealed class Customer
     [PersonalData(Category = DataCategory.Contact)]
     public string Email { get; set; } = string.Empty;
 
-    [SensitiveData(Category = SensitiveDataCategory.Other)]
+    [SensitiveData(Category = SensitiveDataCategory.Financial)]
     [RetentionData(Years = 5, Policy = RetentionPolicy.AnonymizeOnExpiration)]
     public string TaxId { get; set; } = string.Empty;
 

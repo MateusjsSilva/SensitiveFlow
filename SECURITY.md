@@ -42,4 +42,4 @@ Security-sensitive areas include:
 
 ## Non-goals
 
-SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself. You are responsible for how you use these primitives in your application.
+SensitiveFlow helps reduce accidental exposure of sensitive data, but it is a tool, not a guarantee of complete data protection by itself. You are responsible for how you use these primitives in your application and for ensuring the configuration meets your requirements.

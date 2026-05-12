@@ -12,9 +12,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-blue)](https://dotnet.microsoft.com)
 
-**SensitiveFlow** is a .NET library that brings observability and control to sensitive data through automatic auditing, log redaction, JSON masking, and pseudonymization. Mark your data once, get automatic protection everywhere.
+**SensitiveFlow** is a .NET library that brings observability and control to sensitive data flows through automatic auditing, log redaction, JSON masking, and pseudonymization. Mark your data once, get automatic protection everywhere.
 
-> **Important:** SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself. You are responsible for how you use these primitives in your application.
+> **Important:** SensitiveFlow is a tool to help you manage sensitive data safely, not a guarantee of complete data protection by itself. You are responsible for how you use these primitives in your application and for ensuring they meet your requirements.
 
 ## Why SensitiveFlow?
 
@@ -151,13 +151,13 @@ See [Database Providers](docs/database-providers.md) for per-provider setup and 
 
 | Feature | Example | Why |
 |---------|---------|-----|
-| **Audit trail** | `AuditRecord: customer.Email changed from john@old.com → john@new.com by UserId=abc at 2025-06-15T10:30:00Z` | Know who changed sensitive data and when; required for GDPR/LGPD investigation |
-| **Log redaction** | `logger.LogInformation("User: {Name}, Email: {Email}", name, email)` → logs show `Email: [REDACTED]` | Prevent sensitive data in logs, error messages, or monitoring streams |
-| **JSON masking** | `GET /api/customer/123` → `{"name":"John","email":"[REDACTED]","salary":"[REDACTED]"}` | API responses never leak sensitive fields even if you forget to scrub them |
-| **IP pseudonymization** | IP `203.0.113.42` → token `ip_token_xyz` in logs; recoverable via token store | Audit shows request origin without storing raw IPs in plaintext |
-| **Retention policies** | `[RetentionData(Years=5, AnonymizeOnExpiration)]` → field anonymized after 5 years automatically | Comply with "don't keep data longer than needed" requirement |
-| **Data export** | Single API call to list all data associated with a user | GDPR/LGPD "right to access" — user can request and download their data |
-| **Data erasure** | Schedule erasure or call API to fully delete user's data | GDPR/LGPD "right to be forgotten" — clean removal from all tables |
+| **Audit trail** | `AuditRecord: salary changed from $50k → $60k by manager@company.com at 2025-06-15T10:30:00Z` | Know who changed sensitive data and when; essential for investigation and accountability |
+| **Log redaction** | `logger.LogInformation("Processing user: {Email}", email)` → logs show `Email: [REDACTED]` | Prevent accidental leaks in logs, error messages, monitoring systems, or backups |
+| **JSON masking** | `GET /api/employee/123` → `{"name":"John","salary":"[REDACTED]","ssn":"[REDACTED]"}` | API responses never expose sensitive fields even if you forget to scrub them in code |
+| **IP pseudonymization** | IP `203.0.113.42` → token `ip_token_xyz` in audit logs; recoverable via token store | Audit shows request origin without storing raw IPs in plaintext |
+| **Retention policies** | `[RetentionData(Years=7, AnonymizeOnExpiration)]` → field automatically anonymized after 7 years | Control how long sensitive data stays in your systems; delete when no longer needed |
+| **Data export** | Single API call to collect all data associated with a user | Generate comprehensive reports for users; useful for transparency and debugging |
+| **Data erasure** | Schedule erasure or call API to fully remove user's data from all tables | Clean removal of user data when requested; useful for testing and cleanup |
 
 ## Going Deeper
 
@@ -204,7 +204,7 @@ See [Package Reference](docs/package-reference.md) for the full setup matrix and
 
 ## Design Principles
 
-- **Runtime behavior over compliance paperwork** -- instruments what actually happens, not what should happen.
+- **Observable behavior over aspirational goals** -- instruments what actually happens with sensitive data, not what should happen in theory.
 - **Explicit metadata over implicit heuristics** -- every classification is opt-in via attributes.
 - **Composition over lock-in** -- each module is optional and independently testable.
 - **Safe defaults** -- the IP address is never stored raw; the log redactor strips sensitive values before they reach any sink.

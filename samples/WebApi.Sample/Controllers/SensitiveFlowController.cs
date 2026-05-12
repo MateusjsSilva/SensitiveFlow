@@ -19,7 +19,7 @@ public sealed class SensitiveFlowController : ControllerBase
     [HttpGet("discovery")]
     public ContentResult Discovery()
     {
-        var report = SensitiveDataDiscovery.Scan(typeof(Customer).Assembly);
+        var report = SensitiveDataDiscovery.Scan(typeof(Employee).Assembly);
         return Content(report.ToMarkdown(), "text/markdown");
     }
 

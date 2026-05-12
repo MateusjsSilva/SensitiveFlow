@@ -15,7 +15,7 @@ public sealed class Customer
     [PersonalData(Category = DataCategory.Contact)]
     public string Email { get; set; } = string.Empty;
 
-    [SensitiveData(Category = SensitiveDataCategory.Other)]
+    [SensitiveData(Category = SensitiveDataCategory.Financial)]
     public string TaxId { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; set; }
