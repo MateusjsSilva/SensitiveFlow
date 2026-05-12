@@ -41,6 +41,19 @@ public sealed class CustomersController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> List(CancellationToken ct)
+    {
+        var customers = await _db.Customers
+            .Take(100)
+            .ToListAsync(ct);
+
+        return Ok(customers
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(20)
+            .Select(ToResponse));
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCustomerRequest request, CancellationToken ct)
     {
@@ -67,8 +80,7 @@ public sealed class CustomersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id, CancellationToken ct)
     {
-        var customer = await _db.Customers
-            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+        var customer = await FindCustomerAsync(id, ct);
 
         if (customer is null)
         {
@@ -94,15 +106,20 @@ public sealed class CustomersController : ControllerBase
     [HttpGet("{id}/audit")]
     public async Task<IActionResult> GetAudit(string id, CancellationToken ct)
     {
-        var records = await _auditStore.QueryByDataSubjectAsync(id, cancellationToken: ct);
+        var customer = await FindCustomerAsync(id, ct);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var records = await _auditStore.QueryByDataSubjectAsync(customer.DataSubjectId, cancellationToken: ct);
         return Ok(records);
     }
 
     [HttpGet("{id}/json")]
     public async Task<IActionResult> GetWithJsonRedaction(string id, CancellationToken ct)
     {
-        var customer = await _db.Customers
-            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+        var customer = await FindCustomerAsync(id, ct);
 
         return customer is null ? NotFound() : Ok(customer);
     }
@@ -110,9 +127,7 @@ public sealed class CustomersController : ControllerBase
     [HttpGet("{id}/export")]
     public async Task<IActionResult> Export(string id, CancellationToken ct)
     {
-        var customer = await _db.Customers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+        var customer = await FindCustomerAsync(id, ct, asNoTracking: true);
 
         if (customer is null)
         {
@@ -135,8 +150,7 @@ public sealed class CustomersController : ControllerBase
     [HttpPost("{id}/erase")]
     public async Task<IActionResult> Erase(string id, CancellationToken ct)
     {
-        var customer = await _db.Customers
-            .FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+        var customer = await FindCustomerAsync(id, ct);
 
         if (customer is null)
         {
@@ -211,6 +225,14 @@ public sealed class CustomersController : ControllerBase
         c.Name.MaskName(),
         c.Email.MaskEmail(),
         c.Phone.MaskPhone());
+
+    private Task<Customer?> FindCustomerAsync(string id, CancellationToken ct, bool asNoTracking = false)
+    {
+        var query = asNoTracking ? _db.Customers.AsNoTracking() : _db.Customers;
+        return int.TryParse(id, out var numericId)
+            ? query.FirstOrDefaultAsync(c => c.Id == numericId, ct)
+            : query.FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
+    }
 }
 
 public sealed record CreateCustomerRequest(

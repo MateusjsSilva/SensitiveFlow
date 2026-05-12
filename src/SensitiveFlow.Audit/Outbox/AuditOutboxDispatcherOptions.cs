@@ -17,4 +17,18 @@ public sealed class AuditOutboxDispatcherOptions
 
     /// <summary>Whether entries should be treated as dead-lettered after max attempts.</summary>
     public bool DeadLetterAfterMax { get; set; } = true;
+
+    /// <summary>
+    /// Whether the hosted dispatcher should stop polling after an infrastructure failure.
+    /// Defaults to <see langword="true"/> so a missing table, unavailable database, or invalid
+    /// connection string does not crash the application host or flood logs.
+    /// </summary>
+    public bool SuspendOnInfrastructureFailure { get; set; } = true;
+
+    /// <summary>
+    /// Delay before retrying after an infrastructure failure when
+    /// <see cref="SuspendOnInfrastructureFailure"/> is <see langword="false"/>.
+    /// Defaults to 30 seconds.
+    /// </summary>
+    public TimeSpan InfrastructureFailureRetryDelay { get; set; } = TimeSpan.FromSeconds(30);
 }

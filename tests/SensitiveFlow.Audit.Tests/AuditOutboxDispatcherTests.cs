@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using SensitiveFlow.Audit.Outbox;
@@ -13,24 +14,24 @@ public sealed class AuditOutboxDispatcherTests
     [Fact]
     public async Task DispatchOnceAsync_WithNoOutbox_ReturnsImmediately()
     {
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             null,
             [Substitute.For<IAuditOutboxPublisher>()],
             new AuditOutboxDispatcherOptions());
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
     }
 
     [Fact]
     public async Task DispatchOnceAsync_WithNoPublishers_ReturnsImmediately()
     {
         var outbox = Substitute.For<IDurableAuditOutbox>();
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [],
             new AuditOutboxDispatcherOptions());
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
 
         await outbox.DidNotReceive().DequeueBatchAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
@@ -45,12 +46,12 @@ public sealed class AuditOutboxDispatcherTests
         outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [publisher],
             new AuditOutboxDispatcherOptions { BatchSize = 100 });
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
 
         await publisher.Received(1).PublishAsync(entry, Arg.Any<CancellationToken>());
         await outbox.Received(1).MarkProcessedAsync(
@@ -70,12 +71,12 @@ public sealed class AuditOutboxDispatcherTests
         publisher.PublishAsync(entry, Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("boom")));
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [publisher],
             new AuditOutboxDispatcherOptions { BatchSize = 100 });
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
 
         await outbox.Received(1).MarkFailedAsync(
             entry.Id,
@@ -93,7 +94,7 @@ public sealed class AuditOutboxDispatcherTests
         outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [publisher],
             new AuditOutboxDispatcherOptions
@@ -103,7 +104,7 @@ public sealed class AuditOutboxDispatcherTests
                 DeadLetterAfterMax = true,
             });
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
 
         await outbox.Received(1).MarkDeadLetteredAsync(
             entry.Id,
@@ -122,7 +123,7 @@ public sealed class AuditOutboxDispatcherTests
         outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [publisher],
             new AuditOutboxDispatcherOptions
@@ -132,7 +133,7 @@ public sealed class AuditOutboxDispatcherTests
                 DeadLetterAfterMax = false,
             });
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
 
         await outbox.DidNotReceive().MarkDeadLetteredAsync(
             Arg.Any<Guid>(),
@@ -152,15 +153,38 @@ public sealed class AuditOutboxDispatcherTests
         outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [pub1, pub2],
             new AuditOutboxDispatcherOptions { BatchSize = 100 });
 
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
 
         await pub1.Received(1).PublishAsync(entry, Arg.Any<CancellationToken>());
         await pub2.Received(1).PublishAsync(entry, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DispatchOnceAsync_ResolvesScopedPublishersInsideDispatchScope()
+    {
+        var outbox = Substitute.For<IDurableAuditOutbox>();
+        var publisher = Substitute.For<IAuditOutboxPublisher>();
+        var entry = SampleEntry();
+
+        outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
+            .Returns([entry]);
+
+        using var services = new ServiceCollection()
+            .AddScoped(_ => publisher)
+            .BuildServiceProvider(validateScopes: true);
+        var dispatcher = new AuditOutboxDispatcher(
+            outbox,
+            services.GetRequiredService<IServiceScopeFactory>(),
+            new AuditOutboxDispatcherOptions { BatchSize = 100 });
+
+        await dispatcher.DispatchOnceAsync();
+
+        await publisher.Received(1).PublishAsync(entry, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -172,16 +196,70 @@ public sealed class AuditOutboxDispatcherTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [publisher],
             new AuditOutboxDispatcherOptions { PollInterval = TimeSpan.FromMilliseconds(10) });
 
-        await dispatcher.StartAsync(cts.Token);
+        await fixture.Dispatcher.StartAsync(cts.Token);
 
         // Should complete quickly without throwing
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        await dispatcher.StopAsync(timeoutCts.Token);
+        await fixture.Dispatcher.StopAsync(timeoutCts.Token);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SuspendsWithoutThrowing_WhenOutboxInfrastructureFails()
+    {
+        var outbox = Substitute.For<IDurableAuditOutbox>();
+        var publisher = Substitute.For<IAuditOutboxPublisher>();
+        outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<AuditOutboxEntry>>(new InvalidOperationException("missing table")));
+
+        using var fixture = CreateDispatcher(
+            outbox,
+            [publisher],
+            new AuditOutboxDispatcherOptions
+            {
+                BatchSize = 100,
+                PollInterval = TimeSpan.FromMilliseconds(10),
+                SuspendOnInfrastructureFailure = true,
+            });
+
+        await fixture.Dispatcher.StartAsync(CancellationToken.None);
+        await Task.Delay(100);
+        await fixture.Dispatcher.StopAsync(CancellationToken.None);
+
+        await outbox.Received(1).DequeueBatchAsync(100, Arg.Any<CancellationToken>());
+        await publisher.DidNotReceive().PublishAsync(Arg.Any<AuditOutboxEntry>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RetriesInfrastructureFailures_WhenSuspensionDisabled()
+    {
+        var outbox = Substitute.For<IDurableAuditOutbox>();
+        var publisher = Substitute.For<IAuditOutboxPublisher>();
+        outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<AuditOutboxEntry>>(new InvalidOperationException("database unavailable")));
+
+        using var fixture = CreateDispatcher(
+            outbox,
+            [publisher],
+            new AuditOutboxDispatcherOptions
+            {
+                BatchSize = 100,
+                PollInterval = TimeSpan.FromMilliseconds(10),
+                InfrastructureFailureRetryDelay = TimeSpan.FromMilliseconds(10),
+                SuspendOnInfrastructureFailure = false,
+            });
+
+        await fixture.Dispatcher.StartAsync(CancellationToken.None);
+        await Task.Delay(120);
+        await fixture.Dispatcher.StopAsync(CancellationToken.None);
+
+        outbox.ReceivedCalls()
+            .Count(call => call.GetMethodInfo().Name == nameof(IDurableAuditOutbox.DequeueBatchAsync))
+            .Should().BeGreaterThanOrEqualTo(2);
     }
 
     [Theory]
@@ -199,7 +277,7 @@ public sealed class AuditOutboxDispatcherTests
         outbox.DequeueBatchAsync(100, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var dispatcher = new AuditOutboxDispatcher(
+        using var fixture = CreateDispatcher(
             outbox,
             [publisher],
             new AuditOutboxDispatcherOptions
@@ -209,7 +287,7 @@ public sealed class AuditOutboxDispatcherTests
             });
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        await dispatcher.DispatchOnceAsync();
+        await fixture.Dispatcher.DispatchOnceAsync();
         sw.Stop();
 
         if (expectedDelayMs == 0)
@@ -220,6 +298,32 @@ public sealed class AuditOutboxDispatcherTests
         {
             sw.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(expectedDelayMs - 50);
         }
+    }
+
+    private static DispatcherFixture CreateDispatcher(
+        IDurableAuditOutbox? outbox,
+        IEnumerable<IAuditOutboxPublisher> publishers,
+        AuditOutboxDispatcherOptions options)
+    {
+        var services = new ServiceCollection();
+        foreach (var publisher in publishers)
+        {
+            services.AddSingleton(publisher);
+        }
+
+        var provider = services.BuildServiceProvider(validateScopes: true);
+        var dispatcher = new AuditOutboxDispatcher(
+            outbox,
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            options);
+        return new DispatcherFixture(dispatcher, provider);
+    }
+
+    private sealed record DispatcherFixture(
+        AuditOutboxDispatcher Dispatcher,
+        ServiceProvider ServiceProvider) : IDisposable
+    {
+        public void Dispose() => ServiceProvider.Dispose();
     }
 
     private static AuditOutboxEntry SampleEntry(int attempts = 0) => new()

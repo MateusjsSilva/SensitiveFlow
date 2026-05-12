@@ -15,6 +15,10 @@ This brings in the full recommended ASP.NET Core + EF Core stack. The database
 provider package remains app-owned, so the same SensitiveFlow setup works with any
 EF Core provider.
 
+The runnable samples in this repository target .NET 10. Use the .NET 10 SDK when
+running `samples/QuickStart.Sample`, `samples/MinimalApi.Sample`, or
+`samples/WebApi.Sample`.
+
 ### Step 1 - Annotate your model
 
 ```csharp
@@ -128,3 +132,13 @@ Use EF Core migrations, checked-in SQL scripts, or your deployment tooling to
 create schema in every environment. This is true for local development too, so
 local behavior matches production and missing schema fails early instead of being
 hidden by `EnsureCreated`.
+
+The audit outbox dispatcher is defensive around missing schema: if polling fails
+because the durable outbox table is absent or the database is unavailable, it logs
+the infrastructure failure and suspends polling by default instead of stopping the
+application host. Apply the schema and restart the app.
+
+The repository samples are easier on purpose: `samples/WebApi.Sample` creates its
+local SQLite schema on startup so you can try the UI and routes immediately. Do
+not copy that startup behavior into production apps; use migrations or deployment
+scripts for real databases.

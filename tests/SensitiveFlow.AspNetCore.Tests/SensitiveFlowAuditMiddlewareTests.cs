@@ -27,8 +27,8 @@ public sealed class SensitiveFlowAuditMiddlewareTests
 
         var httpContext = MakeContext("192.168.1.42");
 
-        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
-        await middleware.InvokeAsync(httpContext);
+        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask);
+        await middleware.InvokeAsync(httpContext, pseudonymizer);
 
         httpContext.Items[SensitiveFlowAuditMiddleware.IpTokenKey].Should().Be("token-abc");
     }
@@ -42,8 +42,8 @@ public sealed class SensitiveFlowAuditMiddlewareTests
 
         var httpContext = MakeContext("10.0.0.1");
 
-        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
-        await middleware.InvokeAsync(httpContext);
+        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask);
+        await middleware.InvokeAsync(httpContext, pseudonymizer);
 
         await pseudonymizer.Received(1).PseudonymizeAsync("10.0.0.1", Arg.Any<CancellationToken>());
     }
@@ -55,8 +55,8 @@ public sealed class SensitiveFlowAuditMiddlewareTests
 
         var httpContext = MakeContext(null);
 
-        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask, pseudonymizer);
-        await middleware.InvokeAsync(httpContext);
+        var middleware = new SensitiveFlowAuditMiddleware(_ => Task.CompletedTask);
+        await middleware.InvokeAsync(httpContext, pseudonymizer);
 
         httpContext.Items.Should().NotContainKey(SensitiveFlowAuditMiddleware.IpTokenKey);
         await pseudonymizer.DidNotReceive().PseudonymizeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -76,9 +76,9 @@ public sealed class SensitiveFlowAuditMiddlewareTests
         {
             nextCalled = true;
             return Task.CompletedTask;
-        }, pseudonymizer);
+        });
 
-        await middleware.InvokeAsync(httpContext);
+        await middleware.InvokeAsync(httpContext, pseudonymizer);
 
         nextCalled.Should().BeTrue();
     }
@@ -94,9 +94,9 @@ public sealed class SensitiveFlowAuditMiddlewareTests
         {
             nextCalled = true;
             return Task.CompletedTask;
-        }, pseudonymizer);
+        });
 
-        await middleware.InvokeAsync(httpContext);
+        await middleware.InvokeAsync(httpContext, pseudonymizer);
 
         nextCalled.Should().BeTrue();
     }

@@ -57,6 +57,10 @@ stores and outbox, Token store, Anonymization, JSON and logging redaction, Reten
 Diagnostics, and Health Checks. Database provider packages stay app-owned, so the
 same setup works with SQL Server, PostgreSQL, SQLite, MySQL, or any EF Core provider.
 
+The repository samples target .NET 10. The library packages remain multi-targeted
+where supported, but the documented runnable examples are intentionally kept on
+the current .NET sample baseline.
+
 ### 2. Annotate your model
 
 ```csharp
@@ -145,6 +149,14 @@ SensitiveFlow audit/token/outbox tables before the first write. SensitiveFlow do
 not create tables automatically, even in samples, because schema creation belongs
 to migrations or deployment tooling.
 
+The hosted audit outbox dispatcher does not create schema either. If its durable
+table is missing, it logs the infrastructure failure and suspends polling by
+default (`SuspendOnInfrastructureFailure = true`) instead of stopping the host.
+
+The `WebApi.Sample` is intentionally different for DX: it creates its local
+SQLite demo schema on startup so the UI and routes are immediately testable. Use
+migrations or deployment-owned scripts in real applications.
+
 ### Optional: policies, reports, and diagnostics
 
 ```csharp
@@ -173,6 +185,7 @@ var startupReport = app.Services.ValidateSensitiveFlow();
 | Logging | `[Sensitive]` markers redacted; annotated members redacted unless `MaskInLogs()` |
 | Retention anonymization | `[ANONYMIZED]` |
 | Audit outbox (when enabled) | `PollInterval=1s`, `BatchSize=100`, `MaxAttempts=5`, `BackoffStrategy=Exponential` |
+| Outbox infrastructure failures | Dispatcher suspends polling by default with `SuspendOnInfrastructureFailure=true` |
 | Data-subject export | Raw annotated values by default; use `[Redaction(Export = ...)]` to override |
 | Health checks | `sensitiveflow-audit-store`, `sensitiveflow-token-store`, `sensitiveflow-audit-outbox` |
 

@@ -15,22 +15,19 @@ public sealed class SensitiveFlowAuditMiddleware
     public const string IpTokenKey = "SensitiveFlow.IpToken";
 
     private readonly RequestDelegate _next;
-    private readonly IPseudonymizer _pseudonymizer;
     private readonly SensitiveFlowAspNetCorePipelineDiagnostics? _diagnostics;
 
     /// <summary>Initializes a new instance of <see cref="SensitiveFlowAuditMiddleware"/>.</summary>
     public SensitiveFlowAuditMiddleware(
         RequestDelegate next,
-        IPseudonymizer pseudonymizer,
         SensitiveFlowAspNetCorePipelineDiagnostics? diagnostics = null)
     {
         _next = next;
-        _pseudonymizer = pseudonymizer;
         _diagnostics = diagnostics;
     }
 
     /// <summary>Pseudonymizes the remote IP and stores the token before passing to the next middleware.</summary>
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, IPseudonymizer pseudonymizer)
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
@@ -40,7 +37,7 @@ public sealed class SensitiveFlowAuditMiddleware
         var ip = context.Connection.RemoteIpAddress?.ToString();
         if (!string.IsNullOrEmpty(ip))
         {
-            context.Items[IpTokenKey] = await _pseudonymizer.PseudonymizeAsync(
+            context.Items[IpTokenKey] = await pseudonymizer.PseudonymizeAsync(
                 ip,
                 context.RequestAborted);
         }

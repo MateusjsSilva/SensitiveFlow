@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SensitiveFlow.Core.Interfaces;
@@ -10,19 +11,19 @@ namespace SensitiveFlow.Audit.Outbox;
 public sealed class AuditOutboxDispatcher : BackgroundService
 {
     private readonly IDurableAuditOutbox? _outbox;
-    private readonly IEnumerable<IAuditOutboxPublisher> _publishers;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly AuditOutboxDispatcherOptions _options;
     private readonly ILogger<AuditOutboxDispatcher>? _logger;
 
     /// <summary>Initializes a new instance.</summary>
     public AuditOutboxDispatcher(
         IDurableAuditOutbox? outbox,
-        IEnumerable<IAuditOutboxPublisher> publishers,
+        IServiceScopeFactory scopeFactory,
         AuditOutboxDispatcherOptions options,
         ILogger<AuditOutboxDispatcher>? logger = null)
     {
         _outbox = outbox;
-        _publishers = publishers ?? [];
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger;
     }
@@ -30,14 +31,39 @@ public sealed class AuditOutboxDispatcher : BackgroundService
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (_outbox is null || !_publishers.Any())
+        if (_outbox is null)
         {
             return;
         }
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await DispatchOnceAsync(stoppingToken);
+            try
+            {
+                await DispatchOnceAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                SensitiveFlowAuditDiagnostics.RecordFailed();
+                _logger?.LogError(
+                    ex,
+                    "Audit outbox dispatcher failed while polling. Ensure the durable outbox schema exists and the database is reachable.");
+
+                if (_options.SuspendOnInfrastructureFailure)
+                {
+                    _logger?.LogWarning(
+                        "Audit outbox dispatcher polling was suspended after an infrastructure failure. Restart the application after fixing the schema or database connection.");
+                    break;
+                }
+
+                await Task.Delay(_options.InfrastructureFailureRetryDelay, stoppingToken);
+                continue;
+            }
+
             await Task.Delay(_options.PollInterval, stoppingToken);
         }
     }
@@ -50,7 +76,8 @@ public sealed class AuditOutboxDispatcher : BackgroundService
             return;
         }
 
-        var publishers = _publishers.ToArray();
+        using var scope = _scopeFactory.CreateScope();
+        var publishers = scope.ServiceProvider.GetServices<IAuditOutboxPublisher>().ToArray();
         if (publishers.Length == 0)
         {
             return;
