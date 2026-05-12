@@ -21,7 +21,6 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Version>1.0.0-preview.3</Version>
-    <TargetLatestRuntimePatch>false</TargetLatestRuntimePatch>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
