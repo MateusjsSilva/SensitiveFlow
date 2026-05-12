@@ -200,6 +200,7 @@ public sealed class SensitiveFlowToolRunnerTests
     public void Run_WhenBuildProcessCannotStart_ReturnsBuildError()
     {
         var host = FakeHost.ForProject("C:\\app\\App.csproj");
+        host.Directories.Add("C:\\out");
         host.BuildResult = new SensitiveFlowToolBuildResult(false, false, 5, string.Empty, string.Empty);
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -214,6 +215,7 @@ public sealed class SensitiveFlowToolRunnerTests
     public void Run_WhenBuildTimesOut_ReturnsBuildError()
     {
         var host = FakeHost.ForProject("C:\\app\\App.csproj");
+        host.Directories.Add("C:\\out");
         host.BuildResult = new SensitiveFlowToolBuildResult(true, true, 5, string.Empty, string.Empty);
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -230,6 +232,7 @@ public sealed class SensitiveFlowToolRunnerTests
         var projectPath = "C:\\app\\App.csproj";
         var outputAssembly = "C:\\app\\bin\\Release\\net10.0\\App.dll";
         var host = FakeHost.ForProject(projectPath);
+        host.Directories.Add("C:\\out");
         host.Files.Add(outputAssembly);
         host.EnumeratedFiles[("C:\\app", "*.dll", SearchOption.AllDirectories)] = [outputAssembly];
         host.BuildResult = new SensitiveFlowToolBuildResult(true, false, 0, "ok", string.Empty);
@@ -249,6 +252,7 @@ public sealed class SensitiveFlowToolRunnerTests
     {
         var host = new FakeHost();
         host.Directories.Add("C:\\bin");
+        host.Directories.Add("C:\\out");
         host.Files.Add("C:\\bin\\bad.dll");
         host.Files.Add("C:\\bin\\good.dll");
         host.EnumeratedFiles[("C:\\bin", "*.dll", SearchOption.AllDirectories)] = ["C:\\bin\\bad.dll", "C:\\bin\\good.dll"];
