@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using QuickStart.Sample;
 using SensitiveFlow.AspNetCore.EFCore.Extensions;
 using SensitiveFlow.Audit.EFCore;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.TokenStore.EFCore;
 
@@ -85,7 +87,13 @@ app.MapGet("/", () => Results.Content("""
 const output = document.querySelector('#output');
 const show = async response => {
   const text = await response.text();
-  output.textContent = `${response.status} ${response.statusText}\n${text}`;
+  let body = text;
+  try {
+    body = JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    body = text;
+  }
+  output.textContent = `${response.status} ${response.statusText}\n${body}`;
 };
 document.querySelector('#create').addEventListener('submit', async event => {
   event.preventDefault();
@@ -121,7 +129,8 @@ app.MapGet("/customers", async (AppDbContext db, CancellationToken ct) =>
 
     return Results.Ok(customers
         .OrderByDescending(c => c.CreatedAt)
-        .Take(20));
+        .Take(20)
+        .Select(ToResponse));
 });
 
 app.MapPost("/customers", async (CreateCustomerRequest request, AppDbContext db, CancellationToken ct) =>
@@ -138,21 +147,32 @@ app.MapPost("/customers", async (CreateCustomerRequest request, AppDbContext db,
     db.Customers.Add(customer);
     await db.SaveChangesAsync(ct);
 
-    return Results.Created($"/customers/{customer.DataSubjectId}", customer);
+    return Results.Created($"/customers/{customer.DataSubjectId}", ToResponse(customer));
 });
 
 app.MapGet("/customers/{id}", async (string id, AppDbContext db, CancellationToken ct) =>
 {
     var customer = await db.Customers.FirstOrDefaultAsync(c => c.DataSubjectId == id, ct);
-    return customer is null ? Results.NotFound() : Results.Ok(customer);
+    return customer is null ? Results.NotFound() : Results.Ok(ToResponse(customer));
 });
 
 app.Run();
+
+static CustomerResponse ToResponse(Customer c) => new(
+    c.DataSubjectId,
+    c.Name,
+    c.Email);
 
 static async Task InitializeSampleDatabasesAsync(IServiceProvider services)
 {
     using var scope = services.CreateScope();
 
+    // For samples, delete + recreate ensures schema is always up-to-date.
+    // Production apps should use EF Core migrations or deployment-owned SQL scripts.
+    await scope.ServiceProvider
+        .GetRequiredService<AppDbContext>()
+        .Database
+        .EnsureDeletedAsync();
     await scope.ServiceProvider
         .GetRequiredService<AppDbContext>()
         .Database
@@ -161,12 +181,21 @@ static async Task InitializeSampleDatabasesAsync(IServiceProvider services)
     await using var auditDb = await scope.ServiceProvider
         .GetRequiredService<IDbContextFactory<AuditDbContext>>()
         .CreateDbContextAsync();
+    await auditDb.Database.EnsureDeletedAsync();
     await auditDb.Database.EnsureCreatedAsync();
 
     await using var tokenDb = await scope.ServiceProvider
         .GetRequiredService<IDbContextFactory<TokenDbContext>>()
         .CreateDbContextAsync();
+    await tokenDb.Database.EnsureDeletedAsync();
     await tokenDb.Database.EnsureCreatedAsync();
 }
 
 public sealed record CreateCustomerRequest(string Name, string Email, string TaxId);
+
+public sealed record CustomerResponse(
+    string DataSubjectId,
+    [property: PersonalData(Category = DataCategory.Identification)]
+    string Name,
+    [property: PersonalData(Category = DataCategory.Contact)]
+    string Email);

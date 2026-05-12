@@ -204,6 +204,12 @@ static async Task InitializeSampleDatabasesAsync(IServiceProvider services)
 {
     using var scope = services.CreateScope();
 
+    // For samples, delete + recreate ensures schema is always up-to-date.
+    // Production apps should use EF Core migrations or deployment-owned SQL scripts.
+    await scope.ServiceProvider
+        .GetRequiredService<SampleDbContext>()
+        .Database
+        .EnsureDeletedAsync();
     await scope.ServiceProvider
         .GetRequiredService<SampleDbContext>()
         .Database
@@ -212,11 +218,13 @@ static async Task InitializeSampleDatabasesAsync(IServiceProvider services)
     await using var auditDb = await scope.ServiceProvider
         .GetRequiredService<IDbContextFactory<AuditDbContext>>()
         .CreateDbContextAsync();
+    await auditDb.Database.EnsureDeletedAsync();
     await auditDb.Database.EnsureCreatedAsync();
 
     await using var tokenDb = await scope.ServiceProvider
         .GetRequiredService<IDbContextFactory<TokenDbContext>>()
         .CreateDbContextAsync();
+    await tokenDb.Database.EnsureDeletedAsync();
     await tokenDb.Database.EnsureCreatedAsync();
 }
 
