@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.Diagnostics.Validation;
 
@@ -38,19 +39,48 @@ public static class SensitiveFlowValidationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Runs SensitiveFlow startup validation from a built service provider.</summary>
+    /// <summary>
+    /// Runs SensitiveFlow startup validation from a built service provider.
+    /// </summary>
+    /// <remarks>
+    /// When the resolved <see cref="SensitiveFlowValidationOptions.FailOnError"/> is <c>true</c>
+    /// (the default), this throws <see cref="SensitiveFlowConfigurationException"/> on any
+    /// <c>Error</c> diagnostic. Warnings never throw — they are returned via the report so
+    /// the caller can log them.
+    /// </remarks>
     public static SensitiveFlowConfigurationReport ValidateSensitiveFlow(this IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        var validator = services.GetService<SensitiveFlowConfigurationValidator>()
-            ?? new SensitiveFlowConfigurationValidator(new SensitiveFlowValidationOptions
+        var options = services.GetService<SensitiveFlowValidationOptions>()
+            ?? new SensitiveFlowValidationOptions
             {
                 RequireAuditStore = true,
                 RequireTokenStore = false,
                 RequireJsonRedaction = false,
                 RequireRetention = false,
-            });
+            };
 
-        return validator.Validate(services);
+        var validator = services.GetService<SensitiveFlowConfigurationValidator>()
+            ?? new SensitiveFlowConfigurationValidator(options);
+
+        var report = validator.Validate(services);
+
+        if (options.FailOnError && !report.IsValid)
+        {
+            var errors = report.Diagnostics
+                .Where(d => d.Severity == SensitiveFlowDiagnosticSeverity.Error)
+                .Select(d => $"  [{d.Code}] {d.Message}");
+
+            var message =
+                "SensitiveFlow startup validation failed with one or more errors:" +
+                Environment.NewLine +
+                string.Join(Environment.NewLine, errors) +
+                Environment.NewLine +
+                "Resolve them, or set SensitiveFlowValidationOptions.FailOnError = false to downgrade to warnings.";
+
+            throw new SensitiveFlowConfigurationException(message, "SF-CONFIG-FAIL");
+        }
+
+        return report;
     }
 }

@@ -20,14 +20,19 @@ namespace SensitiveFlow.Diagnostics.Tests;
 public sealed class SensitiveFlowValidationTests
 {
     [Fact]
-    public void ValidateSensitiveFlow_WhenAuditStoreRequiredAndMissing_ReportsWarning()
+    public void ValidateSensitiveFlow_WhenAuditStoreRequiredAndMissing_ReportsError()
     {
         var services = new ServiceCollection();
-        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = true);
+        services.AddSensitiveFlowValidation(o =>
+        {
+            o.RequireAuditStore = true;
+            o.FailOnError = false;
+        });
 
         var report = services.BuildServiceProvider().ValidateSensitiveFlow();
 
-        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-001");
+        report.Diagnostics.Should().Contain(d =>
+            d.Code == "SF-CONFIG-001" && d.Severity == SensitiveFlowDiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -43,14 +48,19 @@ public sealed class SensitiveFlowValidationTests
     }
 
     [Fact]
-    public void ValidateSensitiveFlow_WhenTokenStoreRequiredAndMissing_ReportsWarning()
+    public void ValidateSensitiveFlow_WhenTokenStoreRequiredAndMissing_ReportsError()
     {
         var services = new ServiceCollection();
-        services.AddSensitiveFlowValidation(o => o.RequireTokenStore = true);
+        services.AddSensitiveFlowValidation(o =>
+        {
+            o.RequireTokenStore = true;
+            o.FailOnError = false;
+        });
 
         var report = services.BuildServiceProvider().ValidateSensitiveFlow();
 
-        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-002");
+        report.Diagnostics.Should().Contain(d =>
+            d.Code == "SF-CONFIG-002" && d.Severity == SensitiveFlowDiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -99,9 +109,14 @@ public sealed class SensitiveFlowValidationTests
     [Fact]
     public void ValidateSensitiveFlow_WithoutRegisteredValidator_UsesDefaultValidator()
     {
-        var report = new ServiceCollection().BuildServiceProvider().ValidateSensitiveFlow();
+        // The default validator requires an audit store and (now) fails on error,
+        // which is the documented behavior. We assert that contract here.
+        var services = new ServiceCollection().BuildServiceProvider();
 
-        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-001");
+        Action act = () => services.ValidateSensitiveFlow();
+
+        act.Should().Throw<SensitiveFlow.Core.Exceptions.SensitiveFlowConfigurationException>()
+            .Which.Message.Should().Contain("SF-CONFIG-001");
     }
 
     [Fact]
@@ -229,15 +244,37 @@ public sealed class SensitiveFlowValidationTests
     }
 
     [Fact]
-    public void ValidateSensitiveFlow_WhenDurableOutboxHasNoPublisher_ReportsWarning()
+    public void ValidateSensitiveFlow_WhenDurableOutboxHasNoPublisher_ReportsError()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IDurableAuditOutbox, FakeDurableOutbox>();
-        services.AddSensitiveFlowValidation(o => o.RequireAuditStore = false);
+        services.AddSensitiveFlowValidation(o =>
+        {
+            o.RequireAuditStore = false;
+            o.FailOnError = false;
+        });
 
         var report = services.BuildServiceProvider().ValidateSensitiveFlow();
 
-        report.Diagnostics.Should().Contain(d => d.Code == "SF-CONFIG-014");
+        report.Diagnostics.Should().Contain(d =>
+            d.Code == "SF-CONFIG-014" && d.Severity == SensitiveFlowDiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ValidateSensitiveFlow_WhenFailOnErrorEnabled_ThrowsOnErrorDiagnostic()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IDurableAuditOutbox, FakeDurableOutbox>();
+        services.AddSensitiveFlowValidation(o =>
+        {
+            o.RequireAuditStore = false;
+            o.FailOnError = true;
+        });
+
+        Action act = () => services.BuildServiceProvider().ValidateSensitiveFlow();
+
+        act.Should().Throw<SensitiveFlow.Core.Exceptions.SensitiveFlowConfigurationException>()
+            .Which.Code.Should().Be("SF-CONFIG-FAIL");
     }
 
     [Fact]

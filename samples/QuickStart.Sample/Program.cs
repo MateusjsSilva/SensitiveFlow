@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using QuickStart.Sample;
 using SensitiveFlow.AspNetCore.EFCore.Extensions;
+using SensitiveFlow.Audit.EFCore;
 using SensitiveFlow.Core.Profiles;
+using SensitiveFlow.TokenStore.EFCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,8 @@ builder.Services.AddSensitiveFlowWeb(options =>
 
 var app = builder.Build();
 
+await InitializeSampleDatabasesAsync(app.Services);
+
 app.UseHttpsRedirection();
 app.UseSensitiveFlow();
 app.MapHealthChecks("/health");
@@ -56,7 +60,8 @@ app.MapGet("/", () => Results.Content("""
 <main>
   <h1>SensitiveFlow QuickStart</h1>
   <section class="note">
-    <strong>Schema required.</strong> This sample does not create tables. Create/migrate the app, audit, and token databases before testing writes.
+    <strong>Sample database.</strong> This sample creates its local SQLite tables on startup so the routes work immediately.
+    Production apps should use EF Core migrations or deployment-owned SQL scripts instead.
   </section>
   <form id="create">
     <h2>Create customer</h2>
@@ -143,5 +148,25 @@ app.MapGet("/customers/{id}", async (string id, AppDbContext db, CancellationTok
 });
 
 app.Run();
+
+static async Task InitializeSampleDatabasesAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+
+    await scope.ServiceProvider
+        .GetRequiredService<AppDbContext>()
+        .Database
+        .EnsureCreatedAsync();
+
+    await using var auditDb = await scope.ServiceProvider
+        .GetRequiredService<IDbContextFactory<AuditDbContext>>()
+        .CreateDbContextAsync();
+    await auditDb.Database.EnsureCreatedAsync();
+
+    await using var tokenDb = await scope.ServiceProvider
+        .GetRequiredService<IDbContextFactory<TokenDbContext>>()
+        .CreateDbContextAsync();
+    await tokenDb.Database.EnsureCreatedAsync();
+}
 
 public sealed record CreateCustomerRequest(string Name, string Email, string TaxId);

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.TokenStore.EFCore.Entities;
 
@@ -49,10 +50,18 @@ public sealed class EfCoreTokenStore<TContext> : ITokenStore where TContext : Db
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
 
-        var existing = await set
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Value == value, cancellationToken)
-            .ConfigureAwait(false);
+        TokenMappingEntity? existing;
+        try
+        {
+            existing = await set
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Value == value, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
+        }
 
         if (existing is not null)
         {
@@ -93,10 +102,18 @@ public sealed class EfCoreTokenStore<TContext> : ITokenStore where TContext : Db
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
 
-        var mapping = await set
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Token == token, cancellationToken)
-            .ConfigureAwait(false);
+        TokenMappingEntity? mapping;
+        try
+        {
+            mapping = await set
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Token == token, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
+        }
 
         return mapping?.Value
             ?? throw new KeyNotFoundException($"Token '{token}' not found in the store.");

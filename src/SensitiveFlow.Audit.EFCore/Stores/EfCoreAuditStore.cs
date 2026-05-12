@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SensitiveFlow.Audit.EFCore.Entities;
+using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 
@@ -45,7 +46,14 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore, IAuditStoreTr
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
         set.Add(AuditRecordEntity.FromRecord(record));
-        await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
+        }
     }
 
     /// <inheritdoc />
@@ -60,7 +68,14 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore, IAuditStoreTr
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
         set.AddRange(records.Select(AuditRecordEntity.FromRecord));
-        await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
+        }
     }
 
     /// <inheritdoc />

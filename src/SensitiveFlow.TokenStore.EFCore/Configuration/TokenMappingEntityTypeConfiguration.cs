@@ -11,22 +11,41 @@ namespace SensitiveFlow.TokenStore.EFCore.Configuration;
 /// </summary>
 public sealed class TokenMappingEntityTypeConfiguration : IEntityTypeConfiguration<TokenMappingEntity>
 {
-    private readonly string _tableName;
+    /// <summary>Default table name when none is specified.</summary>
+    public const string DefaultTableName = "SensitiveFlow_TokenMappings";
 
-    /// <summary>Initializes the configuration with the given table name.</summary>
-    public TokenMappingEntityTypeConfiguration(string tableName = "SensitiveFlow_TokenMappings")
+    private readonly string _tableName;
+    private readonly string? _schema;
+
+    /// <summary>Initializes the configuration with the given table name and no schema.</summary>
+    public TokenMappingEntityTypeConfiguration(string tableName = DefaultTableName)
+        : this(tableName, null)
     {
-        if (string.IsNullOrWhiteSpace(tableName))
-        {
-            throw new ArgumentException("Table name must not be empty.", nameof(tableName));
-        }
+    }
+
+    /// <summary>
+    /// Initializes the configuration with a custom table name and optional schema.
+    /// </summary>
+    /// <param name="tableName">Table name. Defaults to <see cref="DefaultTableName"/>.</param>
+    /// <param name="schema">Optional schema. Leave <c>null</c> for providers without schemas (e.g. SQLite).</param>
+    public TokenMappingEntityTypeConfiguration(string tableName, string? schema)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
         _tableName = tableName;
+        _schema = string.IsNullOrWhiteSpace(schema) ? null : schema;
     }
 
     /// <inheritdoc />
     public void Configure(EntityTypeBuilder<TokenMappingEntity> builder)
     {
-        builder.ToTable(_tableName);
+        if (_schema is null)
+        {
+            builder.ToTable(_tableName);
+        }
+        else
+        {
+            builder.ToTable(_tableName, _schema);
+        }
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedOnAdd();

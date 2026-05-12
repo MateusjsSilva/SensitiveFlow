@@ -6,6 +6,8 @@ namespace SensitiveFlow.Audit.EFCore.Outbox.Entities;
 /// </summary>
 public sealed class AuditOutboxEntryEntity
 {
+    private DateTimeOffset _enqueuedAt = DateTimeOffset.UtcNow;
+
     /// <summary>Unique stable identifier for this outbox entry.</summary>
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -19,7 +21,21 @@ public sealed class AuditOutboxEntryEntity
     public int Attempts { get; set; }
 
     /// <summary>When the entry was enqueued (UTC).</summary>
-    public DateTimeOffset EnqueuedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset EnqueuedAt
+    {
+        get => _enqueuedAt;
+        set
+        {
+            _enqueuedAt = value;
+            EnqueuedAtTicks = value.UtcTicks;
+        }
+    }
+
+    /// <summary>
+    /// Mirrors <see cref="EnqueuedAt"/> as ticks (UTC) to enable provider-agnostic ORDER BY
+    /// (some providers, e.g. SQLite, cannot sort <see cref="DateTimeOffset"/> server-side).
+    /// </summary>
+    public long EnqueuedAtTicks { get; set; } = DateTimeOffset.UtcNow.UtcTicks;
 
     /// <summary>When the last delivery attempt was made (UTC), or null if never attempted.</summary>
     public DateTimeOffset? LastAttemptAt { get; set; }

@@ -128,17 +128,22 @@ to work and are documented in the package reference for teams that need them.
 SensitiveFlow does not create tables automatically. The app tables and the
 SensitiveFlow audit/token/outbox tables must exist before the first write.
 
-Use EF Core migrations, checked-in SQL scripts, or your deployment tooling to
-create schema in every environment. This is true for local development too, so
-local behavior matches production and missing schema fails early instead of being
-hidden by `EnsureCreated`.
+Three options, in order of preference:
 
-The audit outbox dispatcher is defensive around missing schema: if polling fails
-because the durable outbox table is absent or the database is unavailable, it logs
-the infrastructure failure and suspends polling by default instead of stopping the
+1. **EF Core migrations** owned by your app — best for teams already using EF Core.
+2. **Idempotent SQL scripts** shipped in [`tools/migrations/`](../tools/migrations/) — one folder per supported provider (`sqlite`, `sqlserver`, `postgres`). See [Database providers](database-providers.md) for the full matrix and provider-specific notes.
+3. **`EnsureCreatedAsync()`** — fine for samples and tests, **not for production**: it skips migrations entirely.
+
+If the schema is missing at runtime, SensitiveFlow now throws
+`SensitiveFlowSchemaNotInitializedException` (code `SF-SCHEMA-001`) instead of
+leaking a raw provider error. The message points you back to the migration scripts.
+
+The audit outbox dispatcher is also defensive: if polling fails because the
+durable outbox table is absent or the database is unavailable, it logs the
+infrastructure failure and suspends polling by default instead of stopping the
 application host. Apply the schema and restart the app.
 
-The repository samples are easier on purpose: `samples/WebApi.Sample` creates its
-local SQLite schema on startup so you can try the UI and routes immediately. Do
-not copy that startup behavior into production apps; use migrations or deployment
-scripts for real databases.
+The repository samples (`QuickStart`, `MinimalApi`, `WebApi`) call
+`EnsureCreatedAsync()` on startup so you can try them immediately. **Do not copy
+that pattern into production apps** — use migrations or the scripts in
+`tools/migrations/`.

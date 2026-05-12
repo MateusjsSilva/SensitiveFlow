@@ -31,12 +31,12 @@ public sealed class SensitiveFlowConfigurationValidator
 
         if (_options.RequireAuditStore && provider.GetService<IAuditStore>() is null)
         {
-            diagnostics.Add(Warning("SF-CONFIG-001", "No IAuditStore registration was found."));
+            diagnostics.Add(Error("SF-CONFIG-001", "No IAuditStore registration was found. Register one via AddEfCoreAuditStore<TContext>() or AddInMemoryAuditStore() (dev only)."));
         }
 
         if (_options.RequireTokenStore && provider.GetService<ITokenStore>() is null)
         {
-            diagnostics.Add(Warning("SF-CONFIG-002", "No durable ITokenStore registration was found."));
+            diagnostics.Add(Error("SF-CONFIG-002", "No durable ITokenStore registration was found. Register one via AddEfCoreTokenStore<TContext>() or AddRedisTokenStore()."));
         }
 
         if (provider.GetService<IPseudonymizer>() is not null && provider.GetService<ITokenStore>() is null)
@@ -165,7 +165,7 @@ public sealed class SensitiveFlowConfigurationValidator
         var durableOutbox = provider.GetService<IDurableAuditOutbox>();
         if (durableOutbox is not null && !provider.GetServices<IAuditOutboxPublisher>().Any())
         {
-            diagnostics.Add(Warning("SF-CONFIG-014", "IDurableAuditOutbox is registered, but no IAuditOutboxPublisher registration was found."));
+            diagnostics.Add(Error("SF-CONFIG-014", "IDurableAuditOutbox is registered, but no IAuditOutboxPublisher registration was found. The dispatcher will fail every poll. Register an IAuditOutboxPublisher or disable the outbox."));
         }
     }
 
@@ -221,6 +221,16 @@ public sealed class SensitiveFlowConfigurationValidator
             Code = code,
             Message = message,
             Severity = SensitiveFlowDiagnosticSeverity.Warning,
+        };
+    }
+
+    private static SensitiveFlowConfigurationDiagnostic Error(string code, string message)
+    {
+        return new SensitiveFlowConfigurationDiagnostic
+        {
+            Code = code,
+            Message = message,
+            Severity = SensitiveFlowDiagnosticSeverity.Error,
         };
     }
 }

@@ -12,6 +12,7 @@ Use this page as the documentation index. The files are grouped by task so contr
 
 - [Audit](audit.md): `IAuditStore`, batching, retry, buffering, snapshots, and audit retention concepts.
 - [EF Core](efcore.md): `SaveChanges` interceptor and entity requirements.
+- [Database providers](database-providers.md): support matrix, schema configuration, and provider-specific notes (SQLite/SQL Server/Postgres).
 - [ASP.NET Core](aspnetcore.md): request audit context and IP pseudonymization middleware.
 - [JSON redaction](json.md): `System.Text.Json` output protection.
 - [Logging](logging.md): `ILogger` redaction provider and limits.

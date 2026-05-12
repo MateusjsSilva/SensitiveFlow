@@ -49,15 +49,12 @@ public sealed class EfCoreAuditOutbox : IDurableAuditOutbox
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var pending = await ctx.Set<AuditOutboxEntryEntity>()
             .Where(e => !e.IsProcessed && !e.IsDeadLettered)
+            .OrderBy(e => e.EnqueuedAtTicks)
+            .Take(max)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // Order by EnqueuedAt on client side (SQLite doesn't support DateTimeOffset in ORDER BY)
-        return pending
-            .OrderBy(e => e.EnqueuedAt)
-            .Take(max)
-            .Select(ToOutboxEntry)
-            .ToList();
+        return pending.Select(ToOutboxEntry).ToList();
     }
 
     /// <inheritdoc />
@@ -135,15 +132,13 @@ public sealed class EfCoreAuditOutbox : IDurableAuditOutbox
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var deadLettered = await ctx.Set<AuditOutboxEntryEntity>()
             .Where(e => e.IsDeadLettered)
+            .OrderByDescending(e => e.EnqueuedAtTicks)
+            .Skip(skip)
+            .Take(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return deadLettered
-            .OrderByDescending(e => e.EnqueuedAt)
-            .Skip(skip)
-            .Take(take)
-            .Select(ToOutboxEntry)
-            .ToList();
+        return deadLettered.Select(ToOutboxEntry).ToList();
     }
 
     private static AuditOutboxEntry ToOutboxEntry(AuditOutboxEntryEntity entity)
