@@ -200,7 +200,7 @@ public sealed class SensitiveFlowToolRunnerTests
     public void Run_WhenBuildProcessCannotStart_ReturnsBuildError()
     {
         var host = FakeHost.ForProject("C:\\app\\App.csproj");
-        host.Directories.Add("C:\\out");
+        host.Directories.Add("C:/out");
         host.BuildResult = new SensitiveFlowToolBuildResult(false, false, 5, string.Empty, string.Empty);
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -215,7 +215,7 @@ public sealed class SensitiveFlowToolRunnerTests
     public void Run_WhenBuildTimesOut_ReturnsBuildError()
     {
         var host = FakeHost.ForProject("C:\\app\\App.csproj");
-        host.Directories.Add("C:\\out");
+        host.Directories.Add("C:/out");
         host.BuildResult = new SensitiveFlowToolBuildResult(true, true, 5, string.Empty, string.Empty);
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -230,41 +230,40 @@ public sealed class SensitiveFlowToolRunnerTests
     public void Run_WhenBuildSucceeds_ScansBuildOutputAndWritesReports()
     {
         var projectPath = "C:\\app\\App.csproj";
-        var outputAssembly = "C:\\app\\bin\\Release\\net10.0\\App.dll";
         var host = FakeHost.ForProject(projectPath);
-        host.Directories.Add("C:\\out");
-        host.Files.Add(outputAssembly);
-        host.EnumeratedFiles[("C:\\app", "*.dll", SearchOption.AllDirectories)] = [outputAssembly];
+        host.Directories.Add("C:/out");
+        host.Files.Add("C:/app/bin/Release/net10.0/App.dll");
+        host.EnumeratedFiles[("C:/app", "*.dll", SearchOption.AllDirectories)] = ["C:/app/bin/Release/net10.0/App.dll"];
         host.BuildResult = new SensitiveFlowToolBuildResult(true, false, 0, "ok", string.Empty);
-        host.Assemblies[outputAssembly] = typeof(SensitiveFlowToolRunnerTests).Assembly;
+        host.Assemblies["C:/app/bin/Release/net10.0/App.dll"] = typeof(SensitiveFlowToolRunnerTests).Assembly;
         using var output = new StringWriter();
         using var error = new StringWriter();
 
         var exitCode = SensitiveFlowToolRunner.Run(["scan", projectPath, "C:\\out"], output, error, host);
 
         exitCode.Should().Be(0);
-        host.Writes.Keys.Should().Contain("C:\\out\\sensitiveflow-report.json");
-        host.Writes.Keys.Should().Contain("C:\\out\\sensitiveflow-report.md");
+        host.Writes.Keys.Should().Contain("C:/out/sensitiveflow-report.json");
+        host.Writes.Keys.Should().Contain("C:/out/sensitiveflow-report.md");
     }
 
     [Fact]
     public void Run_ScanDirectory_SkipsInvalidDlls()
     {
         var host = new FakeHost();
-        host.Directories.Add("C:\\bin");
-        host.Directories.Add("C:\\out");
-        host.Files.Add("C:\\bin\\bad.dll");
-        host.Files.Add("C:\\bin\\good.dll");
-        host.EnumeratedFiles[("C:\\bin", "*.dll", SearchOption.AllDirectories)] = ["C:\\bin\\bad.dll", "C:\\bin\\good.dll"];
-        host.BadImageFiles.Add("C:\\bin\\bad.dll");
-        host.Assemblies["C:\\bin\\good.dll"] = typeof(SensitiveFlowToolRunnerTests).Assembly;
+        host.Directories.Add("C:/bin");
+        host.Directories.Add("C:/out");
+        host.Files.Add("C:/bin/bad.dll");
+        host.Files.Add("C:/bin/good.dll");
+        host.EnumeratedFiles[("C:/bin", "*.dll", SearchOption.AllDirectories)] = ["C:/bin/bad.dll", "C:/bin/good.dll"];
+        host.BadImageFiles.Add("C:/bin/bad.dll");
+        host.Assemblies["C:/bin/good.dll"] = typeof(SensitiveFlowToolRunnerTests).Assembly;
         using var output = new StringWriter();
         using var error = new StringWriter();
 
         var exitCode = SensitiveFlowToolRunner.Run(["scan", "C:\\bin", "C:\\out"], output, error, host);
 
         exitCode.Should().Be(0);
-        host.Writes.Should().ContainKey("C:\\out\\sensitiveflow-report.json");
+        host.Writes.Should().ContainKey("C:/out/sensitiveflow-report.json");
     }
 
     private sealed class FakeHost : ISensitiveFlowToolHost
@@ -290,33 +289,40 @@ public sealed class SensitiveFlowToolRunnerTests
         public static FakeHost ForProject(string projectPath)
         {
             var host = new FakeHost();
-            host.Files.Add(projectPath);
-            host.Directories.Add(Path.GetDirectoryName(projectPath)!);
+            host.Files.Add(NormalizePath(projectPath));
+            host.Directories.Add(NormalizePath(Path.GetDirectoryName(projectPath)!));
             return host;
         }
 
-        public bool FileExists(string path) => Files.Contains(path);
+        public bool FileExists(string path) => Files.Contains(NormalizePath(path));
 
-        public bool DirectoryExists(string path) => Directories.Contains(path);
+        public bool DirectoryExists(string path) => Directories.Contains(NormalizePath(path));
 
-        public void CreateDirectory(string path) => Directories.Add(path);
+        public void CreateDirectory(string path) => Directories.Add(NormalizePath(path));
+
+        private static string NormalizePath(string path)
+        {
+            // Normalize to use forward slashes for cross-platform consistency
+            return path.Replace('\\', '/');
+        }
 
         public IEnumerable<string> EnumerateFiles(string path, string searchPattern, SearchOption searchOption)
-            => EnumeratedFiles.TryGetValue((path, searchPattern, searchOption), out var files) ? files : [];
+            => EnumeratedFiles.TryGetValue((NormalizePath(path), searchPattern, searchOption), out var files) ? files : [];
 
         public IEnumerable<string> ReadLines(string path)
-            => FileLines.TryGetValue(path, out var lines) ? lines : [];
+            => FileLines.TryGetValue(NormalizePath(path), out var lines) ? lines : [];
 
-        public void WriteAllText(string path, string contents) => Writes[path] = contents;
+        public void WriteAllText(string path, string contents) => Writes[NormalizePath(path)] = contents;
 
         public Assembly LoadAssembly(string path)
         {
-            if (BadImageFiles.Contains(path))
+            var normalizedPath = NormalizePath(path);
+            if (BadImageFiles.Contains(normalizedPath))
             {
                 throw new BadImageFormatException();
             }
 
-            return Assemblies[path];
+            return Assemblies[normalizedPath];
         }
 
         public SensitiveFlowToolBuildResult Build(string buildTarget, TimeSpan timeout) => BuildResult;
