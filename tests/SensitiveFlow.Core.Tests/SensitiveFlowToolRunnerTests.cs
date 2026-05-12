@@ -199,13 +199,15 @@ public sealed class SensitiveFlowToolRunnerTests
     [Fact]
     public void Run_WhenBuildProcessCannotStart_ReturnsBuildError()
     {
-        var host = FakeHost.ForProject("C:\\app\\App.csproj");
-        host.Directories.Add("C:/out");
+        var projectPath = Path.Combine(Path.GetTempPath(), "app", "App.csproj");
+        var outputPath = Path.Combine(Path.GetTempPath(), "out");
+        var host = FakeHost.ForProject(projectPath);
+        host.Directories.Add(outputPath);
         host.BuildResult = new SensitiveFlowToolBuildResult(false, false, 5, string.Empty, string.Empty);
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = SensitiveFlowToolRunner.Run(["scan", "C:\\app\\App.csproj", "C:\\out"], output, error, host);
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", projectPath, outputPath], output, error, host);
 
         exitCode.Should().Be(5);
         error.ToString().Should().Contain("Failed to start dotnet build");
@@ -214,13 +216,15 @@ public sealed class SensitiveFlowToolRunnerTests
     [Fact]
     public void Run_WhenBuildTimesOut_ReturnsBuildError()
     {
-        var host = FakeHost.ForProject("C:\\app\\App.csproj");
-        host.Directories.Add("C:/out");
+        var projectPath = Path.Combine(Path.GetTempPath(), "app", "App.csproj");
+        var outputPath = Path.Combine(Path.GetTempPath(), "out");
+        var host = FakeHost.ForProject(projectPath);
+        host.Directories.Add(outputPath);
         host.BuildResult = new SensitiveFlowToolBuildResult(true, true, 5, string.Empty, string.Empty);
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = SensitiveFlowToolRunner.Run(["scan", "C:\\app\\App.csproj", "C:\\out"], output, error, host);
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", projectPath, outputPath], output, error, host);
 
         exitCode.Should().Be(5);
         error.ToString().Should().Contain("timed out");
@@ -229,41 +233,50 @@ public sealed class SensitiveFlowToolRunnerTests
     [Fact]
     public void Run_WhenBuildSucceeds_ScansBuildOutputAndWritesReports()
     {
-        var projectPath = "C:\\app\\App.csproj";
+        var projectPath = Path.Combine(Path.GetTempPath(), "app", "App.csproj");
+        var projectDir = Path.GetDirectoryName(projectPath)!;
+        var outputPath = Path.Combine(Path.GetTempPath(), "out");
+        var assemblyPath = Path.Combine(projectDir, "bin", "Release", "net10.0", "App.dll");
+
         var host = FakeHost.ForProject(projectPath);
-        host.Directories.Add("C:/out");
-        host.Files.Add("C:/app/bin/Release/net10.0/App.dll");
-        host.EnumeratedFiles[("C:/app", "*.dll", SearchOption.AllDirectories)] = ["C:/app/bin/Release/net10.0/App.dll"];
+        host.Directories.Add(outputPath);
+        host.Files.Add(assemblyPath);
+        host.EnumeratedFiles[(projectDir, "*.dll", SearchOption.AllDirectories)] = [assemblyPath];
         host.BuildResult = new SensitiveFlowToolBuildResult(true, false, 0, "ok", string.Empty);
-        host.Assemblies["C:/app/bin/Release/net10.0/App.dll"] = typeof(SensitiveFlowToolRunnerTests).Assembly;
+        host.Assemblies[assemblyPath] = typeof(SensitiveFlowToolRunnerTests).Assembly;
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = SensitiveFlowToolRunner.Run(["scan", projectPath, "C:\\out"], output, error, host);
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", projectPath, outputPath], output, error, host);
 
         exitCode.Should().Be(0);
-        host.Writes.Keys.Should().Contain("C:/out/sensitiveflow-report.json");
-        host.Writes.Keys.Should().Contain("C:/out/sensitiveflow-report.md");
+        host.Writes.Keys.Should().Contain(Path.Combine(outputPath, "sensitiveflow-report.json"));
+        host.Writes.Keys.Should().Contain(Path.Combine(outputPath, "sensitiveflow-report.md"));
     }
 
     [Fact]
     public void Run_ScanDirectory_SkipsInvalidDlls()
     {
+        var binDir = Path.Combine(Path.GetTempPath(), "bin");
+        var outDir = Path.Combine(Path.GetTempPath(), "out");
+        var badDll = Path.Combine(binDir, "bad.dll");
+        var goodDll = Path.Combine(binDir, "good.dll");
+
         var host = new FakeHost();
-        host.Directories.Add("C:/bin");
-        host.Directories.Add("C:/out");
-        host.Files.Add("C:/bin/bad.dll");
-        host.Files.Add("C:/bin/good.dll");
-        host.EnumeratedFiles[("C:/bin", "*.dll", SearchOption.AllDirectories)] = ["C:/bin/bad.dll", "C:/bin/good.dll"];
-        host.BadImageFiles.Add("C:/bin/bad.dll");
-        host.Assemblies["C:/bin/good.dll"] = typeof(SensitiveFlowToolRunnerTests).Assembly;
+        host.Directories.Add(binDir);
+        host.Directories.Add(outDir);
+        host.Files.Add(badDll);
+        host.Files.Add(goodDll);
+        host.EnumeratedFiles[(binDir, "*.dll", SearchOption.AllDirectories)] = [badDll, goodDll];
+        host.BadImageFiles.Add(badDll);
+        host.Assemblies[goodDll] = typeof(SensitiveFlowToolRunnerTests).Assembly;
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = SensitiveFlowToolRunner.Run(["scan", "C:\\bin", "C:\\out"], output, error, host);
+        var exitCode = SensitiveFlowToolRunner.Run(["scan", binDir, outDir], output, error, host);
 
         exitCode.Should().Be(0);
-        host.Writes.Should().ContainKey("C:/out/sensitiveflow-report.json");
+        host.Writes.Should().ContainKey(Path.Combine(outDir, "sensitiveflow-report.json"));
     }
 
     private sealed class FakeHost : ISensitiveFlowToolHost
@@ -302,8 +315,10 @@ public sealed class SensitiveFlowToolRunnerTests
 
         private static string NormalizePath(string path)
         {
-            // Normalize to use forward slashes for cross-platform consistency
-            return path.Replace('\\', '/');
+            // When the runner calls Path.GetFullPath on our test paths,
+            // the result will match what we store in our collections because
+            // we use Path.Combine and Path.GetDirectoryName which are cross-platform
+            return Path.GetFullPath(path);
         }
 
         public IEnumerable<string> EnumerateFiles(string path, string searchPattern, SearchOption searchOption)
