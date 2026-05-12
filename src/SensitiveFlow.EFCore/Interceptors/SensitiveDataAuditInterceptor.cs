@@ -85,11 +85,19 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <b>⚠ DEADLOCK RISK:</b> Flushing audit records requires async I/O. To avoid the
+    /// classic sync-over-async deadlock on ASP.NET Core's thread-pool, we run the flush
+    /// via <see cref="Task.Run(Func{Task})"/>, which detaches from any captured
+    /// <see cref="SynchronizationContext"/>. This is still a synchronous wait — prefer
+    /// <c>SaveChangesAsync</c> in any concurrent host.
+    /// </remarks>
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
         if (eventData.Context is not null)
         {
-            FlushAuditRecordsAsync(eventData.Context, CancellationToken.None).GetAwaiter().GetResult();
+            var context = eventData.Context;
+            Task.Run(() => FlushAuditRecordsAsync(context, CancellationToken.None)).GetAwaiter().GetResult();
         }
 
         return base.SavedChanges(eventData, result);

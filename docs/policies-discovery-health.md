@@ -126,14 +126,21 @@ builder.Services.AddSensitiveFlowValidation(options =>
 var result = app.Services.ValidateSensitiveFlow();
 ```
 
-Example warnings:
+Example diagnostics:
 
-- `SF-CONFIG-001`: no `IAuditStore` registration found.
-- `SF-CONFIG-002`: no durable `ITokenStore` registration found.
+**Errors** (cause `ValidateSensitiveFlow()` to throw `SensitiveFlowConfigurationException`
+when `SensitiveFlowValidationOptions.FailOnError` is `true`, the default):
+
+- `SF-CONFIG-001`: no `IAuditStore` registration found (when `RequireAuditStore = true`).
+- `SF-CONFIG-002`: no durable `ITokenStore` registration found (when `RequireTokenStore = true`).
+- `SF-CONFIG-014`: durable audit outbox registered without any `IAuditOutboxPublisher` — the dispatcher would fail every poll.
+
+**Warnings** (reported but never throw):
+
 - `SF-CONFIG-003`: `IPseudonymizer` registered without `ITokenStore`.
 - `SF-CONFIG-009`: EF Core audit interceptor registered without `IAuditStore`.
 - `SF-CONFIG-010`: retention annotations found without `RetentionExecutor` or handlers.
 - `SF-CONFIG-011`: ASP.NET Core services registered but `UseSensitiveFlowAudit()` was not marked.
 - `SF-CONFIG-012`: middleware observed an authenticated user before it ran, which can indicate it was placed after authentication.
 - `SF-CONFIG-013`: in-memory audit outbox registered outside Development.
-- `SF-CONFIG-014`: durable audit outbox registered without any `IAuditOutboxPublisher`.
+- `SF-CONFIG-FAIL`: code on the exception thrown by `ValidateSensitiveFlow()` when one or more errors are present.

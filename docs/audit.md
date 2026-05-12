@@ -214,7 +214,7 @@ builder.Services.AddAuditOutbox<KafkaAuditOutbox>();
 | --- | --- | --- | --- | --- |
 | `InMemoryAuditOutbox` | tests/local development | best effort / at-most-once | no | Deprecated for production. Diagnostics emit `SF-CONFIG-013` outside Development, and the audit-outbox health check reports `Degraded`. |
 | `SensitiveFlow.Audit.EFCore.Outbox` | production durable delivery | at-least-once | yes | EF Core storage, dispatcher retries, and dead-letter state. |
-| custom `IDurableAuditOutbox` | application-specific backend | defined by your implementation | should be yes | Register at least one `IAuditOutboxPublisher`; otherwise diagnostics emit `SF-CONFIG-014`. |
+| custom `IDurableAuditOutbox` | application-specific backend | defined by your implementation | should be yes | Register at least one `IAuditOutboxPublisher`; otherwise diagnostics emit `SF-CONFIG-014` as an **Error** (validation throws unless `FailOnError = false`). |
 
 Dispatcher defaults:
 

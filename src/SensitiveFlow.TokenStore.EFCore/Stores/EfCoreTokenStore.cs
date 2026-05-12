@@ -86,11 +86,21 @@ public sealed class EfCoreTokenStore<TContext> : ITokenStore where TContext : Db
                 ctx.Entry(local).State = EntityState.Detached;
             }
 
+            // Use FirstOrDefault: an extremely rare interleaving with token erasure
+            // could delete the winner between the conflict and our re-read.
             var winner = await set
                 .AsNoTracking()
-                .FirstAsync(t => t.Value == value, cancellationToken)
+                .FirstOrDefaultAsync(t => t.Value == value, cancellationToken)
                 .ConfigureAwait(false);
-            return winner.Token;
+
+            if (winner is not null)
+            {
+                return winner.Token;
+            }
+
+            // Winner was deleted before we could observe it (e.g. concurrent erasure).
+            // Fall through to a fresh attempt rather than crashing the caller.
+            return await GetOrCreateTokenAsync(value, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -115,7 +125,10 @@ public sealed class EfCoreTokenStore<TContext> : ITokenStore where TContext : Db
             throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
         }
 
+        // Do NOT include the token in the exception message — exception text is commonly
+        // captured by logs/APM and the token is the pseudonymization key. A generic
+        // message preserves the failure signal without leaking the lookup key.
         return mapping?.Value
-            ?? throw new KeyNotFoundException($"Token '{token}' not found in the store.");
+            ?? throw new KeyNotFoundException("Token not found in the store.");
     }
 }

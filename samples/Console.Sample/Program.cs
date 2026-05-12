@@ -367,7 +367,7 @@ public sealed class EfCoreTokenStore : ITokenStore
 
         if (mapping is null)
         {
-            throw new KeyNotFoundException($"Token '{token}' not found in the store.");
+            throw new KeyNotFoundException("Token not found in the store.");
         }
 
         return mapping.Value;
