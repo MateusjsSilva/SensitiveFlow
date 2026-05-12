@@ -12,22 +12,41 @@ namespace SensitiveFlow.Audit.EFCore.Configuration;
 /// </summary>
 public sealed class AuditRecordEntityTypeConfiguration : IEntityTypeConfiguration<AuditRecordEntity>
 {
-    private readonly string _tableName;
+    /// <summary>Default table name when none is specified.</summary>
+    public const string DefaultTableName = "SensitiveFlow_AuditRecords";
 
-    /// <summary>Initializes the configuration with the given table name.</summary>
-    public AuditRecordEntityTypeConfiguration(string tableName = "SensitiveFlow_AuditRecords")
+    private readonly string _tableName;
+    private readonly string? _schema;
+
+    /// <summary>Initializes the configuration with the given table name and no schema.</summary>
+    public AuditRecordEntityTypeConfiguration(string tableName = DefaultTableName)
+        : this(tableName, null)
     {
-        if (string.IsNullOrWhiteSpace(tableName))
-        {
-            throw new ArgumentException("Table name must not be empty.", nameof(tableName));
-        }
+    }
+
+    /// <summary>
+    /// Initializes the configuration with a custom table name and optional schema.
+    /// </summary>
+    /// <param name="tableName">Table name. Defaults to <see cref="DefaultTableName"/>.</param>
+    /// <param name="schema">Optional schema. Leave <c>null</c> for providers without schemas (e.g. SQLite).</param>
+    public AuditRecordEntityTypeConfiguration(string tableName, string? schema)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
         _tableName = tableName;
+        _schema = string.IsNullOrWhiteSpace(schema) ? null : schema;
     }
 
     /// <inheritdoc />
     public void Configure(EntityTypeBuilder<AuditRecordEntity> builder)
     {
-        builder.ToTable(_tableName);
+        if (_schema is null)
+        {
+            builder.ToTable(_tableName);
+        }
+        else
+        {
+            builder.ToTable(_tableName, _schema);
+        }
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedOnAdd();

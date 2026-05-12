@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-preview.3] - 2026-05-11
+
+### Added
+
+- **Durable audit outbox framework**: `IDurableAuditOutbox` contract with `DequeueBatchAsync`, `MarkProcessedAsync`, `MarkFailedAsync` for production-grade delivery guarantees.
+- **Audit outbox entries**: `AuditOutboxEntry` model tracking attempts, timestamps, errors, and dead-letter status for reliable retry logic.
+- **Outbox publisher abstraction**: `IAuditOutboxPublisher` for pluggable downstream delivery (SIEM, webhooks, event buses, etc.).
+- **Audit outbox dispatcher**: `AuditOutboxDispatcher` background service with configurable polling, exponential backoff, and dead-lettering.
+- **Metrics & diagnostics**: New diagnostic codes SF-CONFIG-013 (in-memory outbox outside Development) and SF-CONFIG-014 (durable outbox without publishers).
+- **Health checks**: `AuditOutboxHealthCheck` detects in-memory outbox usage in production.
+- **EF Core durable outbox** (`SensitiveFlow.Audit.EFCore.Outbox` package): `EfCoreAuditOutbox` with transactional guarantees (audit + outbox in single SaveChanges).
+- **Audit outbox diagnostics class**: `SensitiveFlowAuditDiagnostics` tracks enqueued/dispatched/failed/dead-lettered/pending record counts.
+
+### Deprecated
+
+- `InMemoryAuditOutbox` — use `AddEfCoreAuditOutbox()` or custom `IDurableAuditOutbox` for production.
+- `AddInMemoryAuditOutbox()` — same guidance as above.
+
+### Changed
+
+- Audit store decorator `OutboxAuditStore` now reports metrics via `SensitiveFlowAuditDiagnostics`.
+- `SensitiveFlowConfigurationValidator` now checks for in-memory outbox outside Development (SF-CONFIG-013).
+- Docs: `docs/audit.md` updated with at-least-once vs at-most-once delivery matrix and production-ready outbox patterns.
+
+### Security
+
+- Durable outbox prevents audit record loss on process restart or failure.
+- Transactional outbox pattern ensures audit writes and outbox enqueuing happen atomically.
+
 ## [1.0.0-preview.2] - 2026-05-10
 
 ### Added
@@ -15,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` with supported versions table, vulnerability reporting process, and security scope.
 - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
 - `RELEASE.md` with full versioning scheme and publishing process.
-- Legal disclaimer in README: "SensitiveFlow helps reduce accidental exposure of sensitive data, but it does not guarantee legal compliance or complete data protection by itself."
+- Disclaimer in README: "SensitiveFlow is a tool to help you manage sensitive data safely, not a guarantee of complete data protection by itself."
 - New README badges: Container Tests, NuGet Downloads, .NET 8 | 9 | 10.
 
 ### Changed
@@ -75,5 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Central Package Management via `Directory.Packages.props`
 - Multi-target: `net8.0`, `net9.0`, and `net10.0`
 - Documentation: getting-started, attributes, legal-bases, consent, audit, data-subject-rights, retention, data-map, incidents, ripd, international-transfer, efcore, aspnetcore, migration
+
+
 
 

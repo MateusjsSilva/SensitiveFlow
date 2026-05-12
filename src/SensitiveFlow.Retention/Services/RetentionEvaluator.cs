@@ -26,13 +26,21 @@ public sealed class RetentionEvaluator
     ];
 
     private readonly IEnumerable<IRetentionExpirationHandler> _handlers;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>
     /// Initializes a new instance of <see cref="RetentionEvaluator"/>.
     /// </summary>
     public RetentionEvaluator(IEnumerable<IRetentionExpirationHandler> handlers)
+        : this(handlers, TimeProvider.System) { }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="RetentionEvaluator"/> with a custom <see cref="TimeProvider"/>.
+    /// </summary>
+    public RetentionEvaluator(IEnumerable<IRetentionExpirationHandler> handlers, TimeProvider timeProvider)
     {
         _handlers = handlers;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     /// <summary>
@@ -75,7 +83,7 @@ public sealed class RetentionEvaluator
         foreach (var pair in retentionProperties)
         {
             var expiration = pair.Attribute.GetExpirationDate(referenceDate);
-            if (DateTimeOffset.UtcNow <= expiration)
+            if (_timeProvider.GetUtcNow() <= expiration)
             {
                 continue;
             }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SensitiveFlow.Audit.EFCore.Entities;
+using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 
@@ -18,7 +19,7 @@ namespace SensitiveFlow.Audit.EFCore.Stores;
 /// <see cref="SensitiveFlow.Audit.Decorators.RetryingAuditStore"/> exists to avoid.
 /// </para>
 /// </remarks>
-public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore where TContext : DbContext
+public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore, IAuditStoreTransaction where TContext : DbContext
 {
     private readonly IDbContextFactory<TContext> _factory;
     private readonly Func<TContext, DbSet<AuditRecordEntity>> _setSelector;
@@ -45,7 +46,14 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore where TContext
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
         set.Add(AuditRecordEntity.FromRecord(record));
-        await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
+        }
     }
 
     /// <inheritdoc />
@@ -60,7 +68,14 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore where TContext
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var set = _setSelector(ctx);
         set.AddRange(records.Select(AuditRecordEntity.FromRecord));
-        await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw SchemaErrorTranslator.Translate(ex, typeof(TContext).Name);
+        }
     }
 
     /// <inheritdoc />
@@ -98,6 +113,29 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore where TContext
         var rows = await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take)
                               .ToListAsync(cancellationToken).ConfigureAwait(false);
         return rows.ConvertAll(static e => e.ToRecord());
+    }
+
+    /// <inheritdoc />
+    public async Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await ctx.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await operation(cancellationToken).ConfigureAwait(false);
+            await ctx.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            throw;
+        }
     }
 
     private static void ValidatePagination(int skip, int take)

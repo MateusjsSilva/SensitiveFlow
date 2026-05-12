@@ -92,11 +92,20 @@ public sealed class RetryingAuditStore : IBatchAuditStore
                 !cancellationToken.IsCancellationRequested)
             {
                 attempt++;
+
+                // Apply equal-jitter backoff: half of the computed delay is fixed, half is random.
+                // This breaks the synchronized retry waves that cause "thundering herd" when many
+                // instances recover from the same upstream failure simultaneously.
+                var jitterFactor = _options.JitterFactor;
+                var jittered = jitterFactor <= 0
+                    ? delay
+                    : TimeSpan.FromTicks((long)(delay.Ticks * (1.0 - jitterFactor + (Random.Shared.NextDouble() * jitterFactor * 2.0))));
+
                 _logger?.LogWarning(ex,
                     "Audit store {Operation} attempt {Attempt}/{MaxAttempts} failed; retrying in {DelayMs}ms.",
-                    operationName, attempt, _options.MaxAttempts, delay.TotalMilliseconds);
+                    operationName, attempt, _options.MaxAttempts, jittered.TotalMilliseconds);
 
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(jittered, cancellationToken).ConfigureAwait(false);
 
                 delay = TimeSpan.FromTicks(Math.Min(
                     (long)(delay.Ticks * _options.BackoffMultiplier),
@@ -120,6 +129,14 @@ public sealed class RetryingAuditStoreOptions
 
     /// <summary>Multiplier applied to the delay after each failed attempt. Default <c>2.0</c>.</summary>
     public double BackoffMultiplier { get; set; } = 2.0;
+
+    /// <summary>
+    /// Random jitter applied to each backoff delay, expressed as a fraction in <c>[0, 1)</c>.
+    /// Each delay is multiplied by a random value in <c>[1 - JitterFactor, 1 + JitterFactor)</c>
+    /// to prevent synchronized retry waves ("thundering herd") across replicas. Set to <c>0</c>
+    /// to disable jitter. Default <c>0.25</c> (±25%).
+    /// </summary>
+    public double JitterFactor { get; set; } = 0.25;
 
     /// <summary>
     /// Predicate that decides whether a thrown exception should trigger a retry.

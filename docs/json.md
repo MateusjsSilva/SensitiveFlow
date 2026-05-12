@@ -72,3 +72,25 @@ For controllers using Newtonsoft.Json, you'll need a separate adapter — this p
 - It does not redact values during **deserialization** — incoming requests must validate sensitive fields with your own logic.
 - It does not encrypt anything; it just rewrites property values during serialization.
 - It does not affect log redaction. Use `SensitiveFlow.Logging` for that.
+
+## Using with DTOs
+
+When you return a DTO (Data Transfer Object) from an endpoint, you must explicitly annotate the DTO properties that correspond to sensitive entity fields. The library only sees the type being serialized and applies redaction based on its annotations.
+
+```csharp
+// Entity (domain model)
+public class Customer
+{
+    [PersonalData(Category = DataCategory.Contact)]
+    public string Email { get; set; }
+}
+
+// DTO (response model) - must replicate annotations
+public class CustomerResponse
+{
+    [PersonalData(Category = DataCategory.Contact)]
+    public string Email { get; set; }  // ← Now masked in the response
+}
+```
+
+See [DTO Pattern](dto-pattern.md) for the complete pattern and best practices.

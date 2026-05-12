@@ -22,9 +22,9 @@ public string Email { get; set; }
 | `Identification` | Name, CPF, RG, passport |
 | `Contact` | Email, phone, address |
 | `Financial` | Bank account, income |
+| `JudicialData` | Court records, legal proceedings |
 | `Behavioral` | Browsing history, preferences |
 | `Location` | GPS, IP (raw), address |
-| `Professional` | Employer, job title |
 | `Other` | Anything not covered above |
 
 ## SensitiveDataAttribute
@@ -74,9 +74,10 @@ public string ContractData { get; set; }
 
 | Value | Description |
 |-------|-------------|
-| `AnonymizeOnExpiration` | Replace the value with an anonymized placeholder |
+| `AnonymizeOnExpiration` | Replace the value with an anonymized placeholder (mask/tokenize) |
 | `DeleteOnExpiration` | Remove the record or nullify the field |
-| `BlockOnExpiration` | Block further processing of the field |
+| `BlockOnExpiration` | Prevent further access or processing of the field when expired |
+| `NotifyOwner` | Trigger a notification workflow when data expires (custom handler required) |
 
 ### Calendar-accurate arithmetic
 

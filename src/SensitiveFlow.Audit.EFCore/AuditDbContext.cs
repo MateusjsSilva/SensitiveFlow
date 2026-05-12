@@ -22,5 +22,16 @@ public class AuditDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfiguration(new AuditRecordEntityTypeConfiguration());
+
+        // Try to apply durable outbox configuration if the type is available
+        // This allows SensitiveFlow.Audit.EFCore.Outbox to register its entities without
+        // creating a hard dependency in the core package.
+        var outboxEntityType = Type.GetType("SensitiveFlow.Audit.EFCore.Outbox.Entities.AuditOutboxEntryEntity, SensitiveFlow.Audit.EFCore.Outbox");
+        if (outboxEntityType is not null)
+        {
+            modelBuilder.ApplyConfigurationsFromAssembly(
+                outboxEntityType.Assembly,
+                t => t.Namespace?.StartsWith("SensitiveFlow.Audit.EFCore.Outbox") == true);
+        }
     }
 }

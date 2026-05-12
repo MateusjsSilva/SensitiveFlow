@@ -349,7 +349,7 @@ builder.Services.AddSensitiveFlowEFCore();
 - Redis: `EXPIRE` on keys
 - DynamoDB: `TTL` attribute
 - MongoDB: TTL index
-- Ensures compliance with retention policies
+- Enables enforcement of retention policies
 
 ### 4. **Partition by DataSubjectId (Optional)**
 - Improves query performance for data-subject access and erasure requests

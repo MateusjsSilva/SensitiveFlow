@@ -29,13 +29,15 @@ public sealed class AuditRecord
 
 | Value | Description |
 |-------|-------------|
-| `Access` | Field was read |
+| `Access` | Field was read or accessed |
 | `Create` | Record was inserted |
 | `Update` | Field value was changed |
 | `Delete` | Record was removed |
-| `Export` | Data was exported |
-| `Anonymize` | Data was anonymized |
-| `Pseudonymize` | Data was pseudonymized |
+| `Export` | Data was exported for subject access requests |
+| `Anonymize` | Data was anonymized or pseudonymized |
+| `Pseudonymize` | Data was pseudonymized (tokenized) |
+| `Share` | Data was shared with a third party |
+| `Revoke` | Data sharing was revoked or consent withdrawn |
 
 ## IAuditStore
 
@@ -50,7 +52,7 @@ public interface IAuditStore
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
         int skip = 0,
-        int take = int.MaxValue,
+        int take = 100,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(
@@ -58,7 +60,7 @@ public interface IAuditStore
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
         int skip = 0,
-        int take = int.MaxValue,
+        int take = 100,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -136,6 +138,97 @@ Records are returned in ascending timestamp order.
 If your audit store can persist multiple records in one logical operation, implement `IBatchAuditStore` in addition to `IAuditStore`.
 
 `SensitiveDataAuditInterceptor` will call `AppendRangeAsync` once per `SaveChanges` when the store supports batching. That keeps the audit write path closer to the entity save and avoids one roundtrip per sensitive field.
+
+## Audit redaction context
+
+By default, audit records do not store raw field values. If a model uses contextual audit redaction, the EF Core interceptor honors it:
+
+```csharp
+[PersonalData(Category = DataCategory.Contact)]
+[Redaction(Audit = OutputRedactionAction.Mask)]
+public string Email { get; set; } = string.Empty;
+
+[SensitiveData(Category = SensitiveDataCategory.Other)]
+[Redaction(Audit = OutputRedactionAction.Omit)]
+public string InternalNote { get; set; } = string.Empty;
+```
+
+`Audit = Omit` suppresses the per-field audit record. `Redact`, `Mask`, and `Pseudonymize` write a protected value into `AuditRecord.Details`; pseudonymization uses the registered `IPseudonymizer` when one is available and falls back to the default redaction marker otherwise.
+
+## Audit outbox
+
+`SensitiveFlow.Audit` ships a concrete in-memory outbox for tests/local development. Production systems must use a durable audit outbox to ensure reliable delivery to downstream systems (e.g., SIEM, data lakes, audit dashboards).
+
+### In-memory outbox (tests only)
+
+```csharp
+builder.Services.AddAuditStore<MyDurableAuditStore>();
+builder.Services.AddInMemoryAuditOutbox();  // Deprecated – use for tests/dev only
+```
+
+⚠️ `InMemoryAuditOutbox` is **deprecated for production**. It loses all enqueued records on process restart. The `SensitiveFlowConfigurationValidator` will emit `SF-CONFIG-013` if it detects an in-memory outbox outside a Development environment.
+
+### Durable outbox with EF Core (production-ready)
+
+For production, use the EF Core-backed durable outbox with transactional guarantees:
+
+```bash
+dotnet add package SensitiveFlow.Audit.EFCore.Outbox
+```
+
+```csharp
+// Register durable audit store + durable outbox with automatic dispatcher
+builder.Services.AddEfCoreAuditStore(opt => opt.UseSqlServer(...));
+builder.Services.AddEfCoreAuditOutbox(options =>
+{
+    options.PollInterval = TimeSpan.FromSeconds(1);
+    options.BatchSize = 100;
+    options.MaxAttempts = 5;
+});
+
+// Register a publisher to deliver outbox records downstream
+builder.Services.AddScoped<IAuditOutboxPublisher, MySiemPublisher>();
+```
+
+The durable outbox provides **at-least-once delivery** guarantees:
+- Records enqueued and audit store writes happen in a single `SaveChanges` transaction
+- Failed deliveries are retried with exponential backoff (configurable)
+- Dead-lettered entries (max retries exceeded) are queryable for inspection
+- The `AuditOutboxDispatcher` automatically detects and polls pending entries
+
+### Custom durable outbox
+
+If you need to integrate with a different backend (e.g. Apache Kafka, AWS SQS), implement `IDurableAuditOutbox`:
+
+```csharp
+public sealed class KafkaAuditOutbox : IDurableAuditOutbox
+{
+    // Implement: EnqueueAsync, DequeueBatchAsync, MarkProcessedAsync, MarkFailedAsync
+}
+
+builder.Services.AddAuditStore<MyAuditStore>();
+builder.Services.AddAuditOutbox<KafkaAuditOutbox>();
+```
+
+### Audit outbox guarantees and defaults
+
+| Outbox | Intended use | Delivery guarantee | Survives restart | Notes |
+| --- | --- | --- | --- | --- |
+| `InMemoryAuditOutbox` | tests/local development | best effort / at-most-once | no | Deprecated for production. Diagnostics emit `SF-CONFIG-013` outside Development, and the audit-outbox health check reports `Degraded`. |
+| `SensitiveFlow.Audit.EFCore.Outbox` | production durable delivery | at-least-once | yes | EF Core storage, dispatcher retries, and dead-letter state. |
+| custom `IDurableAuditOutbox` | application-specific backend | defined by your implementation | should be yes | Register at least one `IAuditOutboxPublisher`; otherwise diagnostics emit `SF-CONFIG-014` as an **Error** (validation throws unless `FailOnError = false`). |
+
+Dispatcher defaults:
+
+| Option | Default |
+| --- | --- |
+| `PollInterval` | `1s` |
+| `BatchSize` | `100` |
+| `MaxAttempts` | `5` |
+| `BackoffStrategy` | `Exponential` |
+| `DeadLetterAfterMax` | `true` |
+
+Custom durable outboxes must implement `MarkDeadLetteredAsync(...)` in addition to enqueue, dequeue, processed, and failed acknowledgement methods. Register at least one `IAuditOutboxPublisher` so the dispatcher has a delivery target.
 
 ## Retrying transient failures
 

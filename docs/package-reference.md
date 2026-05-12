@@ -6,21 +6,84 @@ This document summarizes each SensitiveFlow package individually: purpose, prima
 
 | Package | Use when | Minimum setup | Main risk |
 | --- | --- | --- | --- |
+| `SensitiveFlow.AspNetCore.EFCore` | **Recommended first package.** You're building an ASP.NET Core + EF Core app and want one composition entry point. | `builder.Services.AddSensitiveFlowWeb(options => { ... })`. | Hides individual registrations; switch to per-package setup when you need full control. |
 | `SensitiveFlow.Core` | You annotate models or implement contracts. | Add attributes to models. | None by itself; it does not enforce behavior. |
 | `SensitiveFlow.Audit` | You register custom audit stores or decorators. | `AddAuditStore<T>()` or first-party EF store plus optional retry/buffer. | In-memory/buffered data can be lost before durable write. |
 | `SensitiveFlow.Audit.EFCore` | You want first-party SQL audit storage. | `AddEfCoreAuditStore(...)`; create/migrate audit table. | Audit DB must be durable and backed up independently. |
+| `SensitiveFlow.Audit.EFCore.Outbox` | You need durable, reliable delivery of audit records to downstream systems (SIEM, data lakes, audit dashboards). | `AddEfCoreAuditOutbox()` and register `IAuditOutboxPublisher` implementations. | Outbox table must be monitored for dead-lettered entries (failed delivery after max retries). |
 | `SensitiveFlow.Audit.Snapshots.EFCore` | You want durable aggregate-level audit snapshots. | `AddEfCoreAuditSnapshotStore(...)`; create/migrate snapshot table. | Snapshots can be large; monitor storage growth. |
 | `SensitiveFlow.TokenStore.EFCore` | You want first-party SQL token storage for reversible pseudonymization. | `AddEfCoreTokenStore(...)`; create/migrate token table. | Losing token mappings makes pseudonymized data irrecoverable. |
 | `SensitiveFlow.EFCore` | You want automatic audit on `SaveChanges`. | `AddSensitiveFlowEFCore()` and `AddInterceptors(...)`. | Missing interceptor means no automatic audit. |
 | `SensitiveFlow.AspNetCore` | You need actor/IP context from HTTP requests. | `AddSensitiveFlowAspNetCore()` and `UseSensitiveFlowAudit()`. | Requires a durable `IPseudonymizer`/`ITokenStore` for reversible IP tokens. |
 | `SensitiveFlow.Anonymization` | You mask, pseudonymize, export, erase, or fingerprint values. | Register an `ITokenStore` for reversible tokens; use services/extensions. | Masking/pseudonymization are still personal data. |
 | `SensitiveFlow.Json` | You need automatic response serialization redaction. | `WithSensitiveDataRedaction()` on `System.Text.Json`. | Does not cover Newtonsoft.Json. |
-| `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; values must flow through known redaction paths. |
+| `SensitiveFlow.Logging` | You need sensitive log value redaction. | `AddSensitiveFlowLogging()` and/or provider wrapper. | Not semantic PII detection; scalar values still need explicit markers or structured metadata. |
 | `SensitiveFlow.Diagnostics` | You want OpenTelemetry spans/metrics. | `AddSensitiveFlowDiagnostics()` after audit store/decorators. | Decorator order changes what latency is measured. |
+| `SensitiveFlow.HealthChecks` | You want ASP.NET Core health checks for SensitiveFlow infrastructure. | `AddSensitiveFlowHealthChecks().AddAuditStoreCheck().AddTokenStoreCheck().AddAuditOutboxCheck()`. | Token stores without `IHealthProbe` are resolution-only checks to avoid mutating data; in-memory audit outbox is `Degraded` outside Development. |
 | `SensitiveFlow.Retention` | You evaluate retention policies. | `AddRetention()` / `AddRetentionExecutor()` and run a scheduled job. | It will not delete database rows automatically. |
 | `SensitiveFlow.Analyzers` | You want compile-time guardrails. | Add analyzer package to application projects. | Warnings still require engineering judgment. |
 | `SensitiveFlow.SourceGenerators` | You want generated sensitive metadata. | Add source generator package. | Keep generator tests aligned with reflection fallback. |
 | `SensitiveFlow.TestKit` | You implement custom stores or leak tests. | Inherit contract tests. | Contract tests need isolated fresh stores. |
+| `SensitiveFlow.Tool` | You want CI/documentation reports from annotated assemblies. | `dotnet tool install SensitiveFlow.Tool`; run `sensitiveflow scan <assembly-project-or-directory>`. | Project/source inputs are built first, then compiled assemblies are scanned. |
+
+## SensitiveFlow.AspNetCore.EFCore
+
+Purpose:
+
+- **Recommended first package.** Official high-level composition for ASP.NET Core + EF Core apps. Provides a single `AddSensitiveFlowWeb()` entry point that wires the recommended stack: audit, token store, outbox, JSON and logging redaction, EF Core interception, ASP.NET Core context, validation, diagnostics, health checks, anonymization, and retention.
+
+Primary APIs:
+
+- `AddSensitiveFlowWeb(options => { ... })`
+- `UseSensitiveFlow()` (middleware — wraps `UseSensitiveFlowAudit()`)
+- `SensitiveFlowWebOptions` (fluent builder)
+  - `UseProfile(SensitiveFlowProfile profile)` — set security profile (Permissive, Balanced, Strict)
+  - `ConfigurePolicies(Action<SensitiveFlowPolicies>)` — override individual category policies beyond the profile
+  - `UseEfCoreStores(configureAuditStore, configureTokenStore)` — provider-agnostic shorthand for both stores
+  - `UseEfCoreAuditStore(Action<DbContextOptionsBuilder>)` — explicitly configure audit DB
+  - `UseEfCoreTokenStore(Action<DbContextOptionsBuilder>)` — explicitly configure token DB
+  - `EnableOutbox()`, `EnableDiagnostics()`, `EnableAuditStoreRetry()` — outbox/observability
+  - `EnableCachingTokenStore()` — in-memory cache for pseudonymization lookups
+  - `EnableDataSubjectExport()`, `EnableDataSubjectErasure()` — data subject rights
+  - `EnableLoggingRedaction()`, `EnableJsonRedaction()` — output protection
+  - `EnableEfCoreAudit()`, `EnableAspNetCoreContext()` — audit source enrichment
+  - `EnableValidation()`, `EnableHealthChecks()` — runtime checks
+  - `EnableRetention()`, `EnableRetentionExecutor()` — data lifecycle management
+
+Install when:
+
+- You're building an ASP.NET Core + EF Core app and want a single-line setup.
+- You're onboarding to SensitiveFlow and want sensible defaults without reading every package's setup docs.
+
+Recommended setup:
+
+```csharp
+builder.Services.AddSensitiveFlowWeb(options =>
+{
+    options.UseProfile(SensitiveFlowProfile.Balanced);
+    options.UseEfCoreStores(
+        audit => audit.UseSqlServer(builder.Configuration.GetConnectionString("Audit")!),
+        tokens => tokens.UseSqlServer(builder.Configuration.GetConnectionString("Tokens")!));
+    options.EnableEfCoreAudit();
+    options.EnableAspNetCoreContext();
+    options.EnableJsonRedaction();
+    options.EnableLoggingRedaction();
+    options.EnableValidation();
+    options.EnableHealthChecks();
+});
+
+app.UseSensitiveFlow();
+app.MapHealthChecks("/health");
+```
+
+Operational notes:
+
+- This package depends on all other SensitiveFlow packages. Database provider packages remain app-owned, so the same API works with SQL Server, PostgreSQL, SQLite, MySQL, or any EF Core provider.
+- Every `Enable*()` method maps to the corresponding granular extension method (`AddEfCoreAuditStore`, `AddSensitiveFlowEFCore`, etc.).
+- SensitiveFlow does not create database tables automatically. If the audit/token/outbox tables do not exist, EF Core persistence will fail on first write. That is intentional: schema creation is an app/deployment responsibility.
+- Use migrations, checked-in SQL scripts, or your deployment tooling to create the app tables and SensitiveFlow infrastructure tables before startup.
+- When you outgrow the composition layer, switch to per-package setup for full control.
+- Health checks automatically include `AddAuditOutboxCheck()` when outbox is enabled.
 
 ## SensitiveFlow.Core
 
@@ -31,9 +94,13 @@ Purpose:
 Primary APIs:
 
 - Attributes: `[PersonalData]`, `[SensitiveData]`, `[RetentionData]`.
+- Output attributes: `[Redact]`, `[Mask]`, `[Omit]`, `[Redaction]`.
 - Models: `AuditRecord`, `AuditSnapshot`.
-- Contracts: `IAuditStore`, `IBatchAuditStore`, `IAuditSnapshotStore`, `ITokenStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, `IAuditContext`.
-- Enums: `DataCategory`, `SensitiveDataCategory`, `RetentionPolicy`, `AuditOperation`, `AnonymizationType`.
+- Contracts: `IAuditStore`, `IBatchAuditStore`, `IAuditSnapshotStore`, `ITokenStore`, `IPseudonymizer`, `IMasker`, `IAnonymizer`, `IAuditContext`, data-subject request interfaces, audit outbox interfaces.
+- Enums: `DataCategory`, `SensitiveDataCategory`, `DataSensitivity`, `RetentionPolicy`, `AuditOperation`, `AnonymizationType`.
+- Policies/profiles: `SensitiveFlowOptions`, `SensitiveFlowProfile`, `SensitiveFlowPolicyRegistry`.
+- Discovery/export: `SensitiveDataDiscovery`, `JsonDataExportFormatter`, `CsvDataExportFormatter`.
+- Defaults: `SensitiveFlowDefaults` documents the default profile, redaction marker, anonymization marker, and health-check names.
 - Cache: `SensitiveMemberCache`.
 
 Install when:
@@ -56,8 +123,12 @@ Primary APIs:
 - `AddAuditStore<TStore>()`
 - `AddAuditStoreRetry(...)`
 - `AddBufferedAuditStore(...)`
+- `AddAuditOutbox<TOutbox>()`
+- `AddInMemoryAuditOutbox()`
 - `RetryingAuditStore`
 - `BufferedAuditStore`
+- `OutboxAuditStore`
+- `JsonAuditOutboxSerializer`
 - `InMemoryAuditSnapshotStore`
 
 Install when:
@@ -77,6 +148,8 @@ Operational notes:
 
 - `RetryingAuditStore` does not swallow exhausted failures.
 - `BufferedAuditStore` is advanced. It can lose records on process crash before flush. Avoid using it with scoped stores until lifetime semantics are hardened.
+- `AddInMemoryAuditOutbox()` is obsolete for production and should only be used in tests/local development.
+- Production outboxes should implement `IDurableAuditOutbox` and use `AddAuditOutbox<TOutbox>()` plus at least one `IAuditOutboxPublisher`.
 
 ## SensitiveFlow.Audit.EFCore
 
@@ -111,6 +184,94 @@ Operational notes:
 - Uses `IDbContextFactory<TContext>` so audit writes do not piggyback on the application `DbContext`.
 - Implements `IBatchAuditStore`.
 - PostgreSQL and SQL Server container coverage lives in `tests/SensitiveFlow.Audit.EFCore.ContainerTests`.
+
+## SensitiveFlow.Audit.EFCore.Outbox
+
+Purpose:
+
+- First-party EF Core-backed **durable audit outbox** for reliable, transactional delivery of audit records to downstream systems (SIEM, data lakes, audit dashboards, Kafka, webhooks, etc.).
+
+Primary APIs:
+
+- `AddEfCoreAuditOutbox(options => ...)`
+- `EfCoreAuditOutbox`
+- `AuditOutboxEntry` (data model in Core)
+- `IAuditOutboxPublisher` (interface for delivery logic — implemented by you)
+- `AuditOutboxDispatcher` (background service that polls and delivers)
+- `AuditOutboxDispatcherOptions` (configurable polling, retry backoff, max attempts)
+
+Install when:
+
+- You need **guaranteed, at-least-once delivery** of audit records to a remote system.
+- Your business requirements demand that no audit record is lost if the application crashes.
+
+Recommended setup:
+
+```csharp
+// Package installation
+dotnet add package SensitiveFlow.Audit.EFCore.Outbox
+
+// DI setup
+builder.Services.AddEfCoreAuditStore(opt => 
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("Audit")));
+
+// Enable durable outbox with automatic background dispatcher
+builder.Services.AddEfCoreAuditOutbox(options =>
+{
+    options.PollInterval = TimeSpan.FromSeconds(2);
+    options.BatchSize = 100;
+    options.MaxAttempts = 5;
+    options.BackoffStrategy = BackoffStrategy.Exponential; // or Linear
+});
+
+// Register publishers (one or more) to deliver records downstream
+builder.Services.AddScoped<IAuditOutboxPublisher, MySiemPublisher>();
+builder.Services.AddScoped<IAuditOutboxPublisher, MyDataLakePublisher>();
+```
+
+Example publisher implementation:
+
+```csharp
+public sealed class MySiemPublisher : IAuditOutboxPublisher
+{
+    private readonly HttpClient _http;
+    
+    public MySiemPublisher(HttpClient http) => _http = http;
+    
+    public async Task PublishAsync(AuditOutboxEntry entry, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(entry.Record);
+        var response = await _http.PostAsJsonAsync("/siem/audit", json, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+}
+```
+
+Delivery guarantee:
+
+- Records are enqueued and the audit store write happen in a **single `SaveChanges` transaction** — transactional outbox pattern.
+- The `AuditOutboxDispatcher` background service polls periodically and calls all registered `IAuditOutboxPublisher` implementations.
+- On successful publish, entries are marked `IsProcessed`.
+- On exception, entries are marked `IsDeadLettered` or retried based on `MaxAttempts`.
+- Dead-lettered entries and retry history are queryable for operational dashboards and alerting.
+
+Defaults:
+
+| Option | Default |
+| --- | --- |
+| `PollInterval` | `1s` |
+| `BatchSize` | `100` |
+| `MaxAttempts` | `5` |
+| `BackoffStrategy` | `Exponential` |
+| `DeadLetterAfterMax` | `true` |
+
+Operational notes:
+
+- Audit and outbox data live in the same `AuditDbContext` (configurable persistence strategy).
+- Dispatcher runs as a `HostedService` — activate after application startup.
+- Multiple instances of your application can run simultaneously, but you should validate duplicate-delivery tolerance because outbox delivery is at-least-once.
+- Monitor the `AuditOutboxEntry` table for growth, dead-lettered entries, and retry counts in operational dashboards.
+- SQLite coverage lives in `tests/SensitiveFlow.Audit.EFCore.Outbox.Tests`; provider-specific container coverage should be added when SQL Server/PostgreSQL migrations are introduced.
 
 ## SensitiveFlow.Audit.Snapshots.EFCore
 
@@ -259,6 +420,7 @@ Operational notes:
 - Only anonymization may remove data from personal-data scope. Masking and pseudonymization remain personal data.
 - `TokenPseudonymizer` is reversible only if `ITokenStore` remains durable.
 - `CachingTokenStore` stores original values in process memory.
+- `DataSubjectExporter` returns raw values by default and only masks/redacts/omits fields that opt in with `[Redaction(Export = ...)]`.
 
 ## SensitiveFlow.Json
 
@@ -303,6 +465,7 @@ Primary APIs:
 - `AddSensitiveFlowLogging(...)`
 - `AddSensitiveFlowLogging<TProvider>(...)`
 - `RedactingLoggerProvider`
+- `SensitiveLoggingOptions`
 - `ISensitiveValueRedactor`
 - `DefaultSensitiveValueRedactor`
 
@@ -313,7 +476,10 @@ Install when:
 Operational notes:
 
 - This is not full semantic PII detection.
-- Prefer structured logging and pass values through known redaction paths.
+- `[Sensitive]` template markers are always redacted.
+- Structured object values with `[PersonalData]` or `[SensitiveData]` members are redacted by default.
+- Pass `SensitiveLoggingOptions.Policies` to make `.MaskInLogs()` category policies mask annotated structured object members.
+- Prefer structured logging and pass scalar values through known redaction paths.
 
 ## SensitiveFlow.Diagnostics
 

@@ -82,7 +82,7 @@ public sealed class RedisTokenStore : ITokenStore
         var value = await _db.StringGetAsync(TokenToValuePrefix + token).ConfigureAwait(false);
         if (!value.HasValue)
         {
-            throw new KeyNotFoundException($"Token '{token}' not found in the store.");
+            throw new KeyNotFoundException("Token not found in the store.");
         }
         return value.ToString();
     }

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SensitiveFlow.Audit.Decorators;
+using SensitiveFlow.Audit.Outbox;
 using SensitiveFlow.Core.Interfaces;
 
 namespace SensitiveFlow.Audit.Extensions;
@@ -155,6 +157,87 @@ public static class AuditServiceCollectionExtensions
                 instance,
                 options,
                 logger: null));
+        }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers an in-memory audit outbox and wraps the registered
+    /// <see cref="IAuditStore"/> with <see cref="OutboxAuditStore"/>.
+    /// </summary>
+    /// <remarks>
+    /// The in-memory outbox is intended for tests and local development. Production
+    /// systems should provide a durable <see cref="IAuditOutbox"/> implementation
+    /// and call <see cref="AddAuditOutbox{TOutbox}"/>.
+    /// </remarks>
+    [Obsolete("In-memory audit outbox is for tests/local development only. Use AddEfCoreAuditOutbox() or AddAuditOutbox<TOutbox>() for durable production delivery.", error: false)]
+    public static IServiceCollection AddInMemoryAuditOutbox(this IServiceCollection services)
+    {
+        services.AddSingleton<IAuditOutboxSerializer, JsonAuditOutboxSerializer>();
+        services.AddSingleton<InMemoryAuditOutbox>();
+        services.AddSingleton<IAuditOutbox>(sp => sp.GetRequiredService<InMemoryAuditOutbox>());
+        return services.AddAuditOutboxDecorator();
+    }
+
+    /// <summary>
+    /// Registers a custom durable audit outbox and wraps the registered
+    /// <see cref="IAuditStore"/> with <see cref="OutboxAuditStore"/>.
+    /// </summary>
+    public static IServiceCollection AddAuditOutbox<TOutbox>(this IServiceCollection services)
+        where TOutbox : class, IAuditOutbox
+    {
+        services.AddSingleton<IAuditOutboxSerializer, JsonAuditOutboxSerializer>();
+        services.AddSingleton<IAuditOutbox, TOutbox>();
+        return services.AddAuditOutboxDecorator();
+    }
+
+    /// <summary>
+    /// Registers the hosted durable audit outbox dispatcher.
+    /// </summary>
+    public static IServiceCollection AddAuditOutboxDispatcher(
+        this IServiceCollection services,
+        Action<AuditOutboxDispatcherOptions>? configure = null)
+    {
+        var options = new AuditOutboxDispatcherOptions();
+        configure?.Invoke(options);
+
+        services.AddSingleton(options);
+        services.AddHostedService<AuditOutboxDispatcher>();
+        return services;
+    }
+
+    private static IServiceCollection AddAuditOutboxDecorator(this IServiceCollection services)
+    {
+        var existing = services.FirstOrDefault(d => d.ServiceType == typeof(IAuditStore))
+            ?? throw new InvalidOperationException(
+                $"No {nameof(IAuditStore)} registration was found. Register an audit store before adding an audit outbox.");
+
+        services.Remove(existing);
+
+        if (existing.ImplementationType is not null)
+        {
+            services.Add(new ServiceDescriptor(existing.ImplementationType, existing.ImplementationType, existing.Lifetime));
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new OutboxAuditStore(
+                    (IAuditStore)sp.GetRequiredService(existing.ImplementationType),
+                    sp.GetRequiredService<IAuditOutbox>()),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationFactory is not null)
+        {
+            var factory = existing.ImplementationFactory;
+            services.Add(new ServiceDescriptor(typeof(IAuditStore),
+                sp => new OutboxAuditStore(
+                    (IAuditStore)factory(sp),
+                    sp.GetRequiredService<IAuditOutbox>()),
+                existing.Lifetime));
+        }
+        else if (existing.ImplementationInstance is IAuditStore instance)
+        {
+            services.AddSingleton<IAuditStore>(sp => new OutboxAuditStore(
+                instance,
+                sp.GetRequiredService<IAuditOutbox>()));
         }
 
         return services;

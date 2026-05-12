@@ -11,6 +11,9 @@ public enum SensitiveDataCategory
     /// <summary>Unspecified or custom sensitive data category.</summary>
     Other = 0,
 
+    /// <summary>Financial data, such as salary, bank account, or credit card numbers.</summary>
+    Financial,
+
     /// <summary>Health or medical data </summary>
     Health,
 
@@ -34,6 +37,9 @@ public enum SensitiveDataCategory
 
     /// <summary>Trade union membership </summary>
     TradeUnionMembership,
+
+    /// <summary>Criminal records or proceedings </summary>
+    Criminal,
 }
 
 

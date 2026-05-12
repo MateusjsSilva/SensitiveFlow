@@ -235,7 +235,26 @@ new HashStrategy("my-fixed-salt-16ch").Apply("value");
 
 ## Data subject export (portability)
 
+By default, data-subject export returns raw annotated values because portability responses often need to disclose the data back to the subject. To protect specific export fields, use contextual redaction:
+
+```csharp
+[PersonalData(Category = DataCategory.Contact)]
+[Redaction(Export = OutputRedactionAction.Mask)]
+public string Email { get; set; } = string.Empty;
+
+[SensitiveData(Category = SensitiveDataCategory.Other)]
+[Redaction(Export = OutputRedactionAction.Omit)]
+public string InternalRiskNote { get; set; } = string.Empty;
+```
+
 `IDataSubjectExporter` is the read-side counterpart of `IDataSubjectErasureService`. Given an entity, it returns a dictionary keyed by property name with every annotated value (`[PersonalData]`, `[SensitiveData]`, `[RetentionData]`) — useful for satisfying portability requests where a user asks for a copy of the personal data the application holds about them.
+
+SensitiveFlow provides two interfaces for export:
+
+- **`IDataSubjectExporter<T>`** (Core) — generic interface you can implement for custom type-specific export logic
+- **`IDataSubjectExporter`** (Anonymization) — concrete non-generic implementation that works with any `object`
+
+Use the non-generic version for simplicity (it reflects over the object at runtime):
 
 ```csharp
 services.AddDataSubjectExport();

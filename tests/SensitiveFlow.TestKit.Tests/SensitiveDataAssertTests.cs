@@ -98,6 +98,122 @@ public sealed class SensitiveDataAssertTests
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void DoesNotContainAny_WhenPayloadHasNoKnownValue_Passes()
+    {
+        var payload = "{\"Name\":\"A****\",\"Email\":\"a****@example.com\"}";
+
+        Action act = () => SensitiveDataAssert.DoesNotContainAny(payload, "alice@example.com", "555-1234");
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void DoesNotContainAny_WhenPayloadContainsKnownValue_Throws()
+    {
+        var payload = "{\"Name\":\"Alice\",\"Email\":\"a****@example.com\"}";
+
+        Action act = () => SensitiveDataAssert.DoesNotContainAny(payload, "alice@example.com", "Alice");
+
+        act.Should().Throw<XunitException>().WithMessage("*Alice*");
+    }
+
+    [Fact]
+    public void DoesNotContainAny_SkipsEmptyAndNullValues()
+    {
+        var payload = "clean payload";
+
+        Action act = () => SensitiveDataAssert.DoesNotContainAny(payload, "", null!, "clean");
+
+        act.Should().Throw<XunitException>().WithMessage("*clean*");
+    }
+
+    [Fact]
+    public void DoesNotContainAny_RejectsNullPayload()
+    {
+        var act = () => SensitiveDataAssert.DoesNotContainAny(null!, "value");
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void DoesNotContainAny_RejectsNullValuesArray()
+    {
+        var act = () => SensitiveDataAssert.DoesNotContainAny("payload", null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void DoesNotLeakKnownValues_WhenPayloadHasNoKnownValue_Passes()
+    {
+        var payload = "{\"Name\":\"A****\"}";
+        var knownValues = new[] { "Alice", "alice@example.com", "555-1234" };
+
+        Action act = () => SensitiveDataAssert.DoesNotLeakKnownValues(payload, knownValues);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void DoesNotLeakKnownValues_WhenPayloadContainsKnownValue_Throws()
+    {
+        var payload = "leaked: Alice was here";
+        var knownValues = new[] { "Alice", "Bob" };
+
+        Action act = () => SensitiveDataAssert.DoesNotLeakKnownValues(payload, knownValues);
+
+        act.Should().Throw<XunitException>().WithMessage("*Alice*");
+    }
+
+    [Fact]
+    public void DoesNotLeakKnownValues_RejectsNullKnownValues()
+    {
+        var act = () => SensitiveDataAssert.DoesNotLeakKnownValues("payload", null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void ContainsMaskedEmail_WhenPayloadHasMaskedEmail_Passes()
+    {
+        var act = () => SensitiveDataAssert.ContainsMaskedEmail("email=a****@example.com");
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ContainsMaskedEmail_WhenPayloadHasNoMaskedEmail_Throws()
+    {
+        var act = () => SensitiveDataAssert.ContainsMaskedEmail("email=alice@example.com");
+
+        act.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void JsonDoesNotExposeAnnotatedProperties_WhenSensitivePropertyIsOmitted_Passes()
+    {
+        var act = () => SensitiveDataAssert.JsonDoesNotExposeAnnotatedProperties("{\"Id\":\"1\"}", typeof(Customer));
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void JsonDoesNotExposeAnnotatedProperties_WhenSensitivePropertyExists_Throws()
+    {
+        var act = () => SensitiveDataAssert.JsonDoesNotExposeAnnotatedProperties("{\"Name\":\"Alice\"}", typeof(Customer));
+
+        act.Should().Throw<XunitException>().WithMessage("*Name*");
+    }
+
+    [Fact]
+    public void LogsDoNotContainSensitiveValues_WhenLogContainsKnownValue_Throws()
+    {
+        var act = () => SensitiveDataAssert.LogsDoNotContainSensitiveValues("failed for alice@example.com", ["alice@example.com"]);
+
+        act.Should().Throw<XunitException>();
+    }
+
     public class Customer
     {
         [PersonalData(Category = DataCategory.Identification)]

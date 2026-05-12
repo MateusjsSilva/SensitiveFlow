@@ -14,6 +14,9 @@ public sealed class SensitiveDataAttribute : Attribute
     /// sensitive categories carry distinct obligations.
     /// </summary>
     public SensitiveDataCategory Category { get; set; } = SensitiveDataCategory.Other;
+
+    /// <summary>Risk level used by policy decisions, analyzers, and discovery reports.</summary>
+    public DataSensitivity Sensitivity { get; set; } = DataSensitivity.High;
 }
 
 

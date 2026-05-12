@@ -7,5 +7,6 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="NSubstitute" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Tool\SensitiveFlow.Tool.csproj" Condition="'$(TargetFramework)' == 'net10.0'" />
   </ItemGroup>
 </Project>

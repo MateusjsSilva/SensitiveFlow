@@ -1,4 +1,5 @@
 using System.Reflection;
+using SensitiveFlow.Core.Profiles;
 
 namespace SensitiveFlow.Retention.Services;
 
@@ -19,9 +20,10 @@ public sealed class RetentionExecutorOptions
 
     /// <summary>
     /// Default placeholder used by <see cref="AnonymousValueFactory"/> for string properties.
-    /// Value types collapse to <c>default(T)</c>.
+    /// The default value is <see cref="SensitiveFlowDefaults.AnonymousValue"/>. Value types
+    /// collapse to <c>default(T)</c>.
     /// </summary>
-    public string AnonymousStringMarker { get; set; } = "[ANONYMIZED]";
+    public string AnonymousStringMarker { get; set; } = SensitiveFlowDefaults.AnonymousValue;
 
     /// <summary>
     /// Returns the type's anonymous default. Strings return <see cref="AnonymousStringMarker"/>,

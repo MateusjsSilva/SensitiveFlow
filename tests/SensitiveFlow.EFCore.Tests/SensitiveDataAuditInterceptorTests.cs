@@ -48,6 +48,44 @@ public sealed class SensitiveDataAuditInterceptorTests
                 .Options;
     }
 
+    private sealed class AuditRedactionEntity
+    {
+        public int Id { get; set; }
+        public string DataSubjectId { get; set; } = "audit-redaction-subject";
+
+        [PersonalData(Category = DataCategory.Contact)]
+        [Redaction(Audit = OutputRedactionAction.Mask)]
+        public string Email { get; set; } = "maria@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [Redaction(Audit = OutputRedactionAction.Redact)]
+        public string TaxId { get; set; } = "12345678900";
+
+        [PersonalData(Category = DataCategory.Other)]
+        [Redaction(Audit = OutputRedactionAction.Omit)]
+        public string InternalNote { get; set; } = "omit me";
+
+        [PersonalData(Category = DataCategory.Identification)]
+        [Redaction(Audit = OutputRedactionAction.Pseudonymize)]
+        public string Name { get; set; } = "Maria";
+    }
+
+    private sealed class AuditRedactionDbContext : DbContext
+    {
+        private readonly SensitiveDataAuditInterceptor _interceptor;
+
+        public AuditRedactionDbContext(SensitiveDataAuditInterceptor interceptor)
+            : base(new DbContextOptionsBuilder()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .AddInterceptors(interceptor)
+                .Options)
+        {
+            _interceptor = interceptor;
+        }
+
+        public DbSet<AuditRedactionEntity> Items => Set<AuditRedactionEntity>();
+    }
+
     private static (TestDbContext, InMemoryAuditStore) BuildContext(IAuditContext? auditContext = null)
     {
         var store = new InMemoryAuditStore();
@@ -266,6 +304,27 @@ public sealed class SensitiveDataAuditInterceptorTests
         records.Should().NotBeEmpty();
     }
 
+    [Fact]
+    public async Task AuditRecord_RespectsContextualAuditRedaction()
+    {
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(
+            store,
+            NullAuditContext.Instance,
+            new FakePseudonymizer());
+        var db = new AuditRedactionDbContext(interceptor);
+        db.Database.EnsureCreated();
+
+        db.Items.Add(new AuditRedactionEntity());
+        await db.SaveChangesAsync();
+
+        var records = await store.QueryByDataSubjectAsync("audit-redaction-subject");
+        records.Should().Contain(r => r.Field == "Email" && r.Details!.Contains("m****@example.com", StringComparison.Ordinal));
+        records.Should().Contain(r => r.Field == "TaxId" && r.Details!.Contains("[REDACTED]", StringComparison.Ordinal));
+        records.Should().Contain(r => r.Field == "Name" && r.Details!.Contains("token-Maria", StringComparison.Ordinal));
+        records.Should().NotContain(r => r.Field == "InternalNote");
+    }
+
     private sealed class UniqueEntity
     {
         public int Id { get; set; }
@@ -274,6 +333,21 @@ public sealed class SensitiveDataAuditInterceptorTests
 
         [PersonalData(Category = DataCategory.Contact)]
         public string Email { get; set; } = "unique@example.com";
+    }
+
+    private sealed class FakePseudonymizer : IPseudonymizer
+    {
+        public string Pseudonymize(string value) => $"token-{value}";
+
+        public Task<string> PseudonymizeAsync(string value, CancellationToken cancellationToken = default)
+            => Task.FromResult(Pseudonymize(value));
+
+        public string Reverse(string token) => token.Replace("token-", string.Empty, StringComparison.Ordinal);
+
+        public Task<string> ReverseAsync(string token, CancellationToken cancellationToken = default)
+            => Task.FromResult(Reverse(token));
+
+        public bool CanPseudonymize(string value) => true;
     }
 
     private sealed class FailingDbContext : DbContext

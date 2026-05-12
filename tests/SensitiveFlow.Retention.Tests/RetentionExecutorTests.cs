@@ -229,4 +229,17 @@ public sealed class RetentionExecutorTests
         report.Entries.Should().ContainSingle(e => e.FieldName == nameof(UnknownPolicyEntity.Secret)
             && e.Action == RetentionAction.None);
     }
+
+    [Fact]
+    public async Task DryRunAsync_ReportsActionsWithoutMutatingEntity()
+    {
+        var entity = new AnonymizeEntity { CreatedAt = DateTimeOffset.UtcNow.AddYears(-2) };
+        var executor = new RetentionExecutor();
+
+        var report = await executor.DryRunAsync([entity], e => ((AnonymizeEntity)e).CreatedAt);
+
+        entity.Email.Should().Be("alice@example.com");
+        entity.Score.Should().Be(42);
+        report.AnonymizedFieldCount.Should().Be(2);
+    }
 }

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageDescription>Official high-level composition for ASP.NET Core + EF Core. Provides a single AddSensitiveFlowWeb() entry point that wires audit, token store, JSON redaction, logging redaction, EF Core interception, ASP.NET Core context, validation, and health checks.</PackageDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit.EFCore\SensitiveFlow.Audit.EFCore.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Audit.EFCore.Outbox\SensitiveFlow.Audit.EFCore.Outbox.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.TokenStore.EFCore\SensitiveFlow.TokenStore.EFCore.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.EFCore\SensitiveFlow.EFCore.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.AspNetCore\SensitiveFlow.AspNetCore.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Json\SensitiveFlow.Json.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Logging\SensitiveFlow.Logging.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Retention\SensitiveFlow.Retention.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.Diagnostics\SensitiveFlow.Diagnostics.csproj" />
+    <ProjectReference Include="..\SensitiveFlow.HealthChecks\SensitiveFlow.HealthChecks.csproj" />
+  </ItemGroup>
+
+</Project>

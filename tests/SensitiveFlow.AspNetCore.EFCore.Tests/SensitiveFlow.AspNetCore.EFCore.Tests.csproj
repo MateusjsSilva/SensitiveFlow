@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore.EFCore\SensitiveFlow.AspNetCore.EFCore.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.EFCore\SensitiveFlow.EFCore.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.Logging\SensitiveFlow.Logging.csproj" />
+  </ItemGroup>
+</Project>

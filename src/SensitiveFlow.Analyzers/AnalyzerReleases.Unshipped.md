@@ -1,8 +1,2 @@
-### New Rules
-
-Rule ID | Category | Severity | Notes
---------|----------|----------|------
-SF0001 | Privacy | Warning | Sensitive member logged directly without sanitization.
-SF0002 | Privacy | Warning | Sensitive member returned directly in HTTP response.
-SF0003 | Privacy | Warning | Entity with sensitive data missing DataSubjectId/UserId.
-SF0004 | Privacy | Info    | Property name suggests PII but is not annotated.
+; Shipped analyzer release tracking. New rules added to a release version go here,
+; then move to AnalyzerReleases.Shipped.md once the release is published.

@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -9,7 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.Console" />
@@ -21,17 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Audit\SensitiveFlow.Audit.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Audit.EFCore\SensitiveFlow.Audit.EFCore.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.EFCore\SensitiveFlow.EFCore.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore\SensitiveFlow.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.TokenStore.EFCore\SensitiveFlow.TokenStore.EFCore.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Diagnostics\SensitiveFlow.Diagnostics.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Json\SensitiveFlow.Json.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Logging\SensitiveFlow.Logging.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.Retention\SensitiveFlow.Retention.csproj" />
+    <ProjectReference Include="..\..\src\SensitiveFlow.AspNetCore.EFCore\SensitiveFlow.AspNetCore.EFCore.csproj" />
   </ItemGroup>
 
 </Project>

@@ -147,8 +147,31 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
         => _inner.QueryByDataSubjectAsync(dataSubjectId, from, to, skip, take, cancellationToken);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Prefer <c>await using</c> / <see cref="DisposeAsync"/>. This synchronous overload
+    /// signals the worker to complete and waits up to <see cref="BufferedAuditStoreOptions.ShutdownTimeout"/>
+    /// for the pending batch to flush. Records still in flight after the timeout are abandoned
+    /// (counted in <see cref="GetHealth"/>.<see cref="BufferedAuditStoreHealth.DroppedItems"/>);
+    /// this overload never blocks indefinitely so it is safe in synchronous shutdown paths.
+    /// </remarks>
     public void Dispose()
-        => DisposeAsync().AsTask().GetAwaiter().GetResult();
+    {
+        _channel.Writer.TryComplete();
+        if (!_worker.Wait(_options.ShutdownTimeout))
+        {
+            // Worker did not finish in time. Count the still-pending records as dropped
+            // so health/metrics reflect the loss instead of silently swallowing them.
+            var abandoned = _channel.Reader.Count;
+            if (abandoned > 0)
+            {
+                Interlocked.Add(ref _droppedCount, abandoned);
+                DroppedItemsCounter.Add(abandoned);
+                _logger?.LogWarning(
+                    "BufferedAuditStore.Dispose timed out after {Timeout}; {Abandoned} records were not flushed.",
+                    _options.ShutdownTimeout, abandoned);
+            }
+        }
+    }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
@@ -179,6 +202,18 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
                 {
                     await FlushAsync(batch).ConfigureAwait(false);
                 }
+            }
+
+            // Channel was completed. Drain any records that landed between WaitToReadAsync
+            // returning false and TryComplete (the channel guarantees they remain readable
+            // after Complete until drained).
+            while (_channel.Reader.TryRead(out var record))
+            {
+                batch.Add(record);
+            }
+            if (batch.Count > 0)
+            {
+                await FlushAsync(batch).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -225,6 +260,13 @@ public sealed class BufferedAuditStoreOptions
 
     /// <summary>Maximum number of queued audit records flushed to the inner store at once. Default <c>100</c>.</summary>
     public int MaxBatchSize { get; set; } = 100;
+
+    /// <summary>
+    /// Maximum time the synchronous <see cref="BufferedAuditStore.Dispose"/> waits for the
+    /// background worker to drain. Records still in flight after this timeout are counted as
+    /// dropped instead of blocking shutdown indefinitely. Default <c>5 seconds</c>.
+    /// </summary>
+    public TimeSpan ShutdownTimeout { get; set; } = TimeSpan.FromSeconds(5);
 }
 
 /// <summary>

@@ -6,6 +6,7 @@ using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.Core.Reflection;
 
 namespace SensitiveFlow.EFCore.Interceptors;
@@ -19,15 +20,20 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 {
     private readonly IAuditStore _auditStore;
     private readonly IAuditContext _auditContext;
+    private readonly IPseudonymizer? _pseudonymizer;
     private readonly ConditionalWeakTable<DbContext, PendingAuditRecords> _pendingRecords = new();
 
     /// <summary>
     /// Initializes a new instance of <see cref="SensitiveDataAuditInterceptor"/>.
     /// </summary>
-    public SensitiveDataAuditInterceptor(IAuditStore auditStore, IAuditContext auditContext)
+    public SensitiveDataAuditInterceptor(
+        IAuditStore auditStore,
+        IAuditContext auditContext,
+        IPseudonymizer? pseudonymizer = null)
     {
         _auditStore = auditStore;
         _auditContext = auditContext;
+        _pseudonymizer = pseudonymizer;
     }
 
     /// <inheritdoc />
@@ -79,11 +85,19 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <b>⚠ DEADLOCK RISK:</b> Flushing audit records requires async I/O. To avoid the
+    /// classic sync-over-async deadlock on ASP.NET Core's thread-pool, we run the flush
+    /// via <see cref="Task.Run(Func{Task})"/>, which detaches from any captured
+    /// <see cref="SynchronizationContext"/>. This is still a synchronous wait — prefer
+    /// <c>SaveChangesAsync</c> in any concurrent host.
+    /// </remarks>
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
         if (eventData.Context is not null)
         {
-            FlushAuditRecordsAsync(eventData.Context, CancellationToken.None).GetAwaiter().GetResult();
+            var context = eventData.Context;
+            Task.Run(() => FlushAuditRecordsAsync(context, CancellationToken.None)).GetAwaiter().GetResult();
         }
 
         return base.SavedChanges(eventData, result);
@@ -136,6 +150,12 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
             foreach (var property in sensitiveProperties)
             {
+                var auditAction = ResolveAuditAction(property);
+                if (auditAction == OutputRedactionAction.Omit)
+                {
+                    continue;
+                }
+
                 if (entry.State == EntityState.Modified)
                 {
                     var propEntry = entry.Property(property.Name);
@@ -153,13 +173,90 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
                     Operation = operation,
                     Timestamp = timestamp,
                     ActorId = actorId,
-                    IpAddressToken = ipToken
+                    IpAddressToken = ipToken,
+                    Details = BuildAuditDetails(entry.Entity, property, auditAction)
                 };
 
                 var pending = _pendingRecords.GetOrCreateValue(context);
                 pending.Records.Add(record);
             }
         }
+    }
+
+    private string? BuildAuditDetails(object entity, System.Reflection.PropertyInfo property, OutputRedactionAction action)
+    {
+        if (action == OutputRedactionAction.None)
+        {
+            return null;
+        }
+
+        var value = property.CanRead ? property.GetValue(entity) : null;
+        var protectedValue = action switch
+        {
+            OutputRedactionAction.Redact => SensitiveFlowDefaults.RedactedPlaceholder,
+            OutputRedactionAction.Mask => MaskValue(value, property.Name),
+            OutputRedactionAction.Pseudonymize => PseudonymizeValue(value),
+            _ => null,
+        };
+
+        return protectedValue is null
+            ? $"Audit redaction action: {action}."
+            : $"Audit redaction action: {action}; value: {protectedValue}.";
+    }
+
+    private string PseudonymizeValue(object? value)
+    {
+        var text = value?.ToString();
+        if (string.IsNullOrEmpty(text) || _pseudonymizer is null)
+        {
+            return SensitiveFlowDefaults.RedactedPlaceholder;
+        }
+
+        return _pseudonymizer.Pseudonymize(text);
+    }
+
+    private static OutputRedactionAction ResolveAuditAction(System.Reflection.PropertyInfo property)
+    {
+        var contextual = property.GetCustomAttributes(typeof(RedactionAttribute), inherit: true)
+            .OfType<RedactionAttribute>()
+            .FirstOrDefault();
+        return contextual?.ForContext(RedactionContext.Audit) ?? OutputRedactionAction.None;
+    }
+
+    private static string MaskValue(object? value, string propertyName)
+    {
+        var text = value?.ToString();
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        if (propertyName.Contains("Email", StringComparison.OrdinalIgnoreCase))
+        {
+            var at = text.IndexOf('@', StringComparison.Ordinal);
+            return at > 1
+                ? text[0] + new string('*', at - 1) + text[at..]
+                : GenericMask(text);
+        }
+
+        return GenericMask(text);
+    }
+
+    private static string GenericMask(string text)
+    {
+        if (text.Length == 1)
+        {
+            return "*";
+        }
+
+        return string.Create(text.Length, text, static (span, source) =>
+        {
+            span[0] = source[0];
+            for (var i = 1; i < span.Length; i++)
+            {
+                span[i] = '*';
+            }
+        });
     }
 
     private async Task FlushAuditRecordsAsync(DbContext context, CancellationToken cancellationToken)

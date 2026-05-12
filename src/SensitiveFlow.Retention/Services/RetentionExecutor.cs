@@ -41,15 +41,21 @@ public sealed class RetentionExecutor
     ];
 
     private readonly RetentionExecutorOptions _options;
+    private readonly TimeProvider _timeProvider;
 
-    /// <summary>Initializes a new instance with default options.</summary>
-    public RetentionExecutor() : this(new RetentionExecutorOptions()) { }
+    /// <summary>Initializes a new instance with default options and system clock.</summary>
+    public RetentionExecutor() : this(new RetentionExecutorOptions(), TimeProvider.System) { }
 
     /// <summary>Initializes a new instance.</summary>
     public RetentionExecutor(RetentionExecutorOptions options)
+        : this(options, TimeProvider.System) { }
+
+    /// <summary>Initializes a new instance with a custom <see cref="TimeProvider"/>.</summary>
+    public RetentionExecutor(RetentionExecutorOptions options, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     /// <summary>
@@ -66,11 +72,35 @@ public sealed class RetentionExecutor
         Func<object, DateTimeOffset> referenceDateSelector,
         CancellationToken cancellationToken = default)
     {
+        return ExecuteCoreAsync(entities, referenceDateSelector, mutate: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Evaluates retention policies and returns the actions that would be taken without mutating entities.
+    /// </summary>
+    /// <param name="entities">Entities to evaluate.</param>
+    /// <param name="referenceDateSelector">Returns the retention start date for each entity.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An aggregated report describing pending actions.</returns>
+    public Task<RetentionExecutionReport> DryRunAsync(
+        IEnumerable<object> entities,
+        Func<object, DateTimeOffset> referenceDateSelector,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteCoreAsync(entities, referenceDateSelector, mutate: false, cancellationToken);
+    }
+
+    private Task<RetentionExecutionReport> ExecuteCoreAsync(
+        IEnumerable<object> entities,
+        Func<object, DateTimeOffset> referenceDateSelector,
+        bool mutate,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(entities);
         ArgumentNullException.ThrowIfNull(referenceDateSelector);
 
         var report = new RetentionExecutionReport();
-        var now = DateTimeOffset.UtcNow;
+        var now = _timeProvider.GetUtcNow();
 
         foreach (var entity in entities)
         {
@@ -81,13 +111,18 @@ public sealed class RetentionExecutor
             }
 
             var referenceDate = referenceDateSelector(entity);
-            ProcessEntityRecursive(entity, referenceDate, now, report);
+            ProcessEntityRecursive(entity, referenceDate, now, report, mutate);
         }
 
         return Task.FromResult(report);
     }
 
-    private void ProcessEntityRecursive(object entity, DateTimeOffset referenceDate, DateTimeOffset now, RetentionExecutionReport report)
+    private void ProcessEntityRecursive(
+        object entity,
+        DateTimeOffset referenceDate,
+        DateTimeOffset now,
+        RetentionExecutionReport report,
+        bool mutate)
     {
         var retentionProperties = SensitiveMemberCache.GetRetentionProperties(entity.GetType());
 
@@ -101,7 +136,7 @@ public sealed class RetentionExecutor
 
             var action = pair.Attribute.Policy switch
             {
-                RetentionPolicy.AnonymizeOnExpiration => Anonymize(entity, pair.Property),
+                RetentionPolicy.AnonymizeOnExpiration => mutate ? Anonymize(entity, pair.Property) : RetentionAction.Anonymized,
                 RetentionPolicy.DeleteOnExpiration => RetentionAction.DeletePending,
                 RetentionPolicy.BlockOnExpiration => RetentionAction.Blocked,
                 RetentionPolicy.NotifyOwner => RetentionAction.NotifyPending,
@@ -120,7 +155,7 @@ public sealed class RetentionExecutor
                 continue;
             }
 
-            ProcessEntityRecursive(value, referenceDate, now, report);
+            ProcessEntityRecursive(value, referenceDate, now, report, mutate);
         }
     }
 

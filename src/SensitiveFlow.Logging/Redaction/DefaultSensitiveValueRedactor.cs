@@ -1,3 +1,5 @@
+using SensitiveFlow.Core.Profiles;
+
 namespace SensitiveFlow.Logging.Redaction;
 
 /// <summary>
@@ -9,9 +11,9 @@ public sealed class DefaultSensitiveValueRedactor : ISensitiveValueRedactor
 
     /// <summary>
     /// Initializes a new instance using the given replacement marker.
-    /// Defaults to <c>[REDACTED]</c>.
+    /// Defaults to <see cref="SensitiveFlowDefaults.RedactedPlaceholder"/>.
     /// </summary>
-    public DefaultSensitiveValueRedactor(string marker = "[REDACTED]")
+    public DefaultSensitiveValueRedactor(string marker = SensitiveFlowDefaults.RedactedPlaceholder)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(marker);
         _marker = marker;

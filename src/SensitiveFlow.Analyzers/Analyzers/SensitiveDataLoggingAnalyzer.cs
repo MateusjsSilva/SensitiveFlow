@@ -42,6 +42,11 @@ public sealed class SensitiveDataLoggingAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
+            if (sensitiveMember!.HasAllowSensitiveLoggingAttribute())
+            {
+                continue;
+            }
+
             context.ReportDiagnostic(Diagnostic.Create(
                 DiagnosticDescriptors.SensitiveDataLoggedDirectly,
                 argument.Syntax.GetLocation(),
