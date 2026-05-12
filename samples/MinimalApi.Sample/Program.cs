@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using MinimalApi.Sample.Infrastructure;
 using SensitiveFlow.AspNetCore.EFCore.Extensions;
 using SensitiveFlow.Audit.EFCore;
+using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Profiles;
 using SensitiveFlow.TokenStore.EFCore;
 
@@ -94,7 +96,13 @@ app.MapGet("/", () => Results.Content("""
 const output = document.querySelector('#output');
 const show = async response => {
   const text = await response.text();
-  output.textContent = `${response.status} ${response.statusText}\n${text}`;
+  let body = text;
+  try {
+    body = JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    body = text;
+  }
+  output.textContent = `${response.status} ${response.statusText}\n${body}`;
 };
 const rawId = () => new FormData(document.querySelector('#lookup')).get('id')?.trim();
 const idValue = () => encodeURIComponent(rawId());
@@ -226,6 +234,9 @@ public sealed record CreateCustomerRequest(
 
 public sealed record CustomerResponse(
     string DataSubjectId,
+    [property: PersonalData(Category = DataCategory.Identification)]
     string Name,
+    [property: PersonalData(Category = DataCategory.Contact)]
     string Email,
+    [property: PersonalData(Category = DataCategory.Contact)]
     string Phone);

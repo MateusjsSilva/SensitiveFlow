@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using SensitiveFlow.Audit.EFCore;
 using SensitiveFlow.Audit.EFCore.Outbox.Entities;
@@ -14,7 +15,10 @@ namespace SensitiveFlow.Audit.EFCore.Outbox.Stores;
 public sealed class EfCoreAuditOutbox : IDurableAuditOutbox
 {
     private readonly IDbContextFactory<AuditDbContext> _factory;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     /// <summary>Initializes a new instance.</summary>
     public EfCoreAuditOutbox(IDbContextFactory<AuditDbContext> factory)

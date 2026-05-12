@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
 
@@ -9,7 +10,10 @@ namespace SensitiveFlow.Audit.Outbox;
 /// </summary>
 public sealed class JsonAuditOutboxSerializer : IAuditOutboxSerializer
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     /// <inheritdoc />
     public string Serialize(AuditRecord record)

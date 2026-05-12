@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SensitiveFlow.Core.Export;
 
@@ -11,7 +12,12 @@ public sealed class JsonDataExportFormatter : IDataExportFormatter
     public string Format(IEnumerable<IReadOnlyDictionary<string, object?>> rows)
     {
         ArgumentNullException.ThrowIfNull(rows);
-        return JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true });
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+        return JsonSerializer.Serialize(rows, options);
     }
 }
 

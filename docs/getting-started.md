@@ -19,7 +19,9 @@ The runnable samples in this repository target .NET 10. Use the .NET 10 SDK when
 running `samples/QuickStart.Sample`, `samples/MinimalApi.Sample`, or
 `samples/WebApi.Sample`.
 
-### Step 1 - Annotate your model
+### Step 1 - Annotate your entities and DTOs
+
+Annotate your domain entities:
 
 ```csharp
 using SensitiveFlow.Core.Attributes;
@@ -43,6 +45,8 @@ public class Customer
 ```
 
 `DataSubjectId` or `UserId` is required for EF Core audit correlation.
+
+When you return DTOs from endpoints, **annotate the corresponding properties** to ensure JSON redaction applies. See [DTO Pattern](dto-pattern.md) for detailed guidance.
 
 ### Step 2 - Register SensitiveFlow
 

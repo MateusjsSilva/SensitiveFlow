@@ -90,6 +90,18 @@ builder.Services.AddDbContext<AppDbContext>((sp, opts) =>
 });
 ```
 
+## Response DTOs and JSON Redaction
+
+When endpoints return DTOs instead of entities, enable JSON redaction at the response middleware level and annotate DTO properties with `[PersonalData]` or `[SensitiveData]` to match the entity annotations:
+
+```csharp
+builder.Services.ConfigureHttpJsonOptions(opt =>
+    opt.SerializerOptions.WithSensitiveDataRedaction(
+        new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
+```
+
+See [DTO Pattern](dto-pattern.md) for complete examples and best practices.
+
 ## Testing
 
 Use `Microsoft.AspNetCore.TestHost` to test middleware behaviour in isolation:

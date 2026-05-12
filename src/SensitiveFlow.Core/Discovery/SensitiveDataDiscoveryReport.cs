@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SensitiveFlow.Core.Discovery;
 
@@ -23,7 +24,12 @@ public sealed class SensitiveDataDiscoveryReport
     /// <summary>Serializes the report to indented JSON.</summary>
     public string ToJson()
     {
-        return JsonSerializer.Serialize(Entries, new JsonSerializerOptions { WriteIndented = true });
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+        return JsonSerializer.Serialize(Entries, options);
     }
 
     /// <summary>Renders the report as a Markdown table.</summary>
