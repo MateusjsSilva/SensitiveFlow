@@ -52,7 +52,7 @@ public sealed class AuditOutboxHealthCheckTests
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
         result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("In-memory audit outbox");
+        result.Description.Should().Contain("non-durable audit outbox");
     }
 
     [Fact]

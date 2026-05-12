@@ -15,11 +15,18 @@ public static class AspNetCoreServiceCollectionExtensions
     /// Registers <see cref="HttpAuditContext"/> as the scoped <see cref="IAuditContext"/>,
     /// backed by the HTTP context accessor.
     /// </summary>
-    public static IServiceCollection AddSensitiveFlowAspNetCore(this IServiceCollection services)
+    public static IServiceCollection AddSensitiveFlowAspNetCore(
+        this IServiceCollection services,
+        Action<SensitiveFlowAuditMiddlewareOptions>? configureMiddleware = null)
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
         services.AddSingleton<SensitiveFlowAspNetCorePipelineDiagnostics>();
+
+        var middlewareOptions = new SensitiveFlowAuditMiddlewareOptions();
+        configureMiddleware?.Invoke(middlewareOptions);
+        services.AddSingleton(middlewareOptions);
+
         return services;
     }
 

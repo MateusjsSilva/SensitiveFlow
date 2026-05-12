@@ -24,10 +24,9 @@ public sealed class AuditOutboxHealthCheck : IHealthCheck
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var isInMemory = _outbox.GetType().FullName == "SensitiveFlow.Audit.Outbox.InMemoryAuditOutbox";
-        if (isInMemory && _environment?.IsDevelopment() == false)
+        if (_outbox is INonDurableAuditOutbox && _environment?.IsDevelopment() == false)
         {
-            return Task.FromResult(HealthCheckResult.Degraded("In-memory audit outbox is configured outside Development."));
+            return Task.FromResult(HealthCheckResult.Degraded("A non-durable audit outbox is configured outside Development."));
         }
 
         return Task.FromResult(HealthCheckResult.Healthy("Audit outbox resolved."));

@@ -9,7 +9,7 @@ namespace SensitiveFlow.Audit.Outbox;
 /// It is not durable and should not be used as the only production outbox.
 /// </summary>
 [Obsolete("InMemoryAuditOutbox is for tests/local development only. Use AddEfCoreAuditOutbox() or AddAuditOutbox<TOutbox>() for durable production delivery.", error: false)]
-public sealed class InMemoryAuditOutbox : IAuditOutbox
+public sealed class InMemoryAuditOutbox : INonDurableAuditOutbox
 {
     private readonly ConcurrentQueue<AuditRecord> _records = new();
 
