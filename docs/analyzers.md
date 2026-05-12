@@ -14,7 +14,7 @@ dotnet add package SensitiveFlow.Analyzers
 In application projects, keep analyzers private to that project:
 
 ```xml
-<PackageReference Include="SensitiveFlow.Analyzers" Version="1.0.0-preview.1" PrivateAssets="all" />
+<PackageReference Include="SensitiveFlow.Analyzers" Version="1.0.0-preview.3" PrivateAssets="all" />
 ```
 
 During local development of this repository, reference the analyzer project as an
