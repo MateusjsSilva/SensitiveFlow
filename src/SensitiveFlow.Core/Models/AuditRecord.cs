@@ -56,6 +56,50 @@ public sealed record AuditRecord
 
     /// <summary>Additional audit details.</summary>
     public string? Details { get; init; }
+
+    /// <summary>
+    /// SHA-256 hash of the previous audit record in the chain (for a specific data subject).
+    /// Used to detect tampering or deletion of records. If this is the first record for a subject,
+    /// this field is <c>null</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This field enables the detection of audit trail tampering by implementing a hash-linked
+    /// chain. When verifying audit integrity, callers can reconstruct the hash chain and detect:
+    /// <list type="bullet">
+    ///   <item><description>Deleted records (missing link in chain)</description></item>
+    ///   <item><description>Modified records (hash mismatch with next record)</description></item>
+    ///   <item><description>Out-of-order records (hash references misaligned)</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The hash is computed from the <see cref="Id"/>, <see cref="DataSubjectId"/>,
+    /// <see cref="Entity"/>, <see cref="Field"/>, <see cref="Operation"/>, and
+    /// <see cref="Timestamp"/> of the previous record. See <c>AuditRecordIntegrityHelper</c>
+    /// for the hashing algorithm.
+    /// </para>
+    /// </remarks>
+    public string? PreviousRecordHash { get; init; }
+
+    /// <summary>
+    /// SHA-256 hash of this audit record's immutable fields.
+    /// Used as a reference point for subsequent records and for integrity verification.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This field is computed when the record is persisted and should remain immutable.
+    /// When computing the hash, only immutable fields are included: <see cref="Id"/>,
+    /// <see cref="DataSubjectId"/>, <see cref="Entity"/>, <see cref="Field"/>,
+    /// <see cref="Operation"/>, and <see cref="Timestamp"/>. Mutable fields like
+    /// <see cref="Details"/> are not included to allow logging systems to append
+    /// enrichment data without breaking the chain.
+    /// </para>
+    /// <para>
+    /// If <c>null</c>, the record has not yet been persisted or the audit store
+    /// does not support hash computation.
+    /// </para>
+    /// </remarks>
+    public string? CurrentRecordHash { get; init; }
 }
 
 
