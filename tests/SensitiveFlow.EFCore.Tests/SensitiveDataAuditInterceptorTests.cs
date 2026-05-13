@@ -48,6 +48,23 @@ public sealed class SensitiveDataAuditInterceptorTests
                 .Options;
     }
 
+    private sealed class SqliteAuditDbContext : DbContext
+    {
+        private readonly SqliteConnection _connection;
+        private readonly SensitiveDataAuditInterceptor _interceptor;
+
+        public SqliteAuditDbContext(SqliteConnection connection, SensitiveDataAuditInterceptor interceptor)
+        {
+            _connection = connection;
+            _interceptor = interceptor;
+        }
+
+        public DbSet<UserEntity> Users => Set<UserEntity>();
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+            => optionsBuilder.UseSqlite(_connection).AddInterceptors(_interceptor);
+    }
+
     private sealed class AuditRedactionEntity
     {
         public int Id { get; set; }
@@ -175,6 +192,27 @@ public sealed class SensitiveDataAuditInterceptorTests
 
         var records = await store.QueryAsync();
         records.Should().Contain(r => r.Operation == AuditOperation.Update && r.Field == "Email");
+    }
+
+    [Fact]
+    public async Task ExecuteUpdateAsync_DoesNotEmitAuditRecords_BecauseItBypassesSaveChanges()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+        await using var db = new SqliteAuditDbContext(connection, interceptor);
+        await db.Database.EnsureCreatedAsync();
+
+        db.Users.Add(new UserEntity());
+        await db.SaveChangesAsync();
+
+        await db.Users.ExecuteUpdateAsync(setters => setters
+            .SetProperty(u => u.Email, "bulk@example.com"));
+
+        var records = await store.QueryAsync();
+        records.Should().Contain(r => r.Operation == AuditOperation.Create && r.Field == "Email");
+        records.Should().NotContain(r => r.Operation == AuditOperation.Update);
     }
 
     [Fact]

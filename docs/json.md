@@ -59,6 +59,22 @@ builder.Services.ConfigureHttpJsonOptions(opt =>
 
 For highly sensitive numeric values such as salary, account balance, credit limits, or tax rates, avoid magnitude-preserving masks such as `25K` or `25***`: they still reveal useful information. Prefer `Null`, `Placeholder`, or `Omit`.
 
+## Dynamic dictionaries
+
+Attributes do not exist on individual dynamic entries inside `Dictionary<string, object?>`, so SensitiveFlow does not redact dictionary values by key name. This avoids surprising consumers: an `email` key may be public in one endpoint (for example, a seller contact) and personal data in another.
+
+If a dynamic payload is sensitive, mark the dictionary property itself:
+
+```csharp
+public class CustomerMetadataResponse
+{
+    [SensitiveData(Category = SensitiveDataCategory.Other)]
+    public Dictionary<string, object?> Metadata { get; set; } = [];
+}
+```
+
+With the default non-string mode, the whole dictionary serializes as `null`. With `JsonNonStringRedactionMode.Omit`, the property is removed. Prefer typed DTOs with `[PersonalData]` / `[SensitiveData]` whenever possible when only some fields in the dynamic shape are sensitive.
+
 ## Per-property overrides
 
 `[JsonRedaction]` overrides the global default for a single property:
@@ -109,6 +125,8 @@ For controllers using Newtonsoft.Json, you'll need a separate adapter — this p
 - It does not redact values during **deserialization** — incoming requests must validate sensitive fields with your own logic.
 - It does not encrypt anything; it just rewrites property values during serialization.
 - It does not affect log redaction. Use `SensitiveFlow.Logging` for that.
+- It does not inspect already-serialized JSON strings returned via `Results.Text`, `ContentResult`, files, queues, or cache writes. Serialize with configured `JsonSerializerOptions` or return typed objects/DTOs.
+- It does not integrate with Newtonsoft.Json. Use `System.Text.Json` or a separate Newtonsoft adapter.
 
 ## Using with DTOs
 

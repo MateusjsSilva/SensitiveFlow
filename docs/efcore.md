@@ -89,6 +89,17 @@ public class Order
 | `Modified` | `Update` |
 | `Deleted` | `Delete` |
 
+## Bulk updates and raw SQL
+
+The interceptor observes EF Core's `ChangeTracker` during `SaveChanges` / `SaveChangesAsync`. Operations that bypass tracked entities do not produce per-field audit records automatically:
+
+- `ExecuteUpdate` / `ExecuteUpdateAsync`
+- `ExecuteDelete` / `ExecuteDeleteAsync`
+- `Database.ExecuteSqlRaw` / `ExecuteSqlInterpolated`
+- direct database changes outside EF Core
+
+For these paths, create audit records explicitly around the bulk operation, or prefer loading and modifying tracked entities when per-field audit is required.
+
 ## NullAuditContext
 
 `NullAuditContext` is a thread-safe singleton (`NullAuditContext.Instance`) that returns `null` for both `ActorId` and `IpAddressToken`. Use it in tests to keep audit records free of HTTP dependencies:

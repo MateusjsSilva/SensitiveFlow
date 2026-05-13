@@ -470,6 +470,81 @@ public sealed class JsonRedactionTests
         json.Should().Contain("\"Name\":\"A****\"");
     }
 
+    [Fact]
+    public void DictionaryValues_AreUntouched_WhenDictionaryPropertyIsNotAnnotated()
+    {
+        var json = JsonSerializer.Serialize(new DynamicPayload
+        {
+            Metadata = new Dictionary<string, object?>
+            {
+                ["sellerEmail"] = "seller@example.com",
+                ["customerEmail"] = "customer@example.com",
+                ["publicNote"] = "hello",
+            },
+        }, Build());
+
+        json.Should().Contain("seller@example.com");
+        json.Should().Contain("customer@example.com");
+        json.Should().Contain("hello");
+    }
+
+    [Fact]
+    public void DictionaryValues_AreProtected_WhenDictionaryPropertyIsAnnotated_DefaultNull()
+    {
+        var json = JsonSerializer.Serialize(new SensitiveDynamicPayload
+        {
+            Metadata = new Dictionary<string, object?>
+            {
+                ["customerEmail"] = "customer@example.com",
+                ["salary"] = 25000m,
+            },
+        }, Build());
+
+        json.Should().Contain("\"Metadata\":null");
+        json.Should().NotContain("customer@example.com");
+        json.Should().NotContain("25000");
+    }
+
+    [Fact]
+    public void DictionaryValues_AreProtected_WhenDictionaryPropertyIsAnnotated_PlaceholderMode()
+    {
+        var json = JsonSerializer.Serialize(new SensitiveDynamicPayload
+        {
+            Metadata = new Dictionary<string, object?>
+            {
+                ["customerEmail"] = "customer@example.com",
+                ["salary"] = 25000m,
+            },
+        }, Build(new JsonRedactionOptions
+        {
+            NonStringRedactionMode = JsonNonStringRedactionMode.Placeholder,
+        }));
+
+        json.Should().Contain("\"Metadata\":[\"[REDACTED]\",\"[REDACTED]\"]");
+        json.Should().NotContain("customer@example.com");
+        json.Should().NotContain("25000");
+    }
+
+    [Fact]
+    public void CollectionOfObjects_UsesElementAnnotations_WhenCollectionItselfIsNotAnnotated()
+    {
+        var json = JsonSerializer.Serialize(new ContactDirectory
+        {
+            Contacts =
+            [
+                new ContactEntry { Email = "alice@example.com", DisplayName = "Alice Example" },
+                new ContactEntry { Email = "bob@example.com", DisplayName = "Bob Example" },
+            ],
+        }, Build());
+
+        json.Should().Contain("\"Contacts\":[");
+        json.Should().Contain("\"Email\":\"a****@example.com\"");
+        json.Should().Contain("\"Email\":\"b**@example.com\"");
+        json.Should().Contain("\"DisplayName\":\"Alice Example\"");
+        json.Should().NotContain("alice@example.com");
+        json.Should().NotContain("bob@example.com");
+    }
+
     public class Customer
     {
         public int Id { get; set; }
@@ -610,5 +685,29 @@ public sealed class JsonRedactionTests
 
         [PersonalData(Category = DataCategory.Identification)]
         public string Name { get; set; } = string.Empty;
+    }
+
+    public class ContactDirectory
+    {
+        public List<ContactEntry> Contacts { get; set; } = [];
+    }
+
+    public class ContactEntry
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = string.Empty;
+
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    public class DynamicPayload
+    {
+        public Dictionary<string, object?> Metadata { get; set; } = [];
+    }
+
+    public class SensitiveDynamicPayload
+    {
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        public Dictionary<string, object?> Metadata { get; set; } = [];
     }
 }
