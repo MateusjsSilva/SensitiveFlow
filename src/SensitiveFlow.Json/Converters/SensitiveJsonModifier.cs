@@ -58,7 +58,8 @@ public static class SensitiveJsonModifier
                     continue;
                 }
 
-                var mode = ResolveMode(clrProperty, options);
+                var redactionSettings = ResolveSettings(clrProperty, options);
+                var mode = redactionSettings.Mode;
 
                 if (mode == JsonRedactionMode.None)
                 {
@@ -71,14 +72,46 @@ public static class SensitiveJsonModifier
                     continue;
                 }
 
-                ApplyRedactingGetter(jsonProperty, mode, options.RedactedPlaceholder);
+                if (jsonProperty.PropertyType != typeof(string)
+                    && options.NonStringRedactionMode == JsonNonStringRedactionMode.Omit)
+                {
+                    typeInfo.Properties.RemoveAt(i);
+                    continue;
+                }
+
+                if (jsonProperty.PropertyType == typeof(string))
+                {
+                    ApplyRedactingGetter(jsonProperty, redactionSettings, options.RedactedPlaceholder);
+                    continue;
+                }
+
+                ReplaceWithRedactingProperty(
+                    typeInfo,
+                    i,
+                    jsonProperty,
+                    clrProperty,
+                    redactionSettings,
+                    options.RedactedPlaceholder,
+                    options.NonStringRedactionMode);
             }
         };
     }
 
-    private static JsonRedactionMode ResolveMode(PropertyInfo property, JsonRedactionOptions options)
+    private static JsonRedactionSettings ResolveSettings(PropertyInfo property, JsonRedactionOptions options)
     {
         var overrideAttr = property.GetCustomAttribute<JsonRedactionAttribute>(inherit: true);
+        return new JsonRedactionSettings(
+            ResolveMode(property, options, overrideAttr),
+            overrideAttr is { HasPreservePrefixLength: true }
+                ? overrideAttr.PreservePrefixLength
+                : null);
+    }
+
+    private static JsonRedactionMode ResolveMode(
+        PropertyInfo property,
+        JsonRedactionOptions options,
+        JsonRedactionAttribute? overrideAttr)
+    {
         if (overrideAttr is not null)
         {
             return overrideAttr.Mode;
@@ -157,7 +190,10 @@ public static class SensitiveJsonModifier
         };
     }
 
-    private static void ApplyRedactingGetter(JsonPropertyInfo jsonProperty, JsonRedactionMode mode, string placeholder)
+    private static void ApplyRedactingGetter(
+        JsonPropertyInfo jsonProperty,
+        JsonRedactionSettings settings,
+        string placeholder)
     {
         var originalGetter = jsonProperty.Get;
         if (originalGetter is null)
@@ -170,45 +206,120 @@ public static class SensitiveJsonModifier
         jsonProperty.Get = obj =>
         {
             var value = originalGetter(obj);
-            return Redact(value, mode, placeholder, propertyName, jsonProperty.PropertyType);
+            return Redact(value, settings, placeholder, propertyName, jsonProperty.PropertyType);
         };
+    }
+
+    private static void ReplaceWithRedactingProperty(
+        JsonTypeInfo typeInfo,
+        int index,
+        JsonPropertyInfo originalProperty,
+        PropertyInfo clrProperty,
+        JsonRedactionSettings settings,
+        string placeholder,
+        JsonNonStringRedactionMode nonStringMode)
+    {
+        var originalGetter = originalProperty.Get;
+        if (originalGetter is null)
+        {
+            return;
+        }
+
+        var replacementType = nonStringMode == JsonNonStringRedactionMode.Null
+            ? GetNullableJsonPropertyType(originalProperty.PropertyType)
+            : IsCollectionType(originalProperty.PropertyType)
+            ? typeof(string[])
+            : typeof(string);
+
+        var replacement = typeInfo.CreateJsonPropertyInfo(replacementType, originalProperty.Name);
+        replacement.AttributeProvider = originalProperty.AttributeProvider;
+        replacement.Get = obj =>
+        {
+            var value = originalGetter(obj);
+            return Redact(value, settings, placeholder, originalProperty.Name, clrProperty.PropertyType, nonStringMode);
+        };
+
+        typeInfo.Properties.RemoveAt(index);
+        typeInfo.Properties.Insert(index, replacement);
     }
 
     private static object? Redact(
         object? value,
-        JsonRedactionMode mode,
+        JsonRedactionSettings settings,
         string placeholder,
         string propertyName,
-        Type propertyType)
+        Type propertyType,
+        JsonNonStringRedactionMode nonStringMode = JsonNonStringRedactionMode.Placeholder)
     {
         if (value is null)
         {
             return null;
         }
 
-        if (propertyType != typeof(string))
+        if (propertyType != typeof(string) && nonStringMode == JsonNonStringRedactionMode.Null)
         {
-            return propertyType.IsValueType ? Activator.CreateInstance(propertyType) : null;
+            return null;
         }
 
-        return mode switch
+        if (IsCollectionType(propertyType))
+        {
+            return settings.Mode switch
+            {
+                JsonRedactionMode.Redacted => RedactCollection((System.Collections.IEnumerable)value, placeholder),
+                JsonRedactionMode.Mask => MaskCollection((System.Collections.IEnumerable)value, placeholder, propertyName, settings.PreservePrefixLength),
+                _ => RedactCollection((System.Collections.IEnumerable)value, placeholder),
+            };
+        }
+
+        if (propertyType == typeof(string) && value is not string)
+        {
+            return placeholder;
+        }
+
+        if (!IsScalarType(propertyType) && settings.Mode == JsonRedactionMode.Redacted)
+        {
+            return null;
+        }
+
+        if (propertyType != typeof(string)
+            && settings.Mode is not JsonRedactionMode.Redacted
+            && settings.Mode is not JsonRedactionMode.Mask)
+        {
+            return placeholder;
+        }
+
+        return settings.Mode switch
         {
             JsonRedactionMode.Redacted => placeholder,
-            JsonRedactionMode.Mask => MaskValue(value, placeholder, propertyName),
+            JsonRedactionMode.Mask => MaskValue(value, placeholder, propertyName, settings.PreservePrefixLength),
             _ => value,
         };
     }
 
-    private static object MaskValue(object value, string placeholder, string propertyName)
+    private static object MaskValue(
+        object value,
+        string placeholder,
+        string propertyName,
+        int? preservePrefixLength)
     {
         if (value is not string s)
         {
-            return placeholder;
+            if (value is System.Collections.IEnumerable enumerable)
+            {
+                return MaskCollection(enumerable, placeholder, propertyName, preservePrefixLength);
+            }
+
+            return MaskScalar(value, placeholder);
         }
 
         if (s.Length == 0)
         {
             return s;
+        }
+
+        if (preservePrefixLength is not null)
+        {
+            return GenericMask(s, preservePrefixLength.Value);
         }
 
         // Heuristics by property name. These match the existing maskers in
@@ -232,20 +343,114 @@ public static class SensitiveJsonModifier
         return GenericMask(s);
     }
 
-    private static string GenericMask(string s)
+    private static string[] MaskCollection(
+        System.Collections.IEnumerable enumerable,
+        string placeholder,
+        string propertyName,
+        int? preservePrefixLength)
+    {
+        var values = new List<string>();
+        foreach (var item in enumerable)
+        {
+            values.Add(item is string s
+                ? (string)MaskValue(s, placeholder, propertyName, preservePrefixLength)
+                : MaskScalar(item, placeholder));
+        }
+
+        return values.ToArray();
+    }
+
+    private static string[] RedactCollection(System.Collections.IEnumerable enumerable, string placeholder)
+    {
+        var values = new List<string>();
+        foreach (var _ in enumerable)
+        {
+            values.Add(placeholder);
+        }
+
+        return values.ToArray();
+    }
+
+    private static string MaskScalar(object? value, string placeholder)
+    {
+        if (value is null)
+        {
+            return placeholder;
+        }
+
+        return value switch
+        {
+            DateTime => "[DATE_REDACTED]",
+            DateTimeOffset => "[DATE_REDACTED]",
+            TimeOnly => "[TIME_REDACTED]",
+            DateOnly => "[DATE_REDACTED]",
+            bool => "[BOOLEAN_REDACTED]",
+            byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal => "[NUMBER_REDACTED]",
+            _ => placeholder,
+        };
+    }
+
+    private static bool IsCollectionType(Type type)
+        => type != typeof(string)
+           && typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
+
+    private static Type GetNullableJsonPropertyType(Type type)
+    {
+        if (!type.IsValueType || Nullable.GetUnderlyingType(type) is not null)
+        {
+            return type;
+        }
+
+        return typeof(Nullable<>).MakeGenericType(type);
+    }
+
+    private static bool IsScalarType(Type type)
+    {
+        var nullableType = Nullable.GetUnderlyingType(type) ?? type;
+
+        return nullableType.IsEnum
+               || nullableType == typeof(string)
+               || nullableType == typeof(DateTime)
+               || nullableType == typeof(DateTimeOffset)
+               || nullableType == typeof(TimeOnly)
+               || nullableType == typeof(DateOnly)
+               || nullableType == typeof(bool)
+               || nullableType == typeof(byte)
+               || nullableType == typeof(sbyte)
+               || nullableType == typeof(short)
+               || nullableType == typeof(ushort)
+               || nullableType == typeof(int)
+               || nullableType == typeof(uint)
+               || nullableType == typeof(long)
+               || nullableType == typeof(ulong)
+               || nullableType == typeof(float)
+               || nullableType == typeof(double)
+               || nullableType == typeof(decimal);
+    }
+
+    private static string GenericMask(string s, int preservePrefixLength = 1)
     {
         if (s.Length == 1)
         {
             return "*";
         }
 
-        return string.Create(s.Length, s, static (span, source) =>
+        var visibleCharacters = Math.Clamp(preservePrefixLength, 0, s.Length);
+        return string.Create(s.Length, (s, visibleCharacters), static (span, state) =>
         {
-            span[0] = source[0];
-            for (var i = 1; i < span.Length; i++)
+            for (var i = 0; i < state.visibleCharacters; i++)
+            {
+                span[i] = state.s[i];
+            }
+
+            for (var i = state.visibleCharacters; i < span.Length; i++)
             {
                 span[i] = '*';
             }
         });
     }
+
+    private readonly record struct JsonRedactionSettings(
+        JsonRedactionMode Mode,
+        int? PreservePrefixLength);
 }

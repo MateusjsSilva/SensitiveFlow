@@ -36,6 +36,29 @@ var json = JsonSerializer.Serialize(customer, options);
 
 The mask heuristic recognizes property names containing `Email`, `Phone`, and `Name` and applies the matching masker from `SensitiveFlow.Anonymization`. Anything else falls back to a generic "first character + asterisks" mask.
 
+## Non-string values
+
+Sensitive numeric, date, boolean, and collection properties cannot be safely "partially masked" without either changing their JSON type or leaking information. `SensitiveFlow.Json` therefore lets you choose how annotated non-string values are represented:
+
+| Option | Output | Security trade-off | Compatibility trade-off |
+|--------|--------|--------------------|-------------------------|
+| `Null` (default) | `"Salary": null` | Does not emit fake values or leak magnitude | Clients must accept nullable values |
+| `Placeholder` | `"Salary": "[NUMBER_REDACTED]"` | Explicit and unambiguous | Changes JSON type from number/date/bool to string |
+| `Omit` | property is removed | Strictest option | Clients that expect the key may break |
+
+Configure it with `JsonRedactionOptions.NonStringRedactionMode`:
+
+```csharp
+builder.Services.ConfigureHttpJsonOptions(opt =>
+    opt.SerializerOptions.WithSensitiveDataRedaction(new JsonRedactionOptions
+    {
+        DefaultMode = JsonRedactionMode.Mask,
+        NonStringRedactionMode = JsonNonStringRedactionMode.Null // default
+    }));
+```
+
+For highly sensitive numeric values such as salary, account balance, credit limits, or tax rates, avoid magnitude-preserving masks such as `25K` or `25***`: they still reveal useful information. Prefer `Null`, `Placeholder`, or `Omit`.
+
 ## Per-property overrides
 
 `[JsonRedaction]` overrides the global default for a single property:
@@ -52,6 +75,20 @@ public class Customer
     public string Email { get; set; } = string.Empty;
 }
 ```
+
+For generic masks, you can preserve a specific number of leading characters on a property:
+
+```csharp
+public class PaymentResponse
+{
+    [SensitiveData(Category = SensitiveDataCategory.Financial)]
+    [JsonRedaction(RedactionMode = JsonRedactionMode.Mask, PreservePrefixLength = 3)]
+    public string InternalToken { get; set; } = string.Empty;
+    // "abcdef12345" -> "abc********"
+}
+```
+
+Use a small prefix only when revealing those characters is acceptable for the domain. For salaries, balances, birth dates, tax rates, and other highly inferable values, prefer non-string `Null`, `Placeholder`, or `Omit` instead of prefix-preserving masks.
 
 ## ASP.NET Core integration
 

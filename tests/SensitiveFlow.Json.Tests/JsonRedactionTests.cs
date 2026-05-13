@@ -70,12 +70,14 @@ public sealed class JsonRedactionTests
         {
             Email = "secret@x.com",
             TaxId = "12345678900",
+            Token = "abcdef12345",
         }, Build(new JsonRedactionOptions { DefaultMode = JsonRedactionMode.Mask }));
 
         // Email overrides to None — appears verbatim
         json.Should().Contain("\"Email\":\"secret@x.com\"");
         // TaxId overrides to Omit
         json.Should().NotContain("TaxId");
+        json.Should().Contain("\"Token\":\"abc********\"");
     }
 
     [Fact]
@@ -116,19 +118,77 @@ public sealed class JsonRedactionTests
     }
 
     [Fact]
-    public void Mode_Mask_ReplacesNonStringSensitiveValuesWithPlaceholder()
+    public void Mode_Mask_ReplacesNonStringSensitiveValuesWithTypedPlaceholders()
     {
         var json = JsonSerializer.Serialize(new NumericSensitiveData
         {
             Score = 42,
+            Salary = 1234.56m,
+            BirthDate = new DateTime(1990, 5, 15),
+            IsActive = true,
         }, Build(new JsonRedactionOptions
         {
             DefaultMode = JsonRedactionMode.Mask,
             RedactedPlaceholder = "***",
+            NonStringRedactionMode = JsonNonStringRedactionMode.Placeholder,
         }));
 
-        json.Should().Contain("\"Score\":0");
+        json.Should().Contain("\"Score\":\"[NUMBER_REDACTED]\"");
+        json.Should().Contain("\"Salary\":\"[NUMBER_REDACTED]\"");
+        json.Should().Contain("\"BirthDate\":\"[DATE_REDACTED]\"");
+        json.Should().Contain("\"IsActive\":\"[BOOLEAN_REDACTED]\"");
         json.Should().NotContain("42");
+        json.Should().NotContain("1234.56");
+        json.Should().NotContain("1990-05-15");
+        json.Should().NotContain("true");
+    }
+
+    [Fact]
+    public void Mode_Mask_CanReplaceNonStringSensitiveValuesWithNull()
+    {
+        var json = JsonSerializer.Serialize(new NumericSensitiveData
+        {
+            Score = 42,
+            Salary = 1234.56m,
+            BirthDate = new DateTime(1990, 5, 15),
+            IsActive = true,
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Mask,
+            NonStringRedactionMode = JsonNonStringRedactionMode.Null,
+        }));
+
+        json.Should().Contain("\"Score\":null");
+        json.Should().Contain("\"Salary\":null");
+        json.Should().Contain("\"BirthDate\":null");
+        json.Should().Contain("\"IsActive\":null");
+        json.Should().NotContain("42");
+        json.Should().NotContain("1234.56");
+        json.Should().NotContain("1990-05-15");
+        json.Should().NotContain("true");
+    }
+
+    [Fact]
+    public void Mode_Mask_CanOmitNonStringSensitiveValues()
+    {
+        var json = JsonSerializer.Serialize(new NumericSensitiveData
+        {
+            Score = 42,
+            Salary = 1234.56m,
+            BirthDate = new DateTime(1990, 5, 15),
+            IsActive = true,
+            PublicCount = 7,
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Mask,
+            NonStringRedactionMode = JsonNonStringRedactionMode.Omit,
+        }));
+
+        json.Should().NotContain("Score");
+        json.Should().NotContain("Salary");
+        json.Should().NotContain("BirthDate");
+        json.Should().NotContain("IsActive");
+        json.Should().Contain("\"PublicCount\":7");
     }
 
     [Fact]
@@ -189,6 +249,63 @@ public sealed class JsonRedactionTests
 
         json.Should().Contain("\"Payload\":null");
         json.Should().NotContain("secret");
+    }
+
+    [Fact]
+    public void Mode_Mask_ReplacesCollectionsWithNullByDefault()
+    {
+        var json = JsonSerializer.Serialize(new CollectionSensitiveData
+        {
+            EmailAddresses = ["alice@example.com", "bob@example.com"],
+            Tokens = ["tok_12345", "tok_67890"],
+            EmptyValues = [],
+        }, Build());
+
+        json.Should().Contain("\"EmailAddresses\":null");
+        json.Should().Contain("\"Tokens\":null");
+        json.Should().Contain("\"EmptyValues\":null");
+        json.Should().NotContain("alice@example.com");
+        json.Should().NotContain("tok_12345");
+    }
+
+    [Fact]
+    public void Mode_Mask_CanRedactCollectionsElementByElementWithPlaceholderMode()
+    {
+        var json = JsonSerializer.Serialize(new CollectionSensitiveData
+        {
+            EmailAddresses = ["alice@example.com", "bob@example.com"],
+            Tokens = ["tok_12345", "tok_67890"],
+            EmptyValues = [],
+        }, Build(new JsonRedactionOptions
+        {
+            NonStringRedactionMode = JsonNonStringRedactionMode.Placeholder,
+        }));
+
+        json.Should().Contain("\"EmailAddresses\":[\"a****@example.com\",\"b**@example.com\"]");
+        json.Should().Contain("\"Tokens\":[\"t********\",\"t********\"]");
+        json.Should().Contain("\"EmptyValues\":[]");
+        json.Should().NotContain("alice@example.com");
+        json.Should().NotContain("tok_12345");
+    }
+
+    [Fact]
+    public void Mode_Redacted_RedactsCollectionsWithoutDroppingCount()
+    {
+        var json = JsonSerializer.Serialize(new CollectionSensitiveData
+        {
+            EmailAddresses = ["alice@example.com", "bob@example.com"],
+            Tokens = ["tok_12345"],
+        }, Build(new JsonRedactionOptions
+        {
+            DefaultMode = JsonRedactionMode.Redacted,
+            RedactedPlaceholder = "***",
+            NonStringRedactionMode = JsonNonStringRedactionMode.Placeholder,
+        }));
+
+        json.Should().Contain("\"EmailAddresses\":[\"***\",\"***\"]");
+        json.Should().Contain("\"Tokens\":[\"***\"]");
+        json.Should().NotContain("alice@example.com");
+        json.Should().NotContain("tok_12345");
     }
 
     [Fact]
@@ -375,6 +492,10 @@ public sealed class JsonRedactionTests
         [SensitiveData(Category = SensitiveDataCategory.Other)]
         [JsonRedaction(JsonRedactionMode.Omit)]
         public string TaxId { get; set; } = string.Empty;
+
+        [SensitiveData(Category = SensitiveDataCategory.Other)]
+        [JsonRedaction(RedactionMode = JsonRedactionMode.Mask, PreservePrefixLength = 3)]
+        public string Token { get; set; } = string.Empty;
     }
 
     public class ExtendedCustomer
@@ -402,6 +523,17 @@ public sealed class JsonRedactionTests
     {
         [SensitiveData(Category = SensitiveDataCategory.Other)]
         public int Score { get; set; }
+
+        [SensitiveData(Category = SensitiveDataCategory.Financial)]
+        public decimal Salary { get; set; }
+
+        [PersonalData(Category = DataCategory.Identification)]
+        public DateTime BirthDate { get; set; }
+
+        [SensitiveData(Category = SensitiveDataCategory.Health)]
+        public bool IsActive { get; set; }
+
+        public int PublicCount { get; set; }
     }
 
     public class WriteOnlySensitiveData
@@ -433,6 +565,18 @@ public sealed class JsonRedactionTests
     }
 
     public sealed record Payload(string Value);
+
+    public class CollectionSensitiveData
+    {
+        [PersonalData(Category = DataCategory.Contact)]
+        public List<string> EmailAddresses { get; set; } = [];
+
+        [SensitiveData(Category = SensitiveDataCategory.Financial)]
+        public string[] Tokens { get; set; } = [];
+
+        [PersonalData(Category = DataCategory.Other)]
+        public List<string> EmptyValues { get; set; } = [];
+    }
 
     public class OutputAttributeCustomer
     {

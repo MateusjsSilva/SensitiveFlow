@@ -316,6 +316,59 @@ public sealed class EfCoreAuditStoreEdgeCaseTests
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
     }
 
+    [Fact]
+    public async Task ExecuteInTransactionAsync_InvokesOperation()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+        var factory = new SqliteFactory(connection);
+        await using (var ctx = factory.CreateDbContext())
+        {
+            await ctx.Database.EnsureCreatedAsync();
+        }
+
+        var store = new EfCoreAuditStore<AuditDbContext>(factory);
+        var called = false;
+
+        await store.ExecuteInTransactionAsync(ct =>
+        {
+            called = !ct.IsCancellationRequested;
+            return Task.CompletedTask;
+        });
+
+        called.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteInTransactionAsync_RejectsNullOperation()
+    {
+        var store = new EfCoreAuditStore<AuditDbContext>(new InMemoryFactory());
+
+        var act = () => store.ExecuteInTransactionAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task ExecuteInTransactionAsync_RethrowsOperationFailure()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+        var factory = new SqliteFactory(connection);
+        await using (var ctx = factory.CreateDbContext())
+        {
+            await ctx.Database.EnsureCreatedAsync();
+        }
+
+        var store = new EfCoreAuditStore<AuditDbContext>(factory);
+        var failure = new InvalidOperationException("boom");
+
+        var act = () => store.ExecuteInTransactionAsync(_ => throw failure);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("boom");
+    }
+
     private static AuditRecord Record(string subject, DateTimeOffset timestamp) => new()
     {
         DataSubjectId = subject,
@@ -333,6 +386,17 @@ public sealed class EfCoreAuditStoreEdgeCaseTests
         {
             var options = new DbContextOptionsBuilder<AuditDbContext>()
                 .UseInMemoryDatabase(_databaseName)
+                .Options;
+            return new AuditDbContext(options);
+        }
+    }
+
+    private sealed class SqliteFactory(SqliteConnection connection) : IDbContextFactory<AuditDbContext>
+    {
+        public AuditDbContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<AuditDbContext>()
+                .UseSqlite(connection)
                 .Options;
             return new AuditDbContext(options);
         }

@@ -162,6 +162,22 @@ public sealed class SensitiveDataAuditInterceptorTests
     }
 
     [Fact]
+    public async Task UpdateSensitiveField_EmitsUpdateRecord_WhenAutoDetectChangesIsDisabled()
+    {
+        var (db, store) = BuildContext();
+        var entity = new UserEntity();
+        db.Users.Add(entity);
+        await db.SaveChangesAsync();
+
+        db.ChangeTracker.AutoDetectChangesEnabled = false;
+        entity.Email = "changed@example.com";
+        await db.SaveChangesAsync();
+
+        var records = await store.QueryAsync();
+        records.Should().Contain(r => r.Operation == AuditOperation.Update && r.Field == "Email");
+    }
+
+    [Fact]
     public async Task UpdateNonSensitiveField_DoesNotEmitRecord()
     {
         var (db, store) = BuildContext();

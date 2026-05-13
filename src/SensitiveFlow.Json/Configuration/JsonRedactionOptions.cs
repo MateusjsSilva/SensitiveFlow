@@ -18,10 +18,19 @@ public sealed class JsonRedactionOptions
 
     /// <summary>
     /// Replacement string used by <see cref="JsonRedactionMode.Redacted"/> and as the
-    /// fallback for non-string values in <see cref="JsonRedactionMode.Mask"/>.
+    /// fallback placeholder for non-string values when
+    /// <see cref="NonStringRedactionMode"/> is <see cref="JsonNonStringRedactionMode.Placeholder"/>.
     /// Defaults to <see cref="SensitiveFlowDefaults.RedactedPlaceholder"/>.
     /// </summary>
     public string RedactedPlaceholder { get; set; } = SensitiveFlowDefaults.RedactedPlaceholder;
+
+    /// <summary>
+    /// Controls how annotated non-string values such as numbers, dates, booleans, and
+    /// collections are represented when redacted in JSON. Defaults to
+    /// <see cref="JsonNonStringRedactionMode.Null"/> to avoid emitting fake values such
+    /// as <c>0</c> or leaking magnitude.
+    /// </summary>
+    public JsonNonStringRedactionMode NonStringRedactionMode { get; set; } = JsonNonStringRedactionMode.Null;
 
     /// <summary>
     /// Optional category policy registry. When present, JSON actions from policies are used

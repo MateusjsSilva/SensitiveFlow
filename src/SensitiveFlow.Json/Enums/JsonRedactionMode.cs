@@ -1,3 +1,5 @@
+using SensitiveFlow.Json.Configuration;
+
 namespace SensitiveFlow.Json.Enums;
 
 /// <summary>
@@ -18,7 +20,8 @@ public enum JsonRedactionMode
     /// Apply a partial mask while keeping the value's general shape.
     /// E-mails, phone numbers, and names use the dedicated maskers from
     /// <c>SensitiveFlow.Anonymization</c>; any other string falls back to a generic mask
-    /// (first character + asterisks). Non-string values are replaced with <see cref="Redacted"/>.
+    /// (first character + asterisks). Non-string values follow
+    /// <see cref="JsonRedactionOptions.NonStringRedactionMode"/>.
     /// </summary>
     Mask = 2,
 

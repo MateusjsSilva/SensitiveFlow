@@ -129,6 +129,8 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
     private void CaptureAuditRecords(DbContext context)
     {
+        context.ChangeTracker.DetectChanges();
+
         // Filter by entity state AND by whether the type has any sensitive properties
         // before materializing, so non-sensitive entities never allocate a list entry.
         var entries = context.ChangeTracker.Entries()
