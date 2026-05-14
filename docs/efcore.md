@@ -134,6 +134,37 @@ builder.Services.AddDbContext<AppDbContext>((sp, options) =>
 
 Set `RequireExplicitAuditing = false` only when bulk operations on annotated entities are audited by a layer in front of EF Core.
 
+### Concurrency considerations
+
+Bulk operations perform a SELECT to prefetch affected `DataSubjectId` values, then execute the modification. Between the prefetch and the execution, concurrent transactions may insert, delete, or modify rows:
+
+- If rows matching the query are **inserted** between prefetch and execution, they will be **modified but not audited**.
+- If rows are **deleted** between prefetch and execution, audit records will be **created for subjects that no longer exist**.
+
+For operations where audit completeness is critical, wrap both the prefetch and modification in an explicit transaction:
+
+```csharp
+using var txn = await db.Database.BeginTransactionAsync();
+try
+{
+    var affected = await db.Customers
+        .Where(c => c.Status == "Inactive")
+        .ExecuteUpdateAuditedAsync(
+            s => s.SetProperty(c => c.Email, "redacted@example.com"),
+            auditStore,
+            auditContext);
+    
+    await txn.CommitAsync();
+}
+catch
+{
+    await txn.RollbackAsync();
+    throw;
+}
+```
+
+Bulk operations are typically used in background jobs where concurrency is controlled, so this is usually not a concern. However, if bulk operations are executed in a web context with high concurrency, explicit transaction boundaries ensure audit correctness.
+
 ### Raw SQL is still your responsibility
 
 `Database.ExecuteSqlRaw` and `ExecuteSqlInterpolated` are not intercepted: there is no LINQ expression to inspect and no safe way to project the affected subjects. Either avoid raw SQL against entities holding personal data, or emit audit records around it manually.

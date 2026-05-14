@@ -330,4 +330,35 @@ public sealed class SensitiveBulkOperationsTests
 
         act.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task ExecuteUpdateAuditedAsync_AuditsAllAnnotatedFields_RegardlessOfRedaction()
+    {
+        var (connection, db, store) = await BuildAsync();
+        await using var _ = connection;
+
+        db.Customers.AddRange(
+            new Customer { DataSubjectId = "s1", Email = "a@x.com", FullName = "Alice" },
+            new Customer { DataSubjectId = "s2", Email = "b@x.com", FullName = "Bob" });
+        await db.SaveChangesAsync();
+
+        var affected = await db.Customers
+            .Where(c => c.Status == "Active")
+            .ExecuteUpdateAuditedAsync(
+                s => s.SetProperty(c => c.Email, "redacted@x.com"),
+                store,
+                NullAuditContext.Instance);
+
+        affected.Should().Be(2);
+
+        var records = await store.QueryAsync();
+        // All annotated fields are audited, regardless of [Redaction] attributes
+        records.Should().HaveCount(2);
+        records.Should().AllSatisfy(r =>
+        {
+            r.Operation.Should().Be(AuditOperation.Update);
+            r.Field.Should().Be("Email");
+            r.Entity.Should().Be(nameof(Customer));
+        });
+    }
 }

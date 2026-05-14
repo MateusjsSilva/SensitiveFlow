@@ -165,6 +165,80 @@ public sealed class Customer
 
 ---
 
+### SF0005 -- Sensitive data returned from endpoint without authorization
+
+**Severity:** Warning
+
+Triggers when a method on a class decorated with `[ApiController]` returns a type containing
+properties annotated with `[PersonalData]` or `[SensitiveData]`, but the method is not protected
+by an `[Authorize]` attribute (either on the method or the class).
+
+**Detected pattern:**
+
+```csharp
+[ApiController]
+public sealed class CustomersController
+{
+    [HttpGet("{id}")]
+    public CustomerResponse GetCustomer(string id)  // SF0005: no [Authorize]
+    {
+        return new CustomerResponse { Email = "alice@example.com" };
+    }
+}
+
+public sealed class CustomerResponse
+{
+    [PersonalData]
+    public string Email { get; set; } = string.Empty;
+}
+```
+
+**Compliant patterns:**
+
+```csharp
+// Option 1: Add [Authorize] to the method
+[ApiController]
+public sealed class CustomersController
+{
+    [Authorize]
+    [HttpGet("{id}")]
+    public CustomerResponse GetCustomer(string id)
+    {
+        return new CustomerResponse { Email = "alice@example.com" };
+    }
+}
+
+// Option 2: Add [Authorize] to the class
+[ApiController]
+[Authorize]
+public sealed class CustomersController
+{
+    [HttpGet("{id}")]
+    public CustomerResponse GetCustomer(string id)
+    {
+        return new CustomerResponse { Email = "alice@example.com" };
+    }
+}
+
+// Option 3: Return a DTO without sensitive fields
+[ApiController]
+public sealed class CustomersController
+{
+    [HttpGet("{id}")]
+    public CustomerPublicResponse GetCustomer(string id)
+    {
+        return new CustomerPublicResponse { Name = "Alice" };
+    }
+}
+
+public sealed class CustomerPublicResponse
+{
+    public string Name { get; set; } = string.Empty; // No [PersonalData]
+}
+```
+
+---
+
 ## How Suppression Works
 
 The analyzer considers a value safe when it passes through a method whose name contains

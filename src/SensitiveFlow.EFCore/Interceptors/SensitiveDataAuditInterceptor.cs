@@ -153,10 +153,6 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
             foreach (var property in sensitiveProperties)
             {
                 var auditAction = ResolveAuditAction(property);
-                if (auditAction == OutputRedactionAction.Omit)
-                {
-                    continue;
-                }
 
                 if (entry.State == EntityState.Modified)
                 {

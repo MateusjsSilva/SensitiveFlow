@@ -339,13 +339,18 @@ Operational notes:
 
 Purpose:
 
-- Automatically emits audit records from EF Core `SaveChanges`.
+- Automatically emits audit records from EF Core `SaveChanges`. Provides audited helpers for bulk operations (`ExecuteUpdate`, `ExecuteDelete`) that bypass the change tracker.
 
 Primary APIs:
 
 - `AddSensitiveFlowEFCore()`
 - `SensitiveDataAuditInterceptor`
 - `NullAuditContext`
+- `AddSensitiveBulkOperations()` (registers cost guard and guard interceptor)
+- `ExecuteUpdateAuditedAsync<TEntity>()` (audited bulk update helper)
+- `ExecuteDeleteAuditedAsync<TEntity>()` (audited bulk delete helper)
+- `SensitiveBulkOperationsGuardInterceptor` (blocks unaudited bulk operations)
+- `SensitiveBulkOperationsOptions` (cost guard configuration)
 
 Install when:
 
@@ -355,14 +360,44 @@ Recommended setup:
 
 ```csharp
 builder.Services.AddSensitiveFlowEFCore();
+builder.Services.AddSensitiveBulkOperations();
 builder.Services.AddScoped<IAuditContext, MyAuditContext>();
+
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+{
+    options.UseSqlServer(connectionString);
+    options.AddInterceptors(
+        sp.GetRequiredService<SensitiveDataAuditInterceptor>(),
+        sp.GetRequiredService<SensitiveBulkOperationsGuardInterceptor>());
+});
 ```
+
+Bulk operations:
+
+EF Core's `ExecuteUpdateAsync` and `ExecuteDeleteAsync` bypass the `ChangeTracker`, so they don't trigger `SaveChanges`. Use the audited helpers instead:
+
+```csharp
+using SensitiveFlow.EFCore.BulkOperations;
+
+var affected = await db.Customers
+    .Where(c => c.Status == "Inactive")
+    .ExecuteUpdateAuditedAsync(
+        setters => setters.SetProperty(c => c.Email, "redacted@example.com"),
+        auditStore,
+        auditContext);
+```
+
+The helpers prefetch affected `DataSubjectId` values, run the bulk operation, and emit one `AuditRecord` per (subject, annotated field) pair. Cost is bounded by `MaxAuditedRows` (default 10,000).
+
+The guard interceptor blocks unaudited `ExecuteUpdateAsync` / `ExecuteDeleteAsync` calls on annotated entities, preventing silent audit loss. Disable with `RequireExplicitAuditing = false` if bulk operations are audited externally.
 
 Operational notes:
 
 - Prefer `SaveChangesAsync`.
 - Sync `SaveChanges` blocks on async flush and is not recommended for ASP.NET Core.
 - Entities must expose `DataSubjectId` or `UserId`.
+- Raw SQL (`ExecuteSqlRaw`, `ExecuteSqlInterpolated`) is not intercepted; emit audit records manually if needed.
+- Register both `SensitiveDataAuditInterceptor` and `SensitiveBulkOperationsGuardInterceptor` for comprehensive protection.
 
 ## SensitiveFlow.AspNetCore
 

@@ -284,11 +284,6 @@ public static class SensitiveBulkOperationsExtensions
         {
             foreach (var property in fields)
             {
-                if (ShouldOmit(property))
-                {
-                    continue;
-                }
-
                 records.Add(new AuditRecord
                 {
                     DataSubjectId = subject,
@@ -315,11 +310,4 @@ public static class SensitiveBulkOperationsExtensions
         }
     }
 
-    private static bool ShouldOmit(PropertyInfo property)
-    {
-        var redaction = property.GetCustomAttributes(typeof(RedactionAttribute), inherit: true)
-            .OfType<RedactionAttribute>()
-            .FirstOrDefault();
-        return redaction?.ForContext(RedactionContext.Audit) == OutputRedactionAction.Omit;
-    }
 }
