@@ -16,10 +16,27 @@ namespace SensitiveFlow.Logging.Loggers;
 /// <see cref="ILogger"/> decorator that redacts sensitive structured log values before
 /// forwarding to the inner logger.
 /// <para>
-/// Mark sensitive structured log parameters with the <c>[Sensitive]</c> prefix:
+/// Two ways to mark sensitive fields:
+/// <list type="number">
+/// <item>
+/// <description>
+/// Explicit <c>[Sensitive]</c> prefix in template:
 /// <code>
 /// logger.LogInformation("User {[Sensitive]Email} logged in", email);
 /// </code>
+/// </description>
+/// </item>
+/// <item>
+/// <description>
+/// Automatic detection when object has <c>[PersonalData]</c> or <c>[SensitiveData]</c> attributes
+/// (enabled by default via <c>RedactAnnotatedObjects = true</c>):
+/// <code>
+/// logger.LogInformation("User {User} logged in", customerObj);
+/// // User.Email with [PersonalData] is automatically redacted
+/// </code>
+/// </description>
+/// </item>
+/// </list>
 /// The redactor replaces both the rendered message text <b>and</b> the structured
 /// property value in the <c>TState</c> key-value pairs, so sinks that consume
 /// structured properties (Serilog, seq, OpenTelemetry) never receive the raw value.

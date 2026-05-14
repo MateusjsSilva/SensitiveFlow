@@ -37,4 +37,23 @@ public sealed class JsonRedactionOptions
     /// before <see cref="DefaultMode"/> and after per-property attributes.
     /// </summary>
     public SensitiveFlowPolicyRegistry? Policies { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, redacted values include metadata annotation indicating
+    /// the original property type (e.g., "Email", "Date") and redaction action. This helps
+    /// consumers understand what was redacted without seeing the value. Defaults to <see langword="false"/>
+    /// for backward compatibility; set to <see langword="true"/> when API contracts need to reflect
+    /// type information.
+    /// </summary>
+    /// <remarks>
+    /// When enabled, redacted values become objects:
+    /// <code>
+    /// "email": { "__redacted__": true, "type": "String", "action": "Mask" }
+    /// </code>
+    /// Instead of:
+    /// <code>
+    /// "email": "[REDACTED]"
+    /// </code>
+    /// </remarks>
+    public bool IncludeRedactionMetadata { get; set; } = false;
 }

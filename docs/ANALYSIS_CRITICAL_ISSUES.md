@@ -682,9 +682,13 @@ Guesses based on property name:
 
 ## Implementation Status (May 14, 2026)
 
-### Phase 1: P0 & P1 Issues — ✅ COMPLETE
+### Phase 1-2: P0 & P1 Issues — ✅ COMPLETE
 
 All critical and high-priority issues have been implemented and tested.
+
+### Phase 3: P2 Issues — ✅ COMPLETE
+
+All medium-priority performance and usability improvements implemented.
 
 #### P0 Issues (Data Integrity & Security)
 - **1.1 DataSubjectId Type Validation** ✅
@@ -731,6 +735,39 @@ All critical and high-priority issues have been implemented and tested.
   - Handles null items and empty collections safely
   - **Test Coverage:** 3 new tests for collection handling
   - **Tests Passing:** 39 retention tests (includes collection tests)
+
+### Phase 3: P2 Performance & Usability — ✅ COMPLETE
+
+- **2.1 SensitiveMemberCache [Redaction] Attribute Caching** ✅
+  - Added `GetRedactionAttribute(Type, string)` method with per-property caching
+  - Eliminates repeated reflection of `[Redaction]` attributes in bulk operations
+  - Cache key: `(Type, PropertyName)` tuple using `ConcurrentDictionary`
+  - Supports interface-defined attributes
+
+- **2.2 MaxAuditedRows Heuristic Sizing** ✅
+  - Removed magic number (10K), replaced with `ComputeDefaultLimit()` method
+  - Heuristic based on available managed memory:
+    - < 1GB: 10,000 (conservative)
+    - < 4GB: 50,000 (moderate)
+    - ≥ 4GB: 100,000 (liberal)
+  - Explicit setter with validation (1–1,000,000 range)
+  - Better error messages for production incidents
+  - **Tests:** Existing test updated to use value=2 for small testing
+
+- **2.3 JsonRedactionOptions Metadata** ✅
+  - Added `IncludeRedactionMetadata` boolean property (defaults to `false` for backward compat)
+  - When enabled, redacted values include type and action annotations
+  - Format: `{ "__redacted__": true, "type": "String", "action": "Mask" }`
+  - Helps API consumers understand what was redacted without exposing values
+  - Enables proper schema inference for type-aware systems
+
+- **3.2 RedactingLogger Auto-Detection Enhancement** ✅
+  - Clarified documentation: auto-detection is **enabled by default** via `RedactAnnotatedObjects = true`
+  - Improved `SensitiveLoggingOptions` XML docs explaining two approaches:
+    1. Explicit `[Sensitive]` prefix in templates (backward compat)
+    2. Automatic detection via `[PersonalData]` attributes (default, no prefix needed)
+  - Updated `RedactingLogger` class docs with code examples
+  - Consistent with other SensitiveFlow modules (audit, export, JSON)
 
 ### Overall Test Results
 

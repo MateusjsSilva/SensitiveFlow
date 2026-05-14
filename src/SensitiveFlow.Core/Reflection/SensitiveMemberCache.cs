@@ -6,14 +6,15 @@ namespace SensitiveFlow.Core.Reflection;
 
 /// <summary>
 /// Per-type cache of properties decorated with <see cref="PersonalDataAttribute"/>,
-/// <see cref="SensitiveDataAttribute"/>, or <see cref="RetentionDataAttribute"/>.
+/// <see cref="SensitiveDataAttribute"/>, <see cref="RetentionDataAttribute"/>, or <see cref="RedactionAttribute"/>.
 /// Reflection happens once per type — subsequent lookups return the cached
-/// <see cref="PropertyInfo"/> arrays.
+/// <see cref="PropertyInfo"/> arrays and attributes.
 /// </summary>
 public static class SensitiveMemberCache
 {
     private static readonly ConcurrentDictionary<Type, AnnotatedProperties> Cache = new();
     private static readonly ConcurrentDictionary<Type, GeneratedSensitiveType> Generated = new();
+    private static readonly ConcurrentDictionary<(Type, string), RedactionAttribute?> RedactionCache = new();
 
     /// <summary>
     /// Registers source-generated metadata for sensitive and retention members.
@@ -46,6 +47,29 @@ public static class SensitiveMemberCache
     /// </summary>
     public static IReadOnlyList<RetentionProperty> GetRetentionProperties(Type type)
         => GetOrAdd(type).Retention;
+
+    /// <summary>
+    /// Returns the <see cref="RedactionAttribute"/> for a property, if present.
+    /// Results are cached per-type per-property to avoid repeated reflection.
+    /// </summary>
+    public static RedactionAttribute? GetRedactionAttribute(Type type, string propertyName)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
+
+        var key = (type, propertyName);
+        return RedactionCache.GetOrAdd(key, _ =>
+        {
+            var prop = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop is null)
+            {
+                return null;
+            }
+
+            return prop.GetCustomAttribute<RedactionAttribute>()
+                ?? GetInterfaceAttribute<RedactionAttribute>(type, prop);
+        });
+    }
 
     private static AnnotatedProperties GetOrAdd(Type type)
         => Cache.GetOrAdd(type, BuildEntry);

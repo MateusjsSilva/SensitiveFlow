@@ -22,14 +22,25 @@ namespace SensitiveFlow.EFCore.BulkOperations;
 /// </remarks>
 public sealed class SensitiveBulkOperationsOptions
 {
+    private int _maxAuditedRows;
+
     /// <summary>
     /// Upper bound on the number of subjects a single auditing helper call will load and
-    /// audit. The default of <c>10_000</c> is chosen to keep the prefetch <c>SELECT</c> and
-    /// the audit-record fan-out well below the cost of a typical request and to make the
-    /// failure obvious before it degrades production. Set explicitly when you know the
-    /// operation must process a larger set.
+    /// audit. Default is computed heuristically based on available memory; explicitly set
+    /// to override when you know the operation must process a larger set. Minimum 1, maximum 1,000,000.
     /// </summary>
-    public int MaxAuditedRows { get; set; } = 10_000;
+    public int MaxAuditedRows
+    {
+        get => _maxAuditedRows == 0 ? ComputeDefaultLimit() : _maxAuditedRows;
+        set
+        {
+            if (value < 1 || value > 1_000_000)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "MaxAuditedRows must be between 1 and 1,000,000");
+            }
+            _maxAuditedRows = value;
+        }
+    }
 
     /// <summary>
     /// When <see langword="true"/>, the <see cref="SensitiveBulkOperationsGuardInterceptor"/>
@@ -43,4 +54,19 @@ public sealed class SensitiveBulkOperationsOptions
     /// EF Core and bulk operations on annotated entities are known to be safe.
     /// </remarks>
     public bool RequireExplicitAuditing { get; set; } = true;
+
+    /// <summary>
+    /// Computes a heuristic default limit based on available managed memory.
+    /// Conservative: 10_000 for &lt;1GB, 50_000 for &lt;4GB, 100_000 for &gt;4GB.
+    /// </summary>
+    private static int ComputeDefaultLimit()
+    {
+        var totalMemory = GC.GetTotalMemory(false);
+        return totalMemory switch
+        {
+            < 1_000_000_000 => 10_000,      // &lt; 1 GB
+            < 4_000_000_000 => 50_000,      // &lt; 4 GB
+            _ => 100_000                    // &gt;= 4 GB
+        };
+    }
 }
