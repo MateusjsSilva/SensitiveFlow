@@ -30,10 +30,16 @@ public sealed class TokenPseudonymizer : IPseudonymizer
 
     /// <summary>
     /// Pseudonymizes <paramref name="value"/> synchronously by blocking on the store.
-    /// <b>⚠ NOT SAFE IN ASP.NET CORE:</b> This method uses <c>GetAwaiter().GetResult()</c> which causes deadlocks
-    /// under high concurrency. Use <see cref="PseudonymizeAsync"/> in all async contexts.
-    /// Safe only in console apps, Windows services, or offline batch processing.
+    /// <b>⚠ DEPRECATED: This method uses <c>GetAwaiter().GetResult()</c> which causes deadlocks
+    /// under high concurrency. Use <see cref="PseudonymizeAsync"/> instead.</b>
     /// </summary>
+    /// <remarks>
+    /// This method is unsafe in ASP.NET Core, web APIs, and any async context.
+    /// It blocks the calling thread indefinitely waiting for async I/O to complete,
+    /// which can cause thread starvation and deadlocks.
+    /// Safe only in console apps, Windows services, or offline batch processing.
+    /// </remarks>
+    [Obsolete($"Sync pseudonymization is unsafe in async contexts (ASP.NET Core, web APIs). Use {nameof(PseudonymizeAsync)} instead.", false)]
     public string Pseudonymize(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -51,11 +57,17 @@ public sealed class TokenPseudonymizer : IPseudonymizer
 
     /// <summary>
     /// Reverses <paramref name="token"/> to the original value synchronously by blocking on the store.
-    /// <b>⚠ NOT SAFE IN ASP.NET CORE:</b> This method uses <c>GetAwaiter().GetResult()</c> which causes deadlocks
-    /// under high concurrency. Use <see cref="ReverseAsync"/> in all async contexts.
-    /// Safe only in console apps, Windows services, or offline batch processing.
+    /// <b>⚠ DEPRECATED: This method uses <c>GetAwaiter().GetResult()</c> which causes deadlocks
+    /// under high concurrency. Use <see cref="ReverseAsync"/> instead.</b>
     /// </summary>
+    /// <remarks>
+    /// This method is unsafe in ASP.NET Core, web APIs, and any async context.
+    /// It blocks the calling thread indefinitely waiting for async I/O to complete,
+    /// which can cause thread starvation and deadlocks.
+    /// Safe only in console apps, Windows services, or offline batch processing.
+    /// </remarks>
     /// <exception cref="KeyNotFoundException">Thrown when the token is not found in the store.</exception>
+    [Obsolete($"Sync token reversal is unsafe in async contexts (ASP.NET Core, web APIs). Use {nameof(ReverseAsync)} instead.", false)]
     public string Reverse(string token)
     {
         ArgumentNullException.ThrowIfNull(token);

@@ -4,6 +4,7 @@ using SensitiveFlow.Anonymization.Tests.Stores;
 
 namespace SensitiveFlow.Anonymization.Tests.Pseudonymizers;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 public sealed class TokenPseudonymizerTests
 {
     private static TokenPseudonymizer Create() => new(new InMemoryTokenStore());
@@ -117,3 +118,4 @@ public sealed class TokenPseudonymizerTests
         resolved.Should().Be(value);
     }
 }
+#pragma warning restore CS0618 // Type or member is obsolete

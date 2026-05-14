@@ -65,21 +65,35 @@ public sealed class HmacPseudonymizer : IPseudonymizer
 
     /// <summary>
     /// Not supported — HMAC pseudonymization is deterministic but not reversible without a lookup table.
-    /// Use <see cref="TokenPseudonymizer"/> for reversible pseudonymization.
     /// </summary>
+    /// <remarks>
+    /// If you need to reverse tokens, consider these alternatives:
+    /// <list type="bullet">
+    /// <item><description><see cref="TokenPseudonymizer"/> — reversible with a persistent token store (SQL, Redis, etc.)</description></item>
+    /// <item><description>Custom lookup table — maintain a database mapping of HMAC tokens to original values</description></item>
+    /// <item><description>Deterministic masking — use <see cref="SensitiveFlow.Anonymization.Export.DataSubjectExporter"/> for consistent masking without full reversal</description></item>
+    /// </list>
+    /// </remarks>
     /// <exception cref="NotSupportedException">Always thrown.</exception>
     public string Reverse(string token) =>
         throw new NotSupportedException(
-            "HmacPseudonymizer does not support reversal. Use TokenPseudonymizer for reversible pseudonymization.");
+            "HmacPseudonymizer does not support reversal because HMAC is cryptographic and one-way. " +
+            "Use TokenPseudonymizer for reversible pseudonymization, or maintain your own HMAC→value lookup table.");
 
     /// <inheritdoc />
     /// <remarks>
+    /// <para>
     /// Returns a faulted task with <see cref="NotSupportedException"/> instead of throwing
     /// synchronously, so async callers observe the failure via the task and not via the call site.
+    /// </para>
+    /// <para>
+    /// See <see cref="Reverse"/> for alternative approaches to handle reversal requirements.
+    /// </para>
     /// </remarks>
     public Task<string> ReverseAsync(string token, CancellationToken cancellationToken = default)
         => Task.FromException<string>(new NotSupportedException(
-            "HmacPseudonymizer does not support reversal. Use TokenPseudonymizer for reversible pseudonymization."));
+            "HmacPseudonymizer does not support reversal because HMAC is cryptographic and one-way. " +
+            "Use TokenPseudonymizer for reversible pseudonymization, or maintain your own HMAC→value lookup table."));
 }
 
 

@@ -16,6 +16,12 @@ namespace SensitiveFlow.EFCore.Interceptors;
 /// any entity property decorated with <see cref="PersonalDataAttribute"/> or
 /// <see cref="SensitiveDataAttribute"/> when changes are saved.
 /// </summary>
+/// <remarks>
+/// <b>IMPORTANT:</b> Always use <c>DbContext.SaveChangesAsync</c> instead of <c>SaveChanges</c> when using
+/// this interceptor in ASP.NET Core or any async context. The sync overrides block the thread and can cause
+/// deadlocks under high concurrency due to the async I/O required for audit record flushing.
+/// Only use sync methods in console apps, Windows services, or offline batch processing.
+/// </remarks>
 public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 {
     private readonly IAuditStore _auditStore;

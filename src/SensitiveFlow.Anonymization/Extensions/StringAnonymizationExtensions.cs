@@ -92,8 +92,14 @@ public static class StringAnonymizationExtensions
     /// </summary>
     /// <param name="value">Value to pseudonymize.</param>
     /// <param name="pseudonymizer">The <see cref="TokenPseudonymizer"/> instance backed by a durable store.</param>
+    /// <remarks>
+    /// This method wraps the sync pseudonymize method. For async contexts (ASP.NET Core, web APIs),
+    /// use <see cref="TokenPseudonymizer.PseudonymizeAsync"/> directly instead.
+    /// </remarks>
+#pragma warning disable CS0618 // Type or member is obsolete
     public static string Pseudonymize(this string value, TokenPseudonymizer pseudonymizer) =>
         pseudonymizer.Pseudonymize(value);
+#pragma warning restore CS0618 // Type or member is obsolete
 
     /// <summary>
     /// Pseudonymizes a value using HMAC-SHA256 with the provided secret key (deterministic, non-reversible).
