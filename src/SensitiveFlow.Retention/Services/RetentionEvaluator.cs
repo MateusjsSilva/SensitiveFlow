@@ -52,15 +52,14 @@ public sealed class RetentionEvaluator
     /// <param name="referenceDate">The date used as the retention start point (typically record creation date).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <exception cref="RetentionExpiredException">
-    /// Thrown when a field is expired and no handlers are registered.
+    /// Thrown when one or more fields are expired and no handlers are registered.
     /// When handlers are registered, they receive the event instead.
     /// </exception>
     /// <remarks>
     /// <para>
-    /// <b>Fail-fast behavior:</b> When no handlers are registered, the first expired field
-    /// throws <see cref="RetentionExpiredException"/> immediately — subsequent fields on the
-    /// same entity are not evaluated. To collect all expired fields in one pass, register at
-    /// least one handler (even a no-op collector) so the loop completes without throwing.
+    /// <b>Collect-all behavior:</b> All expired fields are collected before throwing <see cref="RetentionExpiredException"/>.
+    /// This allows batch validation of all expired fields in a single pass. If handlers are registered,
+    /// all expired fields receive handler events before the method completes.
     /// </para>
     /// <para>
     /// <b>Nested objects:</b> Properties whose type is a reference type not in the terminal set
@@ -72,10 +71,21 @@ public sealed class RetentionEvaluator
     public async Task EvaluateAsync(object entity, DateTimeOffset referenceDate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
-        await EvaluateRecursiveAsync(entity, referenceDate, cancellationToken).ConfigureAwait(false);
+        var expiredFields = new List<(string TypeName, string PropertyName, DateTimeOffset ExpirationDate)>();
+        await EvaluateRecursiveAsync(entity, referenceDate, expiredFields, cancellationToken).ConfigureAwait(false);
+
+        if (expiredFields.Count > 0 && !_handlers.Any())
+        {
+            var first = expiredFields[0];
+            throw new RetentionExpiredException(first.TypeName, first.PropertyName, first.ExpirationDate);
+        }
     }
 
-    private async Task EvaluateRecursiveAsync(object entity, DateTimeOffset referenceDate, CancellationToken cancellationToken)
+    private async Task EvaluateRecursiveAsync(
+        object entity,
+        DateTimeOffset referenceDate,
+        List<(string TypeName, string PropertyName, DateTimeOffset ExpirationDate)> expiredFields,
+        CancellationToken cancellationToken)
     {
         var type = entity.GetType();
         var retentionProperties = SensitiveMemberCache.GetRetentionProperties(type);
@@ -88,6 +98,8 @@ public sealed class RetentionEvaluator
                 continue;
             }
 
+            expiredFields.Add((type.Name, pair.Property.Name, expiration));
+
             if (_handlers.Any())
             {
                 foreach (var handler in _handlers)
@@ -95,10 +107,6 @@ public sealed class RetentionEvaluator
                     await handler.HandleAsync(entity, pair.Property.Name, expiration, cancellationToken)
                         .ConfigureAwait(false);
                 }
-            }
-            else
-            {
-                throw new RetentionExpiredException(type.Name, pair.Property.Name, expiration);
             }
         }
 
@@ -111,7 +119,23 @@ public sealed class RetentionEvaluator
                 continue;
             }
 
-            await EvaluateRecursiveAsync(value, referenceDate, cancellationToken).ConfigureAwait(false);
+            // Handle collections: iterate and evaluate each item
+            if (value is System.Collections.IEnumerable enumerable && value is not string)
+            {
+                foreach (var item in enumerable)
+                {
+                    if (item is not null)
+                    {
+                        await EvaluateRecursiveAsync(item, referenceDate, expiredFields, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                }
+            }
+            else
+            {
+                await EvaluateRecursiveAsync(value, referenceDate, expiredFields, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
     }
 
