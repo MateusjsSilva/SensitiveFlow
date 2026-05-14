@@ -11,6 +11,32 @@
 3. For `Modified` entities, skips properties that were not actually changed (`IsModified == false`).
 4. Creates one `AuditRecord` per sensitive field and appends it to `IAuditStore` after `SaveChanges` succeeds.
 
+## ⚠️ Threading Safety — Always use SaveChangesAsync in ASP.NET Core
+
+The interceptor has **sync and async variants** of the SaveChanges hook. **In production web applications, always use `DbContext.SaveChangesAsync()`** — the sync override (`SaveChanges()`) blocks the calling thread during async I/O (audit record flushing), which can cause deadlocks under high concurrency.
+
+### What to do
+
+✅ **ASP.NET Core and web APIs (recommended):**
+```csharp
+// ✅ Safe and correct
+await dbContext.SaveChangesAsync(cancellationToken);
+```
+
+✅ **Console apps, Windows services, offline batch processing:**
+```csharp
+// ✅ Safe in single-threaded contexts
+dbContext.SaveChanges();  // Sync override, acceptable here
+```
+
+❌ **ASP.NET Core with sync SaveChanges:**
+```csharp
+// ❌ CAUSES DEADLOCK under concurrent requests
+dbContext.SaveChanges();  // Blocks thread, audit I/O is async
+```
+
+The sync override is provided for backwards compatibility in offline scenarios only.
+
 ## Registration
 
 ```csharp

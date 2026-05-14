@@ -113,8 +113,12 @@ IP truncation (`192.168.1.42` → `192.168.1.0`) is a common practice but **does
 | Analytics / reporting | Do not store, or collect only after explicit user opt-in | Aggregate counters are usually enough and avoid the problem entirely |
 
 ```csharp
-// Pseudonymize IP before writing to the audit log
-var ipToken = pseudonymizer.Pseudonymize(request.RemoteIpAddress?.ToString() ?? string.Empty);
+// ⚠️ IMPORTANT: Use async methods in ASP.NET Core and web APIs
+// In async contexts, always use PseudonymizeAsync() and ReverseAsync()
+// to avoid deadlocks. Sync methods are marked [Obsolete] for this reason.
+
+// ✅ RECOMMENDED (ASP.NET Core, web APIs)
+var ipToken = await pseudonymizer.PseudonymizeAsync(request.RemoteIpAddress?.ToString() ?? string.Empty);
 
 var record = new AuditRecord
 {
@@ -125,8 +129,12 @@ var record = new AuditRecord
     IpAddressToken = ipToken,   // opaque token — not the raw IP
 };
 
-// During a security investigation, resolve the original (TokenPseudonymizer only):
-var originalIp = pseudonymizer.Reverse(ipToken);
+// During a security investigation, resolve the original (async, safe in all contexts):
+var originalIp = await pseudonymizer.ReverseAsync(ipToken);
+
+// ⚠️ DEPRECATED (sync — only in console/service apps, not ASP.NET Core)
+// var ipToken = pseudonymizer.Pseudonymize(request.RemoteIpAddress?.ToString() ?? string.Empty);
+// var originalIp = pseudonymizer.Reverse(ipToken);  // CAUSES DEADLOCK in high-concurrency web scenarios
 ```
 
 ---
@@ -145,12 +153,19 @@ Stable, reversible tokens backed by a persistent `ITokenStore`.
 var store  = new InMemoryTokenStore();
 var pseudo = new TokenPseudonymizer(store);
 
-var token     = pseudo.Pseudonymize("joao@example.com");
-var recovered = pseudo.Reverse(token);
+// ✅ RECOMMENDED: Use async methods in all async contexts (ASP.NET Core, web APIs)
+var token     = await pseudo.PseudonymizeAsync("joao@example.com");
+var recovered = await pseudo.ReverseAsync(token);
 // recovered == "joao@example.com"
+
+// ⚠️ DEPRECATED: Sync methods (Pseudonymize / Reverse) are marked [Obsolete]
+// They use GetAwaiter().GetResult() which causes deadlocks in high-concurrency scenarios.
+// Only safe in console apps or Windows services, not in ASP.NET Core.
 ```
 
-> **Important:** `InMemoryTokenStore` loses all mappings when the process exits. In production, implement `ITokenStore` backed by a durable store (SQL Server, Redis, etc.). Losing the store makes pseudonymized data irrecoverable.
+> **Important:** 
+> 1. `InMemoryTokenStore` loses all mappings when the process exits. In production, implement `ITokenStore` backed by a durable store (SQL Server, Redis, etc.). Losing the store makes pseudonymized data irrecoverable.
+> 2. Always use `PseudonymizeAsync()` and `ReverseAsync()` in web/async contexts. Sync methods are provided only for backwards compatibility in offline scenarios.
 
 #### Caching token mappings
 

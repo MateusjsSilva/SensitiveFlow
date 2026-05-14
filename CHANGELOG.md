@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Code quality improvements**: Comprehensive codebase review identifying and addressing threading risks, deadlock vulnerabilities, and developer experience gaps across 20+ packages.
+
+### Changed
+
+- `TokenPseudonymizer.Pseudonymize()` and `TokenPseudonymizer.Reverse()` marked as `[Obsolete]` with detailed migration guidance to async alternatives (`PseudonymizeAsync`, `ReverseAsync`).
+  - **Reason**: Sync-over-async pattern using `GetAwaiter().GetResult()` causes deadlocks in ASP.NET Core under high concurrency.
+  - **Migration**: Use async methods in all web/async contexts. Sync methods remain functional in console apps and Windows services for backwards compatibility.
+- `SensitiveDataAuditInterceptor` class-level documentation enhanced with prominent warnings about threading risks when using sync `SaveChanges()` override in ASP.NET Core.
+  - Always use `DbContext.SaveChangesAsync()` in production for safe audit flushing.
+
+### Improved
+
+- `HmacPseudonymizer.Reverse()` and `ReverseAsync()` exception documentation now lists concrete alternatives:
+  - Use `TokenPseudonymizer` for reversible pseudonymization with persistent token store
+  - Maintain custom HMAC→value lookup table for reversal capability
+  - Use `DataSubjectExporter` for consistent masking without full reversal
+- Exception messages provide clearer guidance on why HMAC-based reversal is cryptographically impossible.
+- `StringAnonymizationExtensions.Pseudonymize()` adds documentation note about sync method wrapping; developers using async contexts should call `PseudonymizeAsync()` directly on the pseudonymizer.
+
+### Security
+
+- Explicit warnings for sync-over-async threading vulnerabilities reduce likelihood of production deadlock incidents.
+
 ## [1.0.0-preview.3] - 2026-05-11
 
 ### Added

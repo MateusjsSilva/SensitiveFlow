@@ -10,16 +10,18 @@ While in preview (pre-v1), the version format is:
 MAJOR.MINOR.PATCH-preview.N
 ```
 
-| Version           | Meaning                                                |
-|-------------------|--------------------------------------------------------|
-| `1.0.0-preview.1` | First preview with initial feature set                 |
-| `1.0.0-preview.2` | Bug fixes, metadata, or doc updates — no API changes   |
-| `1.0.0-preview.3` | Hardening: DB compatibility, fail-fast validation, DX  |
-| `1.0.0`           | First stable release                                   |
+| Version           | Meaning                                                             |
+|-------------------|---------------------------------------------------------------------|
+| `1.0.0-preview.1` | First preview with initial feature set                             |
+| `1.0.0-preview.2` | Bug fixes, metadata, or doc updates — no API changes               |
+| `1.0.0-preview.3` | Hardening: DB compatibility, fail-fast validation, DX              |
+| `1.0.0-preview.4` | Code quality improvements: threading safety warnings, better docs  |
+| `1.0.0`           | First stable release                                               |
 
 **While in preview:**
-- Bug fixes / metadata / docs → bump preview number (e.g., `preview.1` → `preview.2`)
-- New features or breaking changes → bump preview number (e.g., `preview.2` → `preview.3`)
+- Bug fixes / metadata / docs / deprecations → bump preview number (e.g., `preview.3` → `preview.4`)
+- New features or breaking changes → bump preview number
+- Deprecation warnings (non-breaking) are shipped without major version bumps
 - Do **not** republish the same version — NuGet rejects overwrites
 
 ## How to publish a release
@@ -69,4 +71,11 @@ The `release.yml` workflow will automatically build, test (including container t
 
 ## Current version
 
-`1.0.0-preview.3` — latest published preview. Next release: `1.0.0` (first stable).
+`1.0.0-preview.3` — latest published preview. 
+
+**In Development**: `1.0.0-preview.4` with code quality improvements:
+- Threading safety: `[Obsolete]` warnings on sync-over-async methods
+- Enhanced documentation for deadlock-prone patterns
+- Better exception guidance with concrete migration paths
+
+**Next release after preview.4**: `1.0.0` (first stable).
