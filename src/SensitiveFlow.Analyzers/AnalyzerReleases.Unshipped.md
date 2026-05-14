@@ -6,3 +6,4 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|------
 SF0005 | Privacy | Warning | Sensitive data returned from endpoint without authorization attribute.
+SF0006 | Privacy | Error | Sensitive data property is missing [Redaction] attribute.

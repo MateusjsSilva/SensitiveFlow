@@ -47,6 +47,8 @@ public sealed class SensitiveBulkOperationsTests
 
         public DbSet<Customer> Customers => Set<Customer>();
         public DbSet<NonSensitive> NonSensitives => Set<NonSensitive>();
+        public DbSet<CustomerWithIntDataSubjectId> CustomersWithIntSubject => Set<CustomerWithIntDataSubjectId>();
+        public DbSet<CustomerWithGuidDataSubjectId> CustomersWithGuidSubject => Set<CustomerWithGuidDataSubjectId>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -360,5 +362,143 @@ public sealed class SensitiveBulkOperationsTests
             r.Field.Should().Be("Email");
             r.Entity.Should().Be(nameof(Customer));
         });
+    }
+
+    [Fact]
+    public async Task ExecuteUpdateAuditedAsync_WithIntDataSubjectId_Throws()
+    {
+        // Entity with int DataSubjectId should throw — int can recycle, breaking audit trail
+        var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        var context = new BulkDbContext(connection);
+        await context.Database.EnsureCreatedAsync();
+
+        var entity = new CustomerWithIntDataSubjectId
+        {
+            Id = 1,
+            DataSubjectId = 42,
+            Email = "test@example.com",
+            FullName = "Test User"
+        };
+
+        await context.AddAsync(entity);
+        await context.SaveChangesAsync();
+
+        var store = new InMemoryAuditStore();
+        var auditContext = NullAuditContext.Instance;
+
+        var query = context.Set<CustomerWithIntDataSubjectId>();
+
+        var action = async () => await query.ExecuteUpdateAuditedAsync(
+            u => u.SetProperty(x => x.Email, "new@example.com"),
+            store,
+            auditContext);
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*DataSubjectId must be 'string' or 'Guid'*");
+
+        await connection.CloseAsync();
+    }
+
+    [Fact]
+    public async Task ExecuteDeleteAuditedAsync_WithIntDataSubjectId_Throws()
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        var context = new BulkDbContext(connection);
+        await context.Database.EnsureCreatedAsync();
+
+        var entity = new CustomerWithIntDataSubjectId
+        {
+            Id = 1,
+            DataSubjectId = 42,
+            Email = "test@example.com",
+            FullName = "Test User"
+        };
+
+        await context.AddAsync(entity);
+        await context.SaveChangesAsync();
+
+        var store = new InMemoryAuditStore();
+        var auditContext = NullAuditContext.Instance;
+
+        var query = context.Set<CustomerWithIntDataSubjectId>();
+
+        var action = async () => await query.ExecuteDeleteAuditedAsync(store, auditContext);
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*DataSubjectId must be 'string' or 'Guid'*");
+
+        await connection.CloseAsync();
+    }
+
+    [Fact]
+    public async Task ExecuteUpdateAuditedAsync_WithGuidDataSubjectId_Succeeds()
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        var context = new BulkDbContext(connection);
+        await context.Database.EnsureCreatedAsync();
+
+        var subjectId = Guid.NewGuid();
+        var entity = new CustomerWithGuidDataSubjectId
+        {
+            Id = 1,
+            DataSubjectId = subjectId,
+            Email = "test@example.com",
+            FullName = "Test User"
+        };
+
+        await context.AddAsync(entity);
+        await context.SaveChangesAsync();
+
+        var store = new InMemoryAuditStore();
+        var auditContext = NullAuditContext.Instance;
+
+        var query = context.Set<CustomerWithGuidDataSubjectId>();
+
+        var affected = await query.ExecuteUpdateAuditedAsync(
+            u => u.SetProperty(x => x.Email, "new@example.com"),
+            store,
+            auditContext);
+
+        affected.Should().Be(1);
+
+        var records = await store.QueryAsync();
+        records.Should().HaveCount(1);
+        // Guid.ToString() returns uppercase, but Guid stored as string can vary in case
+        // So compare case-insensitively or normalize both
+        Guid.TryParse(records[0].DataSubjectId, out var parsedId).Should().BeTrue();
+        parsedId.Should().Be(subjectId);
+
+        await connection.CloseAsync();
+    }
+
+    // Test entities for DataSubjectId type validation
+    private sealed class CustomerWithIntDataSubjectId
+    {
+        public int Id { get; set; }
+        public int DataSubjectId { get; set; }
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = string.Empty;
+
+        [PersonalData(Category = DataCategory.Identification)]
+        public string FullName { get; set; } = string.Empty;
+    }
+
+    private sealed class CustomerWithGuidDataSubjectId
+    {
+        public int Id { get; set; }
+        public Guid DataSubjectId { get; set; }
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = string.Empty;
+
+        [PersonalData(Category = DataCategory.Identification)]
+        public string FullName { get; set; } = string.Empty;
     }
 }

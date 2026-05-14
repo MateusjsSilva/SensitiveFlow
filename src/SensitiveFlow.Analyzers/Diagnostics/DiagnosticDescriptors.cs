@@ -48,4 +48,13 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Endpoints that surface [PersonalData] or [SensitiveData] members should be guarded by [Authorize] (or an equivalent attribute) so the lack of authentication is not the reason personal data leaks.");
+
+    public static readonly DiagnosticDescriptor MissingRedactionAttribute = new(
+        id: "SF0006",
+        title: "Sensitive data property is missing [Redaction] attribute",
+        messageFormat: "Property '{0}' is marked with [{1}] but lacks [Redaction(...)] — it will be exposed unredacted in API responses, logs, and audit trails",
+        category: "Privacy",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Properties annotated with [PersonalData] or [SensitiveData] must explicitly declare how they should be redacted in each context (API response, logs, audit, export). Without [Redaction], the default is OutputRedactionAction.None, meaning the full PII value is exposed everywhere, defeating the purpose of marking it sensitive.");
 }

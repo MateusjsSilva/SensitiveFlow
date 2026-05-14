@@ -306,6 +306,8 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
                 "the database-generated 'Id' is not used because it is not under the application's control at SaveChanges time.");
         }
 
+        ValidateDataSubjectIdType(prop, type);
+
         var value = prop.GetValue(entity)?.ToString();
         if (string.IsNullOrEmpty(value))
         {
@@ -315,6 +317,25 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         }
 
         return value;
+    }
+
+    private static void ValidateDataSubjectIdType(System.Reflection.PropertyInfo prop, Type entityType)
+    {
+        var propType = prop.PropertyType;
+
+        // Allow string and Guid (or Guid?)
+        var isString = propType == typeof(string);
+        var isGuid = propType == typeof(Guid);
+        var isNullableGuid = propType == typeof(Guid?);
+
+        if (!isString && !isGuid && !isNullableGuid)
+        {
+            throw new InvalidOperationException(
+                $"Entity '{entityType.Name}' property '{prop.Name}' has type '{propType.Name}'. " +
+                "DataSubjectId must be 'string' or 'Guid' to ensure stable, globally unique identifiers. " +
+                "Auto-increment integers and other types can lead to ID collisions after recycle. " +
+                "For non-string types, wrap in a Guid or convert to a stable string format (e.g., public string DataSubjectId => UserId.ToString(\"X\")).");
+        }
     }
 
     private sealed class PendingAuditRecords

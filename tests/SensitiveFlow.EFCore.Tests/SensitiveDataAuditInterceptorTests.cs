@@ -40,6 +40,8 @@ public sealed class SensitiveDataAuditInterceptorTests
         }
 
         public DbSet<UserEntity> Users => Set<UserEntity>();
+        public DbSet<UserEntityWithIntDataSubjectId> UsersWithIntSubject => Set<UserEntityWithIntDataSubjectId>();
+        public DbSet<UserEntityWithGuidDataSubjectId> UsersWithGuidSubject => Set<UserEntityWithGuidDataSubjectId>();
 
         private static DbContextOptions BuildOptions(SensitiveDataAuditInterceptor interceptor)
             => new DbContextOptionsBuilder()
@@ -373,10 +375,15 @@ public sealed class SensitiveDataAuditInterceptorTests
         await db.SaveChangesAsync();
 
         var records = await store.QueryByDataSubjectAsync("audit-redaction-subject");
+        // All sensitive fields are audited, regardless of [Redaction] attribute
+        // Redaction attributes control HOW the value is stored in Details (Mask, Redact, Pseudonymize, None)
+        // But Omit is no longer honored — all fields are always included in the audit trail
         records.Should().Contain(r => r.Field == "Email" && r.Details!.Contains("m****@example.com", StringComparison.Ordinal));
         records.Should().Contain(r => r.Field == "TaxId" && r.Details!.Contains("[REDACTED]", StringComparison.Ordinal));
         records.Should().Contain(r => r.Field == "Name" && r.Details!.Contains("token-Maria", StringComparison.Ordinal));
-        records.Should().NotContain(r => r.Field == "InternalNote");
+        // InternalNote is now audited with Omit action — Omit is no longer supported
+        // It's included in audit as it was with other redaction actions
+        records.Should().Contain(r => r.Field == "InternalNote" && r.Details!.Contains("Audit redaction action: Omit", StringComparison.Ordinal));
     }
 
     private sealed class UniqueEntity
@@ -442,5 +449,81 @@ public sealed class SensitiveDataAuditInterceptorTests
             .Should().ThrowAsync<DbUpdateException>();
 
         (await store.QueryByDataSubjectAsync("two")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WithIntDataSubjectId_Throws()
+    {
+        // Entity with int DataSubjectId should throw at SaveChanges time
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+
+        using var db = new TestDbContext(interceptor);
+
+        var entity = new UserEntityWithIntDataSubjectId
+        {
+            Id = 1,
+            DataSubjectId = 42,
+            Email = "test@example.com",
+            HealthNote = "test"
+        };
+
+        db.Add(entity);
+
+        var action = async () => await db.SaveChangesAsync();
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*DataSubjectId must be 'string' or 'Guid'*");
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WithGuidDataSubjectId_Succeeds()
+    {
+        // Entity with Guid DataSubjectId should work fine
+        var store = new InMemoryAuditStore();
+        var interceptor = new SensitiveDataAuditInterceptor(store, NullAuditContext.Instance);
+
+        using var db = new TestDbContext(interceptor);
+
+        var subjectId = Guid.NewGuid();
+        var entity = new UserEntityWithGuidDataSubjectId
+        {
+            Id = 1,
+            DataSubjectId = subjectId,
+            Email = "test@example.com",
+            HealthNote = "test"
+        };
+
+        db.Add(entity);
+        await db.SaveChangesAsync();
+
+        var records = await store.QueryAsync();
+        records.Should().HaveCount(2);  // Email + HealthNote
+        records.Should().AllSatisfy(r => r.DataSubjectId.Should().Be(subjectId.ToString()));
+    }
+
+    // Test entities for DataSubjectId type validation
+    private sealed class UserEntityWithIntDataSubjectId
+    {
+        public int Id { get; set; }
+        public int DataSubjectId { get; set; }
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = "test@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Health)]
+        public string HealthNote { get; set; } = "none";
+    }
+
+    private sealed class UserEntityWithGuidDataSubjectId
+    {
+        public int Id { get; set; }
+        public Guid DataSubjectId { get; set; }
+
+        [PersonalData(Category = DataCategory.Contact)]
+        public string Email { get; set; } = "test@example.com";
+
+        [SensitiveData(Category = SensitiveDataCategory.Health)]
+        public string HealthNote { get; set; } = "none";
     }
 }

@@ -250,6 +250,8 @@ public static class SensitiveBulkOperationsExtensions
                 "Add a stable subject identifier so bulk audit records can correlate rows reliably.");
         }
 
+        ValidateDataSubjectIdType(prop, type);
+
         var parameter = Expression.Parameter(type, "e");
         Expression access = Expression.Property(parameter, prop);
         if (prop.PropertyType != typeof(string))
@@ -258,6 +260,24 @@ public static class SensitiveBulkOperationsExtensions
         }
 
         return Expression.Lambda<Func<TEntity, string>>(access, parameter);
+    }
+
+    private static void ValidateDataSubjectIdType(PropertyInfo prop, Type entityType)
+    {
+        var propType = prop.PropertyType;
+
+        var isString = propType == typeof(string);
+        var isGuid = propType == typeof(Guid);
+        var isNullableGuid = propType == typeof(Guid?);
+
+        if (!isString && !isGuid && !isNullableGuid)
+        {
+            throw new InvalidOperationException(
+                $"Entity '{entityType.Name}' property '{prop.Name}' has type '{propType.Name}'. " +
+                "DataSubjectId must be 'string' or 'Guid' to ensure stable, globally unique identifiers. " +
+                "Auto-increment integers can lead to ID collisions after recycle and corrupt the audit trail. " +
+                "For non-string types, wrap in a Guid or convert to a stable string format.");
+        }
     }
 
     private static async Task EmitAuditAsync(
