@@ -83,6 +83,11 @@ public sealed class SensitiveFlowHealthChecksTests
         {
             return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
         }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+        }
     }
 
     private sealed class HealthyTokenStore : ITokenStore
@@ -111,6 +116,11 @@ public sealed class SensitiveFlowHealthChecksTests
         }
 
         public Task<IReadOnlyList<AuditRecord>> QueryByDataSubjectAsync(string dataSubjectId, DateTimeOffset? from = null, DateTimeOffset? to = null, int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("query failed");
+        }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("query failed");
         }

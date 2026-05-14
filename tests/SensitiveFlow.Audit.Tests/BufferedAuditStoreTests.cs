@@ -325,6 +325,9 @@ public sealed class BufferedAuditStoreTests
             CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AuditRecord>>(
                 Appended.Where(r => r.DataSubjectId == dataSubjectId).ToList());
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
     }
 
     private sealed class RecordingAuditStore : IAuditStore
@@ -354,5 +357,8 @@ public sealed class BufferedAuditStoreTests
             CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AuditRecord>>(
                 Appended.Where(r => r.DataSubjectId == dataSubjectId).ToList());
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
     }
 }

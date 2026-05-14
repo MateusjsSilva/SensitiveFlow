@@ -268,5 +268,8 @@ public sealed class InstrumentedAuditStoreTests
             int take = 100,
             CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
     }
 }

@@ -88,6 +88,9 @@ public sealed class AuditOutboxTests
             CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AuditRecord>>(
                 _records.Where(r => r.DataSubjectId == dataSubjectId).ToArray());
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
     }
 }
 #pragma warning restore CS0618 // Type or member is obsolete

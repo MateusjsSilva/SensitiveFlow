@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SensitiveFlow.Audit.EFCore.Entities;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Exceptions;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
@@ -111,6 +112,57 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore, IAuditStoreTr
         if (to.HasValue)   { query = query.Where(r => r.Timestamp <= to.Value); }
 
         var rows = await query.OrderBy(r => r.Timestamp).Skip(skip).Take(take)
+                              .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return rows.ConvertAll(static e => e.ToRecord());
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery auditQuery, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(auditQuery);
+        ValidatePagination(auditQuery.Skip, auditQuery.Take);
+
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var query = _setSelector(ctx).AsNoTracking();
+
+        if (!string.IsNullOrEmpty(auditQuery.Entity))
+        {
+            query = query.Where(r => r.Entity == auditQuery.Entity);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.Operation))
+        {
+            if (Enum.TryParse<AuditOperation>(auditQuery.Operation, out var opEnum))
+            {
+                var opInt = (int)opEnum;
+                query = query.Where(r => r.Operation == opInt);
+            }
+        }
+        if (!string.IsNullOrEmpty(auditQuery.ActorId))
+        {
+            query = query.Where(r => r.ActorId == auditQuery.ActorId);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.DataSubjectId))
+        {
+            query = query.Where(r => r.DataSubjectId == auditQuery.DataSubjectId);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.Field))
+        {
+            query = query.Where(r => r.Field == auditQuery.Field);
+        }
+        if (auditQuery.From.HasValue)
+        {
+            query = query.Where(r => r.Timestamp >= auditQuery.From.Value);
+        }
+        if (auditQuery.To.HasValue)
+        {
+            query = query.Where(r => r.Timestamp <= auditQuery.To.Value);
+        }
+
+        query = auditQuery.OrderByDescending
+            ? query.OrderByDescending(r => EF.Property<object>(r, auditQuery.OrderBy))
+            : query.OrderBy(r => EF.Property<object>(r, auditQuery.OrderBy));
+
+        var rows = await query.Skip(auditQuery.Skip).Take(auditQuery.Take)
                               .ToListAsync(cancellationToken).ConfigureAwait(false);
         return rows.ConvertAll(static e => e.ToRecord());
     }

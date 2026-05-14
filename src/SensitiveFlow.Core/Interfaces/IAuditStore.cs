@@ -41,4 +41,24 @@ public interface IAuditStore
         int skip = 0,
         int take = 100,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Queries audit records using a structured query builder.</summary>
+    /// <param name="query">Query builder with filters, pagination, and ordering.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Matching audit records, up to the <c>Take</c> limit in the query.</returns>
+    /// <remarks>
+    /// This method enables efficient filtering on Entity, Operation, Actor, DataSubjectId, and Field
+    /// without fetching all records into memory.
+    /// Example:
+    /// <code>
+    /// var results = await store.QueryAsync(
+    ///     new AuditQuery()
+    ///         .ByEntity("User")
+    ///         .ByOperation("Delete")
+    ///         .InTimeRange(startDate, endDate)
+    ///         .WithPagination(0, 50),
+    ///     cancellationToken);
+    /// </code>
+    /// </remarks>
+    Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default);
 }

@@ -78,6 +78,10 @@ public sealed class OutboxAuditStore : IBatchAuditStore
         CancellationToken cancellationToken = default)
         => _inner.QueryByDataSubjectAsync(dataSubjectId, from, to, skip, take, cancellationToken);
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        => _inner.QueryAsync(query, cancellationToken);
+
     private Task ExecuteAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
     {
         if (_inner is IAuditStoreTransaction transaction)

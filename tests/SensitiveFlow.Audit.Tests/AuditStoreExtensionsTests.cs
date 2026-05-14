@@ -164,5 +164,8 @@ public sealed class AuditStoreExtensionsTests
             DateTimeOffset? from = null, DateTimeOffset? to = null,
             int skip = 0, int take = 100, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AuditRecord>>([]);
     }
 }

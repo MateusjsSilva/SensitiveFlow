@@ -323,6 +323,65 @@ public sealed class EfCoreAuditStore : IAuditStore
         return rows.Select(ToRecord).ToList();
     }
 
+    public async Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery auditQuery, CancellationToken cancellationToken = default)
+    {
+        var query = _db.AuditEntries.AsQueryable();
+        if (!string.IsNullOrEmpty(auditQuery.Entity))
+        {
+            query = query.Where(r => r.Entity == auditQuery.Entity);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.Operation))
+        {
+            if (Enum.TryParse<AuditOperation>(auditQuery.Operation, out var opEnum))
+            {
+                query = query.Where(r => r.Operation == (int)opEnum);
+            }
+        }
+        if (!string.IsNullOrEmpty(auditQuery.ActorId))
+        {
+            query = query.Where(r => r.ActorId == auditQuery.ActorId);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.DataSubjectId))
+        {
+            query = query.Where(r => r.DataSubjectId == auditQuery.DataSubjectId);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.Field))
+        {
+            query = query.Where(r => r.Field == auditQuery.Field);
+        }
+        if (auditQuery.From.HasValue)
+        {
+            query = query.Where(r => r.Timestamp >= auditQuery.From.Value);
+        }
+        if (auditQuery.To.HasValue)
+        {
+            query = query.Where(r => r.Timestamp <= auditQuery.To.Value);
+        }
+
+        var orderedQuery = auditQuery.OrderBy switch
+        {
+            "DataSubjectId" => auditQuery.OrderByDescending
+                ? query.OrderByDescending(r => r.DataSubjectId)
+                : query.OrderBy(r => r.DataSubjectId),
+            "Entity" => auditQuery.OrderByDescending
+                ? query.OrderByDescending(r => r.Entity)
+                : query.OrderBy(r => r.Entity),
+            "Field" => auditQuery.OrderByDescending
+                ? query.OrderByDescending(r => r.Field)
+                : query.OrderBy(r => r.Field),
+            "Operation" => auditQuery.OrderByDescending
+                ? query.OrderByDescending(r => r.Operation)
+                : query.OrderBy(r => r.Operation),
+            _ => auditQuery.OrderByDescending
+                ? query.OrderByDescending(r => r.Timestamp)
+                : query.OrderBy(r => r.Timestamp)
+        };
+
+        var rows = await orderedQuery.Skip(auditQuery.Skip).Take(auditQuery.Take)
+            .ToListAsync(cancellationToken);
+        return rows.Select(ToRecord).ToList();
+    }
+
     private static AuditRecord ToRecord(AuditRecordEntity e) => new()
     {
         Id            = Guid.TryParse(e.RecordId, out var parsedId) ? parsedId : Guid.Empty,

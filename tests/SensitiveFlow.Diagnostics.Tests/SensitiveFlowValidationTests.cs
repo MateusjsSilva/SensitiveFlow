@@ -317,6 +317,11 @@ public sealed class SensitiveFlowValidationTests
         {
             return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
         }
+
+        public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<AuditRecord>>([]);
+        }
     }
 
     private sealed class FakePseudonymizer : IPseudonymizer
