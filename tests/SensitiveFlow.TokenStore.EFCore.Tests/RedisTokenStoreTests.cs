@@ -1,12 +1,14 @@
 using FluentAssertions;
 using Moq;
-// TODO: SensitiveFlow.TokenStore.Redis project does not exist - Redis tests disabled
+// NOTE: SensitiveFlow.TokenStore.Redis has no .csproj - source-only package
+// Redis tests are available in samples/Redis.Sample but not unit-testable without project file
+// TODO: Create SensitiveFlow.TokenStore.Redis.csproj to enable these tests
 // using StackExchange.Redis;
 // using SensitiveFlow.TokenStore.Redis;
 
-namespace SensitiveFlow.TokenStore.Tests;
+namespace SensitiveFlow.TokenStore.EFCore.Tests;
 
-/* TODO: Redis token store tests disabled - project not available
+/* Redis token store tests disabled - project file not available
 public sealed class RedisTokenStoreTests
 {
     private readonly Mock<IConnectionMultiplexer> _redisConnectionMock;
