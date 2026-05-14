@@ -81,7 +81,8 @@ public sealed class DataSubjectExporter : IDataSubjectExporter
             return text;
         }
 
-        var kind = InferMaskKind(property.Name);
+        var kind = property.GetCustomAttribute<MaskKindAttribute>(inherit: true)?.Kind
+            ?? InferMaskKind(property.Name);
         return kind switch
         {
             MaskKind.Email => MaskEmail(text),
