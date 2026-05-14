@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using SensitiveFlow.Core.Attributes;
 using SensitiveFlow.Core.Enums;
+using SensitiveFlow.Retention.Extensions;
 using SensitiveFlow.Retention.Services;
 
 namespace SensitiveFlow.Retention.Tests;
@@ -73,6 +74,7 @@ public sealed class RetentionSchedulerExtensionsTests
     public void AddRetentionScheduler_WithGenericType_RegistersService()
     {
         var services = new ServiceCollection();
+        services.AddLogging();
 
         services.AddRetentionScheduler<TestDbContext>();
 
@@ -86,6 +88,7 @@ public sealed class RetentionSchedulerExtensionsTests
     public void AddRetentionScheduler_WithType_RegistersService()
     {
         var services = new ServiceCollection();
+        services.AddLogging();
 
         services.AddRetentionScheduler(typeof(TestDbContext));
 
@@ -99,6 +102,7 @@ public sealed class RetentionSchedulerExtensionsTests
     public void AddRetentionScheduler_AllowsConfiguration()
     {
         var services = new ServiceCollection();
+        services.AddLogging();
 
         services.AddRetentionScheduler<TestDbContext>(opts =>
         {
@@ -117,6 +121,7 @@ public sealed class RetentionSchedulerExtensionsTests
     public void AddRetentionScheduler_WithoutConfiguration_UsesDefaults()
     {
         var services = new ServiceCollection();
+        services.AddLogging();
 
         services.AddRetentionScheduler<TestDbContext>();
 

@@ -91,14 +91,52 @@ public class Order
 
 ## Bulk updates and raw SQL
 
-The interceptor observes EF Core's `ChangeTracker` during `SaveChanges` / `SaveChangesAsync`. Operations that bypass tracked entities do not produce per-field audit records automatically:
+`SensitiveDataAuditInterceptor` only sees writes that go through `SaveChanges`. EF Core's bulk operations translate directly to SQL and bypass the `ChangeTracker`, so they would silently drop audit records on annotated entities. Raw SQL is in the same category.
 
-- `ExecuteUpdate` / `ExecuteUpdateAsync`
-- `ExecuteDelete` / `ExecuteDeleteAsync`
-- `Database.ExecuteSqlRaw` / `ExecuteSqlInterpolated`
-- direct database changes outside EF Core
+### Auditing `ExecuteUpdate` and `ExecuteDelete`
 
-For these paths, create audit records explicitly around the bulk operation, or prefer loading and modifying tracked entities when per-field audit is required.
+Use `ExecuteUpdateAuditedAsync` and `ExecuteDeleteAuditedAsync` from `SensitiveFlow.EFCore.BulkOperations` whenever you need to bulk-mutate entities that carry `[PersonalData]` or `[SensitiveData]`:
+
+```csharp
+using SensitiveFlow.EFCore.BulkOperations;
+
+var affected = await db.Customers
+    .Where(c => c.Status == "Inactive")
+    .ExecuteUpdateAuditedAsync(
+        setters => setters.SetProperty(c => c.Email, "redacted@example.com"),
+        auditStore,
+        auditContext);
+```
+
+The helpers issue a single `SELECT` for the affected `DataSubjectId` values, run the bulk modification, and then emit one `AuditRecord` per (subject, annotated field) pair — matching the granularity of a `SaveChanges`-based update.
+
+Setters that target non-annotated columns produce no audit records, so you can mix sensitive and non-sensitive updates in one call without inflating the audit trail. If the entity has no annotated members the helper forwards directly to EF Core with no prefetch.
+
+### Cost guard
+
+The prefetch and audit fan-out are bounded by `SensitiveBulkOperationsOptions.MaxAuditedRows` (default `10_000`). If a single call would touch more subjects, it throws — narrow the predicate, process in batches, or raise the limit explicitly when you know the cost is acceptable.
+
+### Blocking unaudited bulk operations
+
+Register `SensitiveBulkOperationsGuardInterceptor` so that a direct `ExecuteUpdateAsync` / `ExecuteDeleteAsync` against an annotated entity fails fast instead of writing without an audit trail:
+
+```csharp
+builder.Services.AddSensitiveBulkOperations();
+
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+{
+    options.UseSqlServer(connectionString);
+    options.AddInterceptors(
+        sp.GetRequiredService<SensitiveDataAuditInterceptor>(),
+        sp.GetRequiredService<SensitiveBulkOperationsGuardInterceptor>());
+});
+```
+
+Set `RequireExplicitAuditing = false` only when bulk operations on annotated entities are audited by a layer in front of EF Core.
+
+### Raw SQL is still your responsibility
+
+`Database.ExecuteSqlRaw` and `ExecuteSqlInterpolated` are not intercepted: there is no LINQ expression to inspect and no safe way to project the affected subjects. Either avoid raw SQL against entities holding personal data, or emit audit records around it manually.
 
 ## NullAuditContext
 

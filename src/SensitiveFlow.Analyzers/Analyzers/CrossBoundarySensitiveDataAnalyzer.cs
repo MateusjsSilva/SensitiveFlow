@@ -28,17 +28,7 @@ namespace SensitiveFlow.Analyzers.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CrossBoundarySensitiveDataAnalyzer : DiagnosticAnalyzer
 {
-    private const string DiagnosticId = "SF0005";
-    private const string Category = "SensitiveFlow.Security";
-
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        title: "Sensitive data exposed from unprotected endpoint",
-        messageFormat: "Method '{0}' returns sensitive field '{1}' without authorization protection.",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Methods returning personal or sensitive data should have authorization attributes.");
+    private static readonly DiagnosticDescriptor Rule = Diagnostics.DiagnosticDescriptors.SensitiveDataReturnedWithoutAuthorization;
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

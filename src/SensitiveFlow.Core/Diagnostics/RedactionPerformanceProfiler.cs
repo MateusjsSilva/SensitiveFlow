@@ -53,10 +53,9 @@ public sealed class RedactionPerformanceProfiler
         /// <summary>Returns a formatted summary string.</summary>
         public override string ToString()
         {
-            return $"{OperationName}: {ExecutionCount} ops, " +
-                   $"avg {AverageMs:F2}ms, " +
-                   $"min/max {MinMs}/{MaxMs}ms, " +
-                   $"throughput {ThroughputMbPerSec:F2} MB/s";
+            return string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"{OperationName}: {ExecutionCount} ops, avg {AverageMs:F2}ms, min/max {MinMs}/{MaxMs}ms, throughput {ThroughputMbPerSec:F2} MB/s");
         }
     }
 

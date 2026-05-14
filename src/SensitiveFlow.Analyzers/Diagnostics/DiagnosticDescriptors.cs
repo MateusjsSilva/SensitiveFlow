@@ -39,4 +39,13 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description: "Properties whose names match common PII patterns (Email, Phone, Name, TaxId, Cpf, Ssn, Passport, Address, BirthDate, etc.) should be annotated so the library can audit, mask, and redact them.");
+
+    public static readonly DiagnosticDescriptor SensitiveDataReturnedWithoutAuthorization = new(
+        id: "SF0005",
+        title: "Sensitive data returned from endpoint without authorization",
+        messageFormat: "Method '{0}' returns sensitive member '{1}' but its endpoint is not protected by an authorization attribute",
+        category: "Privacy",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Endpoints that surface [PersonalData] or [SensitiveData] members should be guarded by [Authorize] (or an equivalent attribute) so the lack of authentication is not the reason personal data leaks.");
 }
