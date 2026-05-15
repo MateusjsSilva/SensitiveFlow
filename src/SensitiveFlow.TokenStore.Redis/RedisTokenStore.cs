@@ -161,8 +161,13 @@ public sealed class RedisTokenStore : ITokenStore
     public async Task<long> GetTokenCountAsync()
     {
         var server = _redis.GetServer(_redis.GetEndPoints().First());
-        var keys = await server.KeysAsync(pattern: _keyPrefix + "*");
-        return keys.Count();
+        var keys = server.KeysAsync(pattern: _keyPrefix + "*");
+        var count = 0L;
+        await foreach (var _ in keys)
+        {
+            count++;
+        }
+        return count;
     }
 
     private static string GenerateToken()

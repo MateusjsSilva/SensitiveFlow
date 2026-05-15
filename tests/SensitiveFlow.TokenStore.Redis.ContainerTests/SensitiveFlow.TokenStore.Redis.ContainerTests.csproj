@@ -2,18 +2,14 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
-    <PackageReference Include="Moq" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="StackExchange.Redis" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Core\SensitiveFlow.Core.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.Anonymization\SensitiveFlow.Anonymization.csproj" />
-    <ProjectReference Include="..\..\src\SensitiveFlow.TokenStore.EFCore\SensitiveFlow.TokenStore.EFCore.csproj" />
     <ProjectReference Include="..\..\src\SensitiveFlow.TokenStore.Redis\SensitiveFlow.TokenStore.Redis.csproj" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 using SensitiveFlow.Anonymization.Pseudonymizers;
+using SensitiveFlow.TokenStore.Redis;
 using StackExchange.Redis;
 
 const string defaultConnectionString = "localhost:6379";
@@ -11,7 +12,7 @@ var connection = await ConnectionMultiplexer.ConnectAsync(connectionString);
 
 try
 {
-    var tokenStore = new Redis.Sample.RedisTokenStore(connection);
+    var tokenStore = new RedisTokenStore(connection);
     var pseudonymizer = new TokenPseudonymizer(tokenStore);
 
     var rawValue = "192.168.10.55";

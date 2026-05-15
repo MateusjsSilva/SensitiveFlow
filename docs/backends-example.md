@@ -101,44 +101,118 @@ builder.Services.AddSensitiveFlowEFCore();
 
 ---
 
-## Redis - Token Store
+## Redis - Token Store (Distributed)
+
+### Using the Built-in SensitiveFlow.TokenStore.Redis Package
+
+For production use with multiple service instances sharing a centralized Redis, use the official package:
+
+```bash
+dotnet add package SensitiveFlow.TokenStore.Redis
+```
+
+**Registration:**
+
+```csharp
+using SensitiveFlow.TokenStore.Redis;
+using StackExchange.Redis;
+
+// Connect to Redis
+var redis = await ConnectionMultiplexer.ConnectAsync(
+    builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
+
+// Register the Redis token store with optional configuration
+builder.Services.AddRedisTokenStore(
+    redis,
+    keyPrefix: "app:tokens:",           // Namespace to avoid collisions
+    defaultExpiry: TimeSpan.FromDays(365)  // TTL for tokens
+);
+
+builder.Services.AddSensitiveFlowLogging();
+```
+
+**Features:**
+- ✅ Atomic bidirectional token-value mapping with Redis transactions
+- ✅ Token-based prefix generation with deterministic key hashing
+- ✅ Configurable TTL for automatic expiration
+- ✅ Health checks via `IsHealthyAsync()`
+- ✅ Token counting and deletion support
+- ✅ Thread-safe with async/await throughout
+- ✅ Tested with StackExchange.Redis 2.8.0+
+
+**Usage Example:**
+
+```csharp
+var tokenStore = provider.GetRequiredService<ITokenStore>();
+
+// Get or create a token
+string token = await tokenStore.GetOrCreateTokenAsync("alice@example.com");
+
+// Same value returns the same token (idempotent)
+string sameToken = await tokenStore.GetOrCreateTokenAsync("alice@example.com");
+Assert.Equal(token, sameToken);
+
+// Reverse lookup
+string value = await tokenStore.ResolveTokenAsync(token);
+Assert.Equal("alice@example.com", value);
+```
+
+**Configuration for High Availability (Sentinel):**
+
+If using Redis Sentinel for automatic failover:
+
+```json
+{
+  "ConnectionStrings": {
+    "Redis": "sentinel1:26379,sentinel2:26379,sentinel3:26379,serviceName=mymaster"
+  }
+}
+```
+
+```csharp
+var redis = await ConnectionMultiplexer.ConnectAsync(
+    builder.Configuration.GetConnectionString("Redis"));
+builder.Services.AddRedisTokenStore(redis);
+```
+
+---
+
+### Manual Implementation (Advanced)
+
+If you need custom token store logic, implement `ITokenStore`:
 
 ```csharp
 using StackExchange.Redis;
 using SensitiveFlow.Core.Interfaces;
-using System.Text.Json;
 
-public sealed class RedisTokenStore : ITokenStore
+public sealed class CustomRedisTokenStore : ITokenStore
 {
     private readonly IDatabase _db;
     private readonly TimeSpan _ttl;
 
-    public RedisTokenStore(IConnectionMultiplexer redis, TimeSpan? ttl = null)
+    public CustomRedisTokenStore(IConnectionMultiplexer redis, TimeSpan? ttl = null)
     {
         _db = redis.GetDatabase();
-        // Tokens live for a year by default — pick a TTL that matches your retention policy.
         _ttl = ttl ?? TimeSpan.FromDays(365);
     }
 
     public async Task<string> GetOrCreateTokenAsync(string value, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        ArgumentException.ThrowIfNullOrEmpty(value);
         
-        // Hash the value to create a deterministic key
         string key = $"token:{HashValue(value)}";
         
         var existing = await _db.StringGetAsync(key);
         if (existing.HasValue)
         {
-            // Extend TTL on access
             await _db.KeyExpireAsync(key, _ttl);
             return existing.ToString();
         }
 
-        // Create new token (UUID for high entropy)
         string token = Guid.NewGuid().ToString("N");
         
-        // Store bidirectionally for reversal
         await _db.StringSetAsync(key, token, _ttl);
         await _db.StringSetAsync($"reverse:{token}", value, _ttl);
         
@@ -147,15 +221,13 @@ public sealed class RedisTokenStore : ITokenStore
 
     public async Task<string> ResolveTokenAsync(string token, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(token);
+        ArgumentException.ThrowIfNullOrEmpty(token);
         
         var value = await _db.StringGetAsync($"reverse:{token}");
         if (!value.HasValue)
-            throw new KeyNotFoundException($"Token '{token}' not found in store.");
+            throw new KeyNotFoundException($"Token '{token}' not found.");
         
-        // Extend TTL on access
         await _db.KeyExpireAsync($"reverse:{token}", _ttl);
-        
         return value.ToString();
     }
 
@@ -166,16 +238,6 @@ public sealed class RedisTokenStore : ITokenStore
         return Convert.ToBase64String(hash);
     }
 }
-```
-
-### Registration
-
-```csharp
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
-
-builder.Services.AddScoped<ITokenStore, RedisTokenStore>();
-builder.Services.AddSensitiveFlowLogging();
 ```
 
 ---

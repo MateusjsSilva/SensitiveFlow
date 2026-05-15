@@ -183,9 +183,39 @@ dotnet run
 
 cd ../WebApi.Sample
 dotnet run
+
+# Distributed token store with Redis
+cd ../Redis.Microservice.Sample
+dotnet run
 ```
 
-Each sample demonstrates different configurations: QuickStart keeps it minimal, WebApi shows outbox and diagnostics, MinimalApi shows routing integration, Console shows standalone usage, Redis shows distributed token store.
+**Sample Overview:**
+| Sample | Focus | Use Case |
+|--------|-------|----------|
+| **QuickStart.Sample** | Minimal setup | Learning basics |
+| **WebApi.Sample** | Full features | Production reference |
+| **MinimalApi.Sample** | Minimal APIs | Modern ASP.NET Core routing |
+| **Redis.Sample** | Console app | Standalone token generation |
+| **Redis.Microservice.Sample** | Multi-instance API | Horizontal scaling, distributed token store with health checks and Swagger |
+
+**Running Redis sample:**
+```bash
+# Terminal 1: Start Redis
+docker run -d -p 6379:6379 redis:7.0
+
+# Terminal 2: Run first instance (port 5001)
+cd samples/Redis.Microservice.Sample
+dotnet run
+
+# Terminal 3: Test with curl
+curl -X POST https://localhost:5001/api/pseudonymization/anonymize \
+  -H "Content-Type: application/json" \
+  -d '{"value": "alice@example.com"}' -k
+
+# Check Swagger UI: https://localhost:5001/swagger
+```
+
+See [Redis.Microservice.Sample README](samples/Redis.Microservice.Sample/README.md) for multi-instance testing.
 
 ## Advanced: Package-by-package setup
 
@@ -197,10 +227,33 @@ See [Package Reference](docs/package-reference.md) for the full setup matrix and
 
 ## Documentation
 
+**Getting Started:**
 - [Documentation index](docs/README.md)
 - [Getting Started](docs/getting-started.md)
+- [Quick Start (30 minutes)](docs/getting-started.md#quick-start)
+
+**Feature Guides:**
 - [Package reference](docs/package-reference.md)
+- [Audit trail](docs/audit.md)
+- [EF Core integration](docs/efcore.md)
+- [ASP.NET Core context](docs/aspnetcore.md)
+- [JSON redaction](docs/json.md)
+- [Anonymization & pseudonymization](docs/anonymization.md)
+- [Retention & erasure](docs/retention.md)
+
+**Distributed Systems:**
+- [Redis Token Store](docs/backends-example.md#redis--token-store-distributed)
+- [Alternative backends](docs/backends-example.md)
+
+**Troubleshooting & Best Practices:**
+- [Troubleshooting guide](docs/troubleshooting.md) — Diagnose common issues
+- [Common pitfalls](docs/common-pitfalls.md) — 12 mistakes to avoid
 - [AI skill guide](docs/ai-skill-sensitiveflow.md)
+
+**Advanced Topics:**
+- [Data subject export](docs/anonymization.md#export)
+- [OpenTelemetry diagnostics](docs/diagnostics.md)
+- [Custom audit policies](docs/policies.md)
 
 ## Design Principles
 
