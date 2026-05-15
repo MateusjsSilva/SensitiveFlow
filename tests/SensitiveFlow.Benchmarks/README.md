@@ -427,13 +427,16 @@ redis-cli --latency  # Should show <1ms
 - Filter to specific benchmarks
 - Increase system memory available
 
-## Next Steps
+## Future Enhancements
 
-- Compare across .NET versions (8.0, 9.0, 10.0)
-- Benchmark with production-like data volumes
-- Profile hot paths using external profilers
-- Compare with competing libraries
-- Monitor performance regression over time
+These items are beyond the scope of the current benchmarking suite but could be valuable additions:
+
+- **Cross-version comparison**: Benchmark across .NET versions (8.0, 9.0, 10.0) to identify regressions
+- **Production-scale testing**: Benchmark with large data volumes (100k+ entities, 100MB+ JSON payloads)
+- **Hot path profiling**: Use external profilers (dotTrace, flame graphs) to identify optimization opportunities
+- **Stress testing**: Sustained load testing (high concurrency over extended periods)
+
+See [BENCHMARK_SUMMARY.md](../../BENCHMARK_SUMMARY.md) for current results and CI/CD integration guidelines.
 
 ## References
 

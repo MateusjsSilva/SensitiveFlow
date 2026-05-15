@@ -7,6 +7,7 @@ Use this page as the documentation index. The files are grouped by task so contr
 - [Getting started](getting-started.md): first installation and minimal setup.
 - [Package reference](package-reference.md): what each NuGet package contains and when to install it.
 - [Attributes](attributes.md): how to classify personal, sensitive, and retention-managed fields.
+- [Performance Benchmarks](../BENCHMARK_SUMMARY.md): complete performance analysis of all 7 packages (67 benchmarks, <5% overhead).
 
 ## Runtime integrations
 
@@ -18,6 +19,7 @@ Use this page as the documentation index. The files are grouped by task so contr
 - [Logging](logging.md): `ILogger` redaction provider and limits.
 - [Diagnostics](diagnostics.md): OpenTelemetry ActivitySource/Meter integration.
 - [Policies, discovery, and health](policies-discovery-health.md): shared profiles, policy rules, discovery reports, startup validation, health checks, and CLI scans.
+- [Performance Monitoring](../BENCHMARK_SUMMARY.md): benchmark results, performance thresholds, and production readiness criteria.
 
 ## Data protection workflows
 

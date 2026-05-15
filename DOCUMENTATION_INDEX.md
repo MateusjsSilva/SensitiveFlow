@@ -36,16 +36,18 @@ Each package has a `README.md` in its source directory with:
 | **SensitiveFlow.Logging** | Redact in log messages | [logging/README.md](./src/SensitiveFlow.Logging/README.md) |
 | **SensitiveFlow.AspNetCore** | HTTP context integration | [aspnetcore/README.md](./src/SensitiveFlow.AspNetCore/README.md) |
 | **SensitiveFlow.AspNetCore.EFCore** | Response redaction | [aspnetcore.efcore/README.md](./src/SensitiveFlow.AspNetCore.EFCore/README.md) |
+| **SensitiveFlow.Diagnostics** | OpenTelemetry metrics and traces | [diagnostics/README.md](./src/SensitiveFlow.Diagnostics/README.md) |
 
 ### Compliance & Automation Packages
 
 | Package | Purpose | Readme |
 |---------|---------|--------|
-| **SensitiveFlow.Anonymization** | Data export and subject erasure | [anonymization/README.md](./src/SensitiveFlow.Anonymization/README.md) |
-| **SensitiveFlow.Retention** | Automatic data cleanup | [retention/README.md](./src/SensitiveFlow.Retention/README.md) |
 | **SensitiveFlow.Audit.Snapshots.EFCore** | Full entity state snapshots | [audit.snapshots.efcore/README.md](./src/SensitiveFlow.Audit.Snapshots.EFCore/README.md) |
 | **SensitiveFlow.Audit.EFCore.Outbox** | Outbox pattern for audit publishing | [audit.efcore.outbox/README.md](./src/SensitiveFlow.Audit.EFCore.Outbox/README.md) |
-| **SensitiveFlow.TokenStore.EFCore** | Pseudonymization token storage | [tokenstore.efcore/README.md](./src/SensitiveFlow.TokenStore.EFCore/README.md) |
+| **SensitiveFlow.TokenStore.EFCore** | Pseudonymization token storage (SQL Server/Postgres/SQLite) | [tokenstore.efcore/README.md](./src/SensitiveFlow.TokenStore.EFCore/README.md) |
+| **SensitiveFlow.TokenStore.Redis** | Distributed pseudonymization token storage (Redis) | [tokenstore.redis/README.md](./src/SensitiveFlow.TokenStore.Redis/README.md) |
+| **SensitiveFlow.Retention** | Automatic data cleanup and retention policies | [retention/README.md](./src/SensitiveFlow.Retention/README.md) |
+| **SensitiveFlow.Anonymization** | Data export, subject erasure, and masking | [anonymization/README.md](./src/SensitiveFlow.Anonymization/README.md) |
 
 ### Development & Operations Packages
 
@@ -55,9 +57,9 @@ Each package has a `README.md` in its source directory with:
 | **SensitiveFlow.Analyzers.CodeFixes** | Quick fixes for violations | [analyzers.codefixes/README.md](./src/SensitiveFlow.Analyzers.CodeFixes/README.md) |
 | **SensitiveFlow.HealthChecks** | Health checks for compliance | [healthchecks/README.md](./src/SensitiveFlow.HealthChecks/README.md) |
 | **SensitiveFlow.SourceGenerators** | Compile-time code generation | [sourcegenerators/README.md](./src/SensitiveFlow.SourceGenerators/README.md) |
-| **SensitiveFlow.Diagnostics** | Performance profiling | [diagnostics/README.md](./src/SensitiveFlow.Diagnostics/README.md) |
-| **SensitiveFlow.TestKit** | Testing utilities | [testkit/README.md](./src/SensitiveFlow.TestKit/README.md) |
-| **SensitiveFlow.Tool** | CLI analysis and reporting | [tool/README.md](./src/SensitiveFlow.Tool/README.md) |
+| **SensitiveFlow.HealthChecks** | Health checks for audit and token infrastructure | [healthchecks/README.md](./src/SensitiveFlow.HealthChecks/README.md) |
+| **SensitiveFlow.TestKit** | Testing utilities and conformance bases | [testkit/README.md](./src/SensitiveFlow.TestKit/README.md) |
+| **SensitiveFlow.Tool** | CLI analysis and discovery reporting | [tool/README.md](./src/SensitiveFlow.Tool/README.md) |
 
 ## Documentation Hierarchy
 

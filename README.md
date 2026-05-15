@@ -38,7 +38,8 @@ SensitiveFlow gives you:
 | `SensitiveFlow.Audit` | Immutable audit trail -- bring your own durable store; retry and buffered decorators included | Preview |
 | `SensitiveFlow.Audit.EFCore` | Durable EF Core-backed audit store (`IAuditStore` + `IBatchAuditStore`) | Preview |
 | `SensitiveFlow.Audit.Snapshots.EFCore` | Durable EF Core-backed aggregate snapshot store (`IAuditSnapshotStore`) | Preview |
-| `SensitiveFlow.TokenStore.EFCore` | Durable EF Core-backed token store for reversible pseudonymization (`ITokenStore` + `IPseudonymizer`) | Preview |
+| `SensitiveFlow.TokenStore.EFCore` | Durable EF Core-backed token store for reversible pseudonymization (SQL Server/Postgres/SQLite) | Preview |
+| `SensitiveFlow.TokenStore.Redis` | Distributed Redis-backed token store for multi-instance deployments | Preview |
 | `SensitiveFlow.EFCore` | SaveChanges interceptor for automatic auditing | Preview |
 | `SensitiveFlow.AspNetCore` | Middleware for actor/IP context enrichment | Preview |
 | `SensitiveFlow.Logging` | ILogger decorator for PII redaction in logs | Preview |
@@ -225,12 +226,22 @@ See [Package Reference](docs/package-reference.md) for the full setup matrix and
 
 > **Do not use in-memory stores in production.** Audit records and token mappings must survive process restarts.
 
+## Performance
+
+All 7 packages have been benchmarked across 67 tests showing **< 5% overhead** on typical API requests. See [Performance Benchmarks](BENCHMARK_SUMMARY.md) for detailed results including:
+- Retention policy evaluation: **27 nanoseconds**
+- Redis token store: **2-5ms per operation**
+- JSON masking: **<1ms per object**
+- Logging redaction: **<1ms per message**
+- Audit write: **<0.5ms** (in-memory) to **2-4ms** (database)
+
 ## Documentation
 
 **Getting Started:**
 - [Documentation index](docs/README.md)
 - [Getting Started](docs/getting-started.md)
 - [Quick Start (30 minutes)](docs/getting-started.md#quick-start)
+- [Performance Benchmarks](BENCHMARK_SUMMARY.md) — 67 benchmarks, <5% overhead, production-ready
 
 **Feature Guides:**
 - [Package reference](docs/package-reference.md)
@@ -242,8 +253,9 @@ See [Package Reference](docs/package-reference.md) for the full setup matrix and
 - [Retention & erasure](docs/retention.md)
 
 **Distributed Systems:**
-- [Redis Token Store](docs/backends-example.md#redis--token-store-distributed)
+- [Redis Token Store](docs/backends-example.md#redis--token-store-distributed) — `SensitiveFlow.TokenStore.Redis` for multi-instance pseudonymization
 - [Alternative backends](docs/backends-example.md)
+- [Performance benchmarks](BENCHMARK_SUMMARY.md#package-by-package-results) — Redis store performance analysis
 
 **Troubleshooting & Best Practices:**
 - [Troubleshooting guide](docs/troubleshooting.md) — Diagnose common issues
