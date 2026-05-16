@@ -295,19 +295,25 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
 
     private static string ResolveDataSubjectId(object entity)
     {
-        // The previous implementation also fell back to a property called "Id". That
-        // turned out to be unsafe: EF-managed auto-increment keys can be assigned by the
-        // provider (e.g. InMemory) before the interceptor runs, so the audit row would be
-        // tagged with whatever the database happened to allocate — a value that has no
-        // meaning to the data subject the row is supposed to be about. We now require
-        // a property explicitly named DataSubjectId (or UserId as a legacy alias).
         var type = entity.GetType();
+
+        // First, check for CompositeDataSubjectId attribute
+        var compositeAttr = type.GetCustomAttributes(typeof(CompositeDataSubjectIdAttribute), inherit: true)
+            .OfType<CompositeDataSubjectIdAttribute>()
+            .FirstOrDefault();
+
+        if (compositeAttr is not null)
+        {
+            return ResolveCompositeDataSubjectId(entity, type, compositeAttr);
+        }
+
+        // Fall back to single DataSubjectId or UserId property
         var prop = type.GetProperty("DataSubjectId") ?? type.GetProperty("UserId");
 
         if (prop is null)
         {
             throw new InvalidOperationException(
-                $"Entity '{type.Name}' has no 'DataSubjectId' (or 'UserId') property. " +
+                $"Entity '{type.Name}' has no 'DataSubjectId' (or 'UserId') property and no [CompositeDataSubjectId] attribute. " +
                 "Add a stable subject identifier so the audit trail can correlate rows reliably; " +
                 "the database-generated 'Id' is not used because it is not under the application's control at SaveChanges time.");
         }
@@ -323,6 +329,33 @@ public sealed class SensitiveDataAuditInterceptor : SaveChangesInterceptor
         }
 
         return value;
+    }
+
+    private static string ResolveCompositeDataSubjectId(object entity, Type type, CompositeDataSubjectIdAttribute attr)
+    {
+        var values = new List<string>();
+
+        foreach (var propertyName in attr.PropertyNames)
+        {
+            var prop = type.GetProperty(propertyName);
+            if (prop is null)
+            {
+                throw new InvalidOperationException(
+                    $"Entity '{type.Name}' declares [CompositeDataSubjectId] with property '{propertyName}', but no such property exists.");
+            }
+
+            var value = prop.GetValue(entity)?.ToString();
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new InvalidOperationException(
+                    $"Entity '{type.Name}' declares [CompositeDataSubjectId] with property '{propertyName}', but its value is null or empty at SaveChanges time. " +
+                    "All composite key properties must have values before persisting.");
+            }
+
+            values.Add($"{propertyName}:{value}");
+        }
+
+        return string.Join(";", values);
     }
 
     private static void ValidateDataSubjectIdType(System.Reflection.PropertyInfo prop, Type entityType)

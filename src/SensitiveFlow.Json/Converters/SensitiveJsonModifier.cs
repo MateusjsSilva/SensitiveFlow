@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Core.Attributes;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Policies;
 using SensitiveFlow.Core.Reflection;
 using SensitiveFlow.Json.Attributes;
@@ -26,7 +27,7 @@ public static class SensitiveJsonModifier
     /// Returns a <see cref="JsonTypeInfo"/> modifier action that applies the given
     /// <paramref name="options"/> to every relevant property in every type seen.
     /// </summary>
-    public static Action<JsonTypeInfo> Create(JsonRedactionOptions options)
+    public static Action<JsonTypeInfo> Create(JsonRedactionOptions options, RedactionContext context = RedactionContext.ApiResponse)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -58,7 +59,7 @@ public static class SensitiveJsonModifier
                     continue;
                 }
 
-                var redactionSettings = ResolveSettings(clrProperty, options);
+                var redactionSettings = ResolveSettings(clrProperty, options, context);
                 var mode = redactionSettings.Mode;
 
                 if (mode == JsonRedactionMode.None)
@@ -97,11 +98,11 @@ public static class SensitiveJsonModifier
         };
     }
 
-    private static JsonRedactionSettings ResolveSettings(PropertyInfo property, JsonRedactionOptions options)
+    private static JsonRedactionSettings ResolveSettings(PropertyInfo property, JsonRedactionOptions options, RedactionContext context = RedactionContext.ApiResponse)
     {
         var overrideAttr = property.GetCustomAttribute<JsonRedactionAttribute>(inherit: true);
         return new JsonRedactionSettings(
-            ResolveMode(property, options, overrideAttr),
+            ResolveMode(property, options, overrideAttr, context),
             overrideAttr is { HasPreservePrefixLength: true }
                 ? overrideAttr.PreservePrefixLength
                 : null);
@@ -110,7 +111,8 @@ public static class SensitiveJsonModifier
     private static JsonRedactionMode ResolveMode(
         PropertyInfo property,
         JsonRedactionOptions options,
-        JsonRedactionAttribute? overrideAttr)
+        JsonRedactionAttribute? overrideAttr,
+        RedactionContext context = RedactionContext.ApiResponse)
     {
         if (overrideAttr is not null)
         {
@@ -118,9 +120,9 @@ public static class SensitiveJsonModifier
         }
 
         var contextual = property.GetCustomAttribute<RedactionAttribute>(inherit: true);
-        var contextualAction = contextual?.ForContext(Core.Enums.RedactionContext.ApiResponse)
-            ?? Core.Enums.OutputRedactionAction.None;
-        if (contextualAction != Core.Enums.OutputRedactionAction.None)
+        var contextualAction = contextual?.ForContext(context)
+            ?? OutputRedactionAction.None;
+        if (contextualAction != OutputRedactionAction.None)
         {
             return ToJsonMode(contextualAction);
         }
@@ -178,14 +180,14 @@ public static class SensitiveJsonModifier
         return null;
     }
 
-    private static JsonRedactionMode ToJsonMode(Core.Enums.OutputRedactionAction action)
+    private static JsonRedactionMode ToJsonMode(OutputRedactionAction action)
     {
         return action switch
         {
-            Core.Enums.OutputRedactionAction.Omit => JsonRedactionMode.Omit,
-            Core.Enums.OutputRedactionAction.Redact => JsonRedactionMode.Redacted,
-            Core.Enums.OutputRedactionAction.Mask => JsonRedactionMode.Mask,
-            Core.Enums.OutputRedactionAction.None => JsonRedactionMode.None,
+            OutputRedactionAction.Omit => JsonRedactionMode.Omit,
+            OutputRedactionAction.Redact => JsonRedactionMode.Redacted,
+            OutputRedactionAction.Mask => JsonRedactionMode.Mask,
+            OutputRedactionAction.None => JsonRedactionMode.None,
             _ => JsonRedactionMode.Redacted,
         };
     }

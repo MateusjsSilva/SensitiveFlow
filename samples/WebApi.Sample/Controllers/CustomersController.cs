@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SensitiveFlow.Anonymization.Erasure;
@@ -6,6 +8,9 @@ using SensitiveFlow.Anonymization.Export;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
+using SensitiveFlow.Json.Configuration;
+using SensitiveFlow.Json.Converters;
+using SensitiveFlow.Json.Extensions;
 using SensitiveFlow.Retention.Services;
 using WebApi.Sample.Infrastructure;
 
@@ -124,6 +129,56 @@ public sealed class EmployeesController : ControllerBase
         var employee = await FindEmployeeAsync(id, ct);
 
         return employee is null ? NotFound() : Ok(employee);
+    }
+
+    [HttpGet("{id}/role-based")]
+    public async Task<IActionResult> GetWithRoleBasedRedaction(string id, CancellationToken ct)
+    {
+        var employee = await FindEmployeeAsync(id, ct);
+        if (employee is null)
+        {
+            return NotFound();
+        }
+
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "Customer";
+
+        var context = userRole switch
+        {
+            "Admin" => RedactionContext.AdminView,
+            "Support" => RedactionContext.SupportView,
+            "Customer" => RedactionContext.CustomerView,
+            _ => RedactionContext.ApiResponse,
+        };
+
+        var options = new JsonSerializerOptions();
+        options.WithSensitiveDataRedaction(
+            new JsonRedactionOptions { DefaultMode = SensitiveFlow.Json.Enums.JsonRedactionMode.Mask },
+            context);
+
+        var json = JsonSerializer.Serialize(employee, options);
+        return Ok(JsonSerializer.Deserialize<object>(json));
+    }
+
+    [HttpGet("orders/composite")]
+    public async Task<IActionResult> GetOrdersWithComposite(CancellationToken ct)
+    {
+        var orders = await _db.EmployeeOrders
+            .Take(10)
+            .ToListAsync(ct);
+
+        if (!orders.Any())
+        {
+            return Ok(new { message = "No orders found. Orders use CompositeDataSubjectId(EmployeeId, OrderId)." });
+        }
+
+        return Ok(orders.Select(o => new
+        {
+            o.EmployeeId,
+            o.OrderId,
+            DataSubjectKey = $"EmployeeId:{o.EmployeeId};OrderId:{o.OrderId}",
+            o.CustomerEmail,
+            o.Amount,
+        }));
     }
 
     [HttpGet("{id}/export")]

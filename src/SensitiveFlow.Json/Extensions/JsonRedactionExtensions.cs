@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Json.Configuration;
 using SensitiveFlow.Json.Converters;
 
@@ -16,11 +17,12 @@ public static class JsonRedactionExtensions
     /// <summary>
     /// Adds the SensitiveFlow redaction modifier to <paramref name="options"/>.
     /// Properties annotated with <c>[PersonalData]</c> or <c>[SensitiveData]</c> will be
-    /// redacted according to <paramref name="redactionOptions"/>.
+    /// redacted according to <paramref name="redactionOptions"/> for the specified <paramref name="context"/>.
     /// </summary>
     public static JsonSerializerOptions WithSensitiveDataRedaction(
         this JsonSerializerOptions options,
-        JsonRedactionOptions? redactionOptions = null)
+        JsonRedactionOptions? redactionOptions = null,
+        RedactionContext context = RedactionContext.ApiResponse)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -28,7 +30,7 @@ public static class JsonRedactionExtensions
         var resolver = options.TypeInfoResolver as DefaultJsonTypeInfoResolver
                        ?? new DefaultJsonTypeInfoResolver();
 
-        resolver.Modifiers.Add(SensitiveJsonModifier.Create(redaction));
+        resolver.Modifiers.Add(SensitiveJsonModifier.Create(redaction, context));
         options.TypeInfoResolver = resolver;
         return options;
     }
