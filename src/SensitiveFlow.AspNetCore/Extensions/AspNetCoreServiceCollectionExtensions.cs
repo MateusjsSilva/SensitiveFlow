@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using SensitiveFlow.AspNetCore.Context;
 using SensitiveFlow.AspNetCore.Diagnostics;
@@ -20,12 +21,16 @@ public static class AspNetCoreServiceCollectionExtensions
         Action<SensitiveFlowAuditMiddlewareOptions>? configureMiddleware = null)
     {
         services.AddHttpContextAccessor();
-        services.AddScoped<IAuditContext, HttpAuditContext>();
         services.AddSingleton<SensitiveFlowAspNetCorePipelineDiagnostics>();
 
         var middlewareOptions = new SensitiveFlowAuditMiddlewareOptions();
         configureMiddleware?.Invoke(middlewareOptions);
         services.AddSingleton(middlewareOptions);
+
+        services.AddScoped<IAuditContext>(sp =>
+            new HttpAuditContext(
+                sp.GetRequiredService<IHttpContextAccessor>(),
+                sp.GetRequiredService<SensitiveFlowAuditMiddlewareOptions>()));
 
         return services;
     }

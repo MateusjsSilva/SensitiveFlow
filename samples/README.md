@@ -407,6 +407,38 @@ All samples have been updated to demonstrate preview.4 features:
 - `AuditingTokenStore` decorator wraps any `ITokenStore`
 - `InMemoryTokenAuditSink` for testing, pluggable `ITokenAuditSink` for production
 
+### AspNetCore Enhancements
+
+#### 27. User Session Tracking
+- Extract HTTP session IDs for request correlation
+- `SessionIdExtractor` with safe handling when sessions not configured
+- `HttpAuditContext.SessionId` virtual property
+- Opt-in via `SensitiveFlowAuditMiddlewareOptions.TrackSessionId`
+
+#### 28. Request Correlation IDs
+- Propagate or auto-generate correlation IDs from headers
+- `CorrelationIdOptions` for header name and generation behavior
+- Default header: `X-Correlation-ID`, auto-generation enabled
+- `HttpAuditContext.CorrelationId` for access
+
+#### 29. Tenant Isolation
+- Extract tenant ID from claims or headers for multi-tenant scoping
+- `TenantIdOptions` with claim and header configuration
+- Precedence: claim first, then header, then null
+- `HttpAuditContext.TenantId` virtual property
+
+#### 30. Custom Claim Extraction
+- Replace hard-coded claim names with configurable lists
+- `ActorIdClaimOptions` with ordered `ClaimNames`
+- Default: `["sub", ClaimTypes.NameIdentifier]`
+- First matching claim wins; falls back to `Identity.Name`
+
+#### 31. IP Masking
+- Mask last octet of IPv4 addresses (or last group of IPv6)
+- `IpMaskingOptions` with configurable suffix
+- Non-reversible, privacy-preserving alternative to pseudonymization
+- Example: `192.168.1.42` → `192.168.1.XXX`
+
 ### Role-Based Redaction (Core improvement)
 - Different redaction per user role (Admin, Support, Customer)
 - Context-aware masking via `RedactionContext` enum

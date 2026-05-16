@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Token key rotation service** (`TokenKeyRotationService<TContext>`): Bulk token migration when pseudonymization scheme changes. Supports `GetAllTokensAsync()`, `ReplaceTokenAsync()`, `BulkReplaceAsync()`, and `DeleteAsync()` operations.
 - **Token audit trail** (`TokenAuditOperation`, `TokenAuditRecord`, `ITokenAuditSink`, `InMemoryTokenAuditSink`, `AuditingTokenStore`): Track token operations (Created, Resolved, Expired) without storing original values. Decorator pattern for transparent integration with existing `ITokenStore` implementations.
 - **`TokenMappingEntity.ExpiresAt` column**: Optional nullable timestamp for token expiration. Indexed for efficient cleanup queries.
+- **User session tracking** (`SessionIdExtractor`): Extract HTTP session IDs for request correlation. Safe extraction with no exceptions if sessions aren't configured. Opt-in via `SensitiveFlowAuditMiddlewareOptions.TrackSessionId`.
+- **Request correlation IDs** (`CorrelationIdOptions`): Propagate and auto-generate correlation IDs from `X-Correlation-ID` header. Configurable header name and auto-generation behavior.
+- **Tenant isolation** (`TenantIdOptions`): Extract tenant ID from claims or headers for multi-tenant audit scoping. Supports claim name and header name configuration with precedence rules.
+- **Custom claim extraction** (`ActorIdClaimOptions`): Replace hard-coded claim names with configurable ordered list. First matching claim wins; falls back to `Identity.Name` if no claims match.
+- **IP masking** (`IpMaskingOptions`, `IpMaskingHelper`): Mask last octet of IPv4 (or last group of IPv6) instead of pseudonymization. Non-reversible, privacy-preserving alternative to token-based anonymization.
+- **`HttpAuditContext` enhancements**: New virtual properties `SessionId`, `CorrelationId`, `TenantId` for accessing extracted audit context. Updated `ActorId` to use configurable claim names.
 
 ### Changed
 
