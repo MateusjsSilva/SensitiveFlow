@@ -128,10 +128,117 @@ Serialization respects redaction for all nested `[PersonalData]` properties.
 - Empty strings: Masked as `""`
 - Omit action: Property key excluded entirely (not `null`)
 
-## Possible Improvements
+## Advanced Features
 
-1. **Conditional redaction by role** — Allow `[Redaction]` to check user claims
-2. **Custom masking strategies** — Pluggable per data type (email, phone, SSN)
-3. **Lazy redaction** — Defer masking until serialization for large objects
-4. **Schema stripping** — Option to remove sensitive properties from OpenAPI schema
-5. **Performance metrics** — Built-in counters for redaction frequency
+### 1. Conditional Redaction by Role
+
+Resolve the redaction context based on user claims or roles:
+
+```csharp
+var principal = new ClaimsPrincipal(new ClaimsIdentity(new[] 
+{ 
+    new Claim(ClaimTypes.Role, "Admin") 
+}));
+var resolver = new ClaimsPrincipalRedactionContextResolver(principal);
+var context = resolver.ResolveContext(); // Returns RedactionContext.AdminView
+
+var options = new JsonRedactionOptions 
+{ 
+    ContextResolver = resolver 
+};
+```
+
+Built-in mappings:
+- "Admin" role → `RedactionContext.AdminView` (no redaction)
+- "Support" role → `RedactionContext.SupportView` (partial redaction)
+- "Customer" role → `RedactionContext.CustomerView` (heavy redaction)
+- No matching role → `RedactionContext.ApiResponse` (default)
+
+### 2. Custom Masking Strategies
+
+Register pluggable masking strategies for flexible field masking:
+
+```csharp
+var registry = new JsonMaskingStrategyRegistry();
+
+// Use built-in strategies
+var emailMasked = registry.GetStrategy("email")?.Mask("john@example.com");
+
+// Register custom strategy
+registry.Register("custom-ssn", new CustomSsnMaskingStrategy());
+var ssnMasked = registry.GetStrategy("custom-ssn")?.Mask("123-45-6789");
+
+var options = new JsonRedactionOptions 
+{ 
+    MaskingStrategies = registry 
+};
+```
+
+Built-in strategies: `email`, `phone`, `creditcard`, `ssn`, `ipaddress`
+
+### 3. Lazy Redaction
+
+Defer masking until actual serialization occurs. Beneficial for large object graphs:
+
+```csharp
+var wrapper = new LazyRedactionWrapper<string>(
+    "secret-value",
+    value => value?.ToUpper() ?? string.Empty
+);
+
+// Value not masked until ToString() is called
+var masked = wrapper.ToString(); // "SECRET-VALUE"
+var isResolved = wrapper.IsResolved; // true
+
+var options = new JsonRedactionOptions 
+{ 
+    EnableLazyRedaction = true 
+};
+```
+
+### 4. Schema Stripping for OpenAPI
+
+Identify sensitive properties in a type for documentation:
+
+```csharp
+var redactedProps = SensitiveDataSchemaFilter.GetRedactedProperties(
+    typeof(Customer), 
+    RedactionContext.ApiResponse
+);
+
+var sensitiveProps = SensitiveDataSchemaFilter.GetSensitiveProperties(typeof(Customer));
+
+var omittedProps = SensitiveDataSchemaFilter.GetOmittedProperties(typeof(Customer));
+
+// Integrate into your ISchemaFilter
+public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+{
+    var omitted = SensitiveDataSchemaFilter.GetOmittedProperties(context.Type);
+    foreach (var prop in omitted)
+    {
+        schema.Properties.Remove(prop);
+    }
+}
+```
+
+### 5. Performance Metrics
+
+Track JSON redaction operations via OpenTelemetry:
+
+```csharp
+var collector = new JsonRedactionMetricsCollector();
+
+collector.RecordRedaction("Email", OutputRedactionAction.Mask, RedactionContext.ApiResponse);
+collector.RecordPropertySerialized();
+collector.RecordRedactionDuration(1.5); // milliseconds
+
+var options = new JsonRedactionOptions 
+{ 
+    MetricsCollector = collector 
+};
+
+// Metrics exported:
+// - sensitiveflow_json_redaction_total{property_name, action, context}
+// - sensitiveflow_json_properties_serialized_total
+// - sensitiveflow_json_redaction_duration_ms histogram
+```

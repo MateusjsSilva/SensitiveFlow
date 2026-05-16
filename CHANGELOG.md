@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Redaction performance metrics** (`RedactionMetricsCollector`): Built-in OpenTelemetry counters and histograms tracking redaction frequency by field/action, messages scanned, and operation duration.
 - **Custom masking rules** (`IMaskingStrategy` + `MaskingStrategyRegistry`): Pluggable masking strategies with built-in implementations (phone, creditcard, ipaddress). Extensible via `SensitiveLoggingOptions.MaskingStrategies`.
 - **Log sampling filter** (`LogSamplingFilter`): Probabilistic sampling of log entries containing sensitive fields to reduce volume in high-throughput scenarios. Configurable rate (0.0–1.0).
+- **Conditional redaction by role** (`IRedactionContextResolver`, `ClaimsPrincipalRedactionContextResolver`): Resolve which `RedactionContext` applies during JSON serialization based on current context. Built-in resolver maps `ClaimsPrincipal` roles to context values (`AdminView`, `SupportView`, `CustomerView`). Enables role-based JSON filtering without external dependencies.
+- **Custom masking strategies** (`IJsonMaskingStrategy`, `JsonMaskingStrategyRegistry`): Pluggable masking strategies for JSON properties with built-in implementations (email, phone, creditcard, ssn, ipaddress). Extensible registry allows custom domain-specific masking.
+- **Lazy redaction** (`LazyRedactionWrapper<T>`): Defer masking until actual serialization occurs. Beneficial for large object graphs where many properties are never serialized. Reduces unnecessary computation in Newtonsoft.Json scenarios.
+- **Schema stripping for OpenAPI** (`SensitiveDataSchemaFilter`): Standalone utility to identify sensitive properties that would be redacted in a given context. No Swashbuckle dependency—integrate into your own `ISchemaFilter` for documentation.
+- **JSON redaction metrics** (`IJsonRedactionMetricsCollector`, `JsonRedactionMetricsCollector`): OpenTelemetry-backed counters for tracking JSON redaction events, duration, and property serialization. Counters: `sensitiveflow_json_redaction_total`, `sensitiveflow_json_properties_serialized_total`, and `sensitiveflow_json_redaction_duration_ms` histogram.
 
 ### Changed
 

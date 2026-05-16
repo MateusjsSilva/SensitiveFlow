@@ -1,6 +1,11 @@
 using SensitiveFlow.Json.Enums;
 using SensitiveFlow.Core.Policies;
 using SensitiveFlow.Core.Profiles;
+using SensitiveFlow.Core;
+using SensitiveFlow.Core.Enums;
+using SensitiveFlow.Json.Roles;
+using SensitiveFlow.Json.Masking;
+using SensitiveFlow.Json.Metrics;
 
 namespace SensitiveFlow.Json.Configuration;
 
@@ -56,4 +61,32 @@ public sealed class JsonRedactionOptions
     /// </code>
     /// </remarks>
     public bool IncludeRedactionMetadata { get; set; } = false;
+
+    /// <summary>
+    /// Optional resolver for determining which <see cref="RedactionContext"/> applies during serialization.
+    /// When null, <see cref="RedactionContext.ApiResponse"/> is used. When provided, allows role-based
+    /// or context-specific redaction rules (e.g., Admin vs Customer views).
+    /// </summary>
+    public IRedactionContextResolver? ContextResolver { get; set; }
+
+    /// <summary>
+    /// Optional registry of custom masking strategies for JSON properties.
+    /// When populated, property-specific masks can reference named strategies via
+    /// <c>[JsonRedaction(CustomStrategy = "strategyName")]</c>. Defaults to null.
+    /// </summary>
+    public JsonMaskingStrategyRegistry? MaskingStrategies { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, enables lazy redaction wrapping that defers masking until
+    /// actual serialization occurs. Beneficial for large object graphs where many properties
+    /// are never serialized. Defaults to <see langword="false"/>.
+    /// </summary>
+    public bool EnableLazyRedaction { get; set; } = false;
+
+    /// <summary>
+    /// Optional metrics collector for tracking JSON redaction operations.
+    /// When provided, records counters and histograms for redaction events, duration,
+    /// and property serialization. Defaults to null.
+    /// </summary>
+    public IJsonRedactionMetricsCollector? MetricsCollector { get; set; }
 }
