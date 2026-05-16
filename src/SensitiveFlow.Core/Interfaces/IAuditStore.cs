@@ -61,4 +61,43 @@ public interface IAuditStore
     /// </code>
     /// </remarks>
     Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>Streams audit records without materializing all results in memory.</summary>
+    /// <param name="query">Query builder with filters and ordering.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Async enumerable stream of matching records. Pagination is ignored; stream the entire result set.</returns>
+    /// <remarks>
+    /// <para>
+    /// Use this method to process large result sets (>10K records) without allocating memory for all records at once.
+    /// Useful for bulk exports, archival, or deep analysis.
+    /// </para>
+    /// <para>
+    /// Default implementation queries all records via <see cref="QueryAsync(AuditQuery, CancellationToken)"/> and enumerates them.
+    /// Override for efficient streaming in database implementations.
+    /// </para>
+    /// <example>
+    /// <code>
+    /// var stream = store.QueryStreamAsync(
+    ///     new AuditQuery()
+    ///         .ByDataSubject("subject-123")
+    ///         .InTimeRange(startDate, endDate));
+    ///
+    /// await foreach (var record in stream)
+    /// {
+    ///     await csv.WriteLineAsync(record);
+    /// }
+    /// </code>
+    /// </example>
+    /// </remarks>
+    async IAsyncEnumerable<AuditRecord> QueryStreamAsync(
+        AuditQuery query,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Default implementation: query and enumerate
+        var records = await QueryAsync(query, cancellationToken);
+        foreach (var record in records)
+        {
+            yield return record;
+        }
+    }
 }

@@ -168,6 +168,60 @@ public sealed class EfCoreAuditStore<TContext> : IBatchAuditStore, IAuditStoreTr
     }
 
     /// <inheritdoc />
+    public async IAsyncEnumerable<AuditRecord> QueryStreamAsync(
+        AuditQuery auditQuery,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(auditQuery);
+
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var query = _setSelector(ctx).AsNoTracking().AsSplitQuery();
+
+        if (!string.IsNullOrEmpty(auditQuery.Entity))
+        {
+            query = query.Where(r => r.Entity == auditQuery.Entity);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.Operation))
+        {
+            if (Enum.TryParse<AuditOperation>(auditQuery.Operation, out var opEnum))
+            {
+                var opInt = (int)opEnum;
+                query = query.Where(r => r.Operation == opInt);
+            }
+        }
+        if (!string.IsNullOrEmpty(auditQuery.ActorId))
+        {
+            query = query.Where(r => r.ActorId == auditQuery.ActorId);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.DataSubjectId))
+        {
+            query = query.Where(r => r.DataSubjectId == auditQuery.DataSubjectId);
+        }
+        if (!string.IsNullOrEmpty(auditQuery.Field))
+        {
+            query = query.Where(r => r.Field == auditQuery.Field);
+        }
+        if (auditQuery.From.HasValue)
+        {
+            query = query.Where(r => r.Timestamp >= auditQuery.From.Value);
+        }
+        if (auditQuery.To.HasValue)
+        {
+            query = query.Where(r => r.Timestamp <= auditQuery.To.Value);
+        }
+
+        query = auditQuery.OrderByDescending
+            ? query.OrderByDescending(r => EF.Property<object>(r, auditQuery.OrderBy))
+            : query.OrderBy(r => EF.Property<object>(r, auditQuery.OrderBy));
+
+        // Stream results without materializing all in memory
+        await foreach (var entity in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            yield return entity.ToRecord();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task ExecuteInTransactionAsync(
         Func<CancellationToken, Task> operation,
         CancellationToken cancellationToken = default)

@@ -70,6 +70,10 @@ public sealed class RetryingAuditStore : IBatchAuditStore
     public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
         => _inner.QueryAsync(query, cancellationToken);
 
+    /// <inheritdoc />
+    public IAsyncEnumerable<AuditRecord> QueryStreamAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        => _inner.QueryStreamAsync(query, cancellationToken);
+
     private async Task AppendOneByOneAsync(IReadOnlyCollection<AuditRecord> records, CancellationToken ct)
     {
         foreach (var record in records)

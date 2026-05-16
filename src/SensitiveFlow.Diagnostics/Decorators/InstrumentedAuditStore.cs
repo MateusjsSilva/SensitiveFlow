@@ -108,6 +108,10 @@ public sealed class InstrumentedAuditStore : IBatchAuditStore
     public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
         => _inner.QueryAsync(query, cancellationToken);
 
+    /// <inheritdoc />
+    public IAsyncEnumerable<AuditRecord> QueryStreamAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        => _inner.QueryStreamAsync(query, cancellationToken);
+
     private readonly struct ValueStopwatch
     {
         private static readonly double TimestampToMilliseconds = 1000.0 / Stopwatch.Frequency;

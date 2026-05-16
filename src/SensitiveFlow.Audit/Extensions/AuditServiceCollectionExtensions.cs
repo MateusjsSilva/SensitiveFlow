@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SensitiveFlow.Audit.Decorators;
+using SensitiveFlow.Audit.Implementations;
+using SensitiveFlow.Audit.InMemory;
 using SensitiveFlow.Audit.Outbox;
 using SensitiveFlow.Core.Interfaces;
 
@@ -240,6 +242,75 @@ public static class AuditServiceCollectionExtensions
                 sp.GetRequiredService<IAuditOutbox>()));
         }
 
+        return services;
+    }
+
+    /// <summary>
+    /// Registers basic audit export service (CSV, JSON).
+    /// For Parquet support, use a specialized implementation with external dependencies.
+    /// </summary>
+    public static IServiceCollection AddAuditExporter(
+        this IServiceCollection services)
+    {
+        services.AddScoped<IAuditExporter, BasicAuditExporter>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers in-memory full-text search index for audit records.
+    /// Suitable for testing and small datasets. For production, use Elasticsearch or similar.
+    /// </summary>
+    public static IServiceCollection AddInMemoryAuditSearchIndex(
+        this IServiceCollection services)
+    {
+        services.AddSingleton<IAuditSearchIndex, InMemoryAuditSearchIndex>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers custom audit search index implementation.
+    /// </summary>
+    public static IServiceCollection AddAuditSearchIndex<TSearchIndex>(
+        this IServiceCollection services)
+        where TSearchIndex : class, IAuditSearchIndex
+    {
+        services.AddSingleton<IAuditSearchIndex, TSearchIndex>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers basic anomaly detection policy with built-in rules for:
+    /// - Bulk deletes (>50 records per entity)
+    /// - Multiple IPs per subject (>3 different IPs)
+    /// - Access after deletion
+    /// </summary>
+    public static IServiceCollection AddAuditAlertingPolicy(
+        this IServiceCollection services)
+    {
+        services.AddScoped(sp => new BasicAuditAlertingPolicy(sp.GetRequiredService<IAuditStore>()));
+        services.AddScoped<IAuditAlertingPolicy>(sp => sp.GetRequiredService<BasicAuditAlertingPolicy>());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers custom audit alerting policy implementation.
+    /// </summary>
+    public static IServiceCollection AddAuditAlertingPolicy<TPolicy>(
+        this IServiceCollection services)
+        where TPolicy : class, IAuditAlertingPolicy
+    {
+        services.AddScoped<IAuditAlertingPolicy, TPolicy>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers anonymization workflow service (requires IAuditStore to be registered).
+    /// </summary>
+    public static IServiceCollection AddAnonymizationWorkflow<TWorkflow>(
+        this IServiceCollection services)
+        where TWorkflow : class, IAnonymizationWorkflow
+    {
+        services.AddScoped<IAnonymizationWorkflow, TWorkflow>();
         return services;
     }
 }

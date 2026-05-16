@@ -111,6 +111,16 @@ internal sealed class InMemoryAuditStore : IAuditStore
         };
     }
 
+    /// <inheritdoc />
+    public async IAsyncEnumerable<AuditRecord> QueryStreamAsync(AuditQuery query, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var records = await QueryAsync(query, cancellationToken);
+        foreach (var record in records)
+        {
+            yield return record;
+        }
+    }
+
     private static IEnumerable<AuditRecord> Filter(
         IEnumerable<AuditRecord> records,
         DateTimeOffset? from,

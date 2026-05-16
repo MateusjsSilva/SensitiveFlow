@@ -200,6 +200,11 @@ SensitiveFlow.Core (Base)
 | Audit bulk operations | EFCore | - | ✅ |
 | Persist audit records | Audit.EFCore | - | ✅ |
 | Query audit trail | Audit | ✅ | ✅ |
+| Stream large audit sets | Audit | - | ✅ |
+| Search audit records | Audit | - | ✅ |
+| Export audit data (CSV/JSON) | Audit | - | ✅ |
+| Anomaly detection & alerting | Audit | - | ✅ |
+| Anonymization workflow | Audit | - | ✅ |
 | Redact in JSON | Json | ✅ | ✅ |
 | Redact in logs | Logging | ✅ | ✅ |
 | Extract HTTP context | AspNetCore | ✅ | - |

@@ -1,10 +1,13 @@
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SensitiveFlow.Anonymization.Erasure;
 using SensitiveFlow.Anonymization.Extensions;
 using SensitiveFlow.Anonymization.Export;
+using SensitiveFlow.Audit.Implementations;
+using SensitiveFlow.Audit.InMemory;
 using SensitiveFlow.Core.Enums;
 using SensitiveFlow.Core.Interfaces;
 using SensitiveFlow.Core.Models;
@@ -26,6 +29,9 @@ public sealed class EmployeesController : ControllerBase
     private readonly IDataSubjectExporter _exporter;
     private readonly IDataSubjectErasureService _erasure;
     private readonly RetentionExecutor _retention;
+    private readonly BasicAuditExporter _exporter_csv;
+    private readonly InMemoryAuditSearchIndex _searchIndex;
+    private readonly BasicAuditAlertingPolicy _alerting;
     private readonly ILogger<EmployeesController> _logger;
 
     public EmployeesController(
@@ -44,6 +50,9 @@ public sealed class EmployeesController : ControllerBase
         _erasure = erasure;
         _retention = retention;
         _logger = logger;
+        _exporter_csv = new BasicAuditExporter();
+        _searchIndex = new InMemoryAuditSearchIndex();
+        _alerting = new BasicAuditAlertingPolicy(auditStore);
     }
 
     [HttpGet]
@@ -273,6 +282,72 @@ public sealed class EmployeesController : ControllerBase
                 e.FieldName,
                 e.ExpiredAt,
                 Action = e.Action.ToString(),
+            }),
+        });
+    }
+
+    [HttpGet("{id}/audit-stream")]
+    public async Task StreamAuditAsCsvAsync(string id, CancellationToken ct)
+    {
+        // Demonstrates: Async streaming for large audit exports
+        var employee = await FindEmployeeAsync(id, ct);
+        if (employee is null)
+        {
+            Response.StatusCode = 404;
+            return;
+        }
+
+        var query = new AuditQuery().ByDataSubject(employee.DataSubjectId);
+        var csv = await _exporter_csv.ExportAsCsvAsync(
+            _auditStore.QueryStreamAsync(query, ct),
+            includeHash: true);
+
+        Response.ContentType = "text/csv";
+        Response.Headers["Content-Disposition"] = $"attachment; filename=\"audit-{id}.csv\"";
+        await Response.Body.WriteAsync(Encoding.UTF8.GetBytes(csv), ct);
+    }
+
+    [HttpGet("audit/search")]
+    public async Task<IActionResult> SearchAudit([FromQuery] string? actorId, [FromQuery] string? entity, CancellationToken ct)
+    {
+        // Demonstrates: Full-text search on audit records
+        if (string.IsNullOrEmpty(actorId) && string.IsNullOrEmpty(entity))
+        {
+            return BadRequest("Provide either actorId or entity query parameter");
+        }
+
+        if (!string.IsNullOrEmpty(actorId))
+        {
+            var results = await _searchIndex.SearchByActorAsync(actorId, take: 50);
+            return Ok(new { query = "actor", actorId, resultCount = results.Count, results });
+        }
+
+        if (!string.IsNullOrEmpty(entity))
+        {
+            var results = await _searchIndex.SearchByEntityAsync(entity, take: 50);
+            return Ok(new { query = "entity", entity, resultCount = results.Count, results });
+        }
+
+        return BadRequest();
+    }
+
+    [HttpPost("audit/analyze-anomalies")]
+    public async Task<IActionResult> AnalyzeAnomalies([FromQuery] int windowMinutes = 60, CancellationToken ct = default)
+    {
+        // Demonstrates: Anomaly detection (bulk deletes, multiple IPs, suspicious patterns)
+        var alerts = await _alerting.DetectAnomaliesAsync(windowMinutes, ct);
+
+        return Ok(new
+        {
+            windowMinutes,
+            alertCount = alerts.Count,
+            alerts = alerts.Select(a => new
+            {
+                a.Id,
+                a.Severity,
+                a.Message,
+                a.TriggeredAt,
+                affectedSubjects = a.DataSubjectIds?.Length ?? 0,
             }),
         });
     }

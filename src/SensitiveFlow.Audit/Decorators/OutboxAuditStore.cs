@@ -82,6 +82,10 @@ public sealed class OutboxAuditStore : IBatchAuditStore
     public Task<IReadOnlyList<AuditRecord>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
         => _inner.QueryAsync(query, cancellationToken);
 
+    /// <inheritdoc />
+    public IAsyncEnumerable<AuditRecord> QueryStreamAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        => _inner.QueryStreamAsync(query, cancellationToken);
+
     private Task ExecuteAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
     {
         if (_inner is IAuditStoreTransaction transaction)

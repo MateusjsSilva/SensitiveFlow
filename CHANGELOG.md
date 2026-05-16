@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Code quality improvements**: Comprehensive codebase review identifying and addressing threading risks, deadlock vulnerabilities, and developer experience gaps across 20+ packages.
 - **`[CompositeDataSubjectId(...)]` attribute**: Support for multi-key entity identification. Enables entities identified by multiple properties (e.g., CustomerId + OrderId) to declare their composite subject identifier. Audit trail keys combine all properties (e.g., `"customerId:123;orderId:456"`).
 - **Role-based redaction contexts**: Three new `RedactionContext` values (`AdminView`, `SupportView`, `CustomerView`) for role-specific data visibility in API responses and logs. Developers can now specify different redaction strategies per user role using extended `[Redaction]` attribute.
+- **Audit streaming for large datasets** (`QueryStreamAsync`): Memory-efficient async enumerable for querying large audit trails without materialization. Supports filtering by entity, operation, actor, data subject, and time range. Essential for exporting 100K+ records or real-time audit monitoring.
+- **Anonymization workflow** (`IAnonymizationWorkflow`): Abstraction for handling subject deletion requests. Includes durable anonymization tokens, query-based bulk anonymization, and idempotency checks. Enables GDPR-compliant data subject rights implementation.
+- **Multi-format audit export** (`IAuditExporter`): Export audit records as CSV or JSON with optional integrity hashing. Supports streaming exports for large datasets and flexibility in output format selection.
+- **Full-text audit search index** (`IAuditSearchIndex`): Query audit records by actor, IP address, or entity type with optional full-text search. Thread-safe in-memory implementation suitable for testing; production deployments can use Elasticsearch or similar.
+- **Anomaly detection & alerting** (`IAuditAlertingPolicy`): Detect suspicious patterns including bulk deletes (>50 records), multiple IPs per subject (>3 unique IPs), and access after deletion. Supports custom detection rules via pluggable detectors.
 
 ### Changed
 

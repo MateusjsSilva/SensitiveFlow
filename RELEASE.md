@@ -73,9 +73,24 @@ The `release.yml` workflow will automatically build, test (including container t
 
 `1.0.0-preview.3` — latest published preview. 
 
-**In Development**: `1.0.0-preview.4` with code quality improvements:
+**In Development**: `1.0.0-preview.4` with comprehensive audit improvements and code quality enhancements:
+
+### Audit Features (New)
+- **Async streaming** (`QueryStreamAsync`): Memory-efficient processing of large audit trails (100K+ records)
+- **Anonymization workflow** (`IAnonymizationWorkflow`): Support for GDPR/LGPD right-to-be-forgotten and subject deletion
+- **Multi-format export** (`IAuditExporter`): CSV, JSON export with optional integrity hashing
+- **Full-text search** (`IAuditSearchIndex`): Query by actor, IP, entity with optional full-text capabilities
+- **Anomaly detection** (`IAuditAlertingPolicy`): Detect bulk deletes, multiple IPs, suspicious patterns with custom rules
+
+### Code Quality Improvements
 - Threading safety: `[Obsolete]` warnings on sync-over-async methods
 - Enhanced documentation for deadlock-prone patterns
 - Better exception guidance with concrete migration paths
+- Comprehensive test coverage (510+ Core tests, 354+ Audit tests)
+
+### Core Features (Existing)
+- `[CompositeDataSubjectId(...)]`: Multi-key entity identification
+- Role-based redaction: AdminView, SupportView, CustomerView contexts
+- SF0003 elevated to Error: Compile-time DataSubjectId validation
 
 **Next release after preview.4**: `1.0.0` (first stable).

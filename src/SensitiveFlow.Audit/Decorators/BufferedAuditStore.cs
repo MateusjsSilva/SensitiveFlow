@@ -151,6 +151,10 @@ public sealed class BufferedAuditStore : IBatchAuditStore, IAsyncDisposable, IDi
         => _inner.QueryAsync(query, cancellationToken);
 
     /// <inheritdoc />
+    public IAsyncEnumerable<AuditRecord> QueryStreamAsync(AuditQuery query, CancellationToken cancellationToken = default)
+        => _inner.QueryStreamAsync(query, cancellationToken);
+
+    /// <inheritdoc />
     /// <remarks>
     /// Prefer <c>await using</c> / <see cref="DisposeAsync"/>. This synchronous overload
     /// signals the worker to complete and waits up to <see cref="BufferedAuditStoreOptions.ShutdownTimeout"/>
