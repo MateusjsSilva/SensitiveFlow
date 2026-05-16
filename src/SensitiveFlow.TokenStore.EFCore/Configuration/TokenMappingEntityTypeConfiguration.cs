@@ -52,6 +52,7 @@ public sealed class TokenMappingEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.Property(e => e.Value).IsRequired().HasMaxLength(512);
         builder.Property(e => e.Token).IsRequired().HasMaxLength(128);
+        builder.Property(e => e.ExpiresAt).IsRequired(false);
 
         // Unique index on Value enables concurrency-safe GetOrCreate:
         // two concurrent callers racing for the same value will see one
@@ -63,5 +64,8 @@ public sealed class TokenMappingEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.HasIndex(e => e.Token)
                .HasDatabaseName("IX_SensitiveFlow_TokenMappings_Token");
+
+        builder.HasIndex(e => e.ExpiresAt)
+               .HasDatabaseName("IX_SensitiveFlow_TokenMappings_ExpiresAt");
     }
 }

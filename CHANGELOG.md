@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Attribute-based suppression** (`[SensitiveFlowIgnoreAttribute]`): Properties marked with `[SensitiveFlowIgnoreAttribute]` are excluded from all analyzer diagnostics (SF0001, SF0002, SF0006). Enables targeted opt-out for properties intentionally containing sensitive data without masking.
 - **Cross-assembly sensitive data detection**: Analyzers detect `[PersonalData]` and `[SensitiveData]` attributes from referenced assemblies, enabling analysis of shared domain libraries with built-in sensitive data annotations.
 - **Custom masking method recognition**: Analyzer recognizes any method name containing `Mask`, `Redact`, `Anonymize`, `Pseudonymize`, or `Hash` (case-insensitive) as a sanitization call, suppressing SF0001 and SF0002 diagnostics automatically.
+- **Token expiration service** (`TokenExpirationService<TContext>`): Manage token lifespan with configurable TTL and automatic cleanup. Supports `PurgeExpiredAsync()` and `GetExpiredCountAsync()` operations on mappings with `ExpiresAt` timestamp.
+- **Token salting strategies** (`ITokenSaltStrategy`, `PlainTextSaltStrategy`, `PrefixSaltStrategy`, `TokenSaltStrategyRegistry`): Contextual salt support for ensuring the same value produces different tokens in different contexts. Built-in registry for named strategy registration and retrieval.
+- **Token key rotation service** (`TokenKeyRotationService<TContext>`): Bulk token migration when pseudonymization scheme changes. Supports `GetAllTokensAsync()`, `ReplaceTokenAsync()`, `BulkReplaceAsync()`, and `DeleteAsync()` operations.
+- **Token audit trail** (`TokenAuditOperation`, `TokenAuditRecord`, `ITokenAuditSink`, `InMemoryTokenAuditSink`, `AuditingTokenStore`): Track token operations (Created, Resolved, Expired) without storing original values. Decorator pattern for transparent integration with existing `ITokenStore` implementations.
+- **`TokenMappingEntity.ExpiresAt` column**: Optional nullable timestamp for token expiration. Indexed for efficient cleanup queries.
 
 ### Changed
 

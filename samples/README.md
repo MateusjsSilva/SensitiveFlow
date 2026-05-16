@@ -385,6 +385,28 @@ All samples have been updated to demonstrate preview.4 features:
 - `RetentionReportGenerator` for export and analysis
 - Supports detailed execution history and trend summaries
 
+### Token Store Enhancements
+
+#### 23. Token Expiration
+- Automatic cleanup of expired pseudonymization mappings
+- Configurable TTL with optional auto-purge on access
+- `TokenExpirationService<TContext>` with `PurgeExpiredAsync()` and `GetExpiredCountAsync()`
+
+#### 24. Salting Strategies
+- Context-aware salting for deterministic pseudonymization
+- Built-in strategies: `PlainTextSaltStrategy`, `PrefixSaltStrategy`
+- `TokenSaltStrategyRegistry` for custom strategy registration
+
+#### 25. Key Rotation
+- Seamless token migration when pseudonymization scheme changes
+- `TokenKeyRotationService<TContext>` with bulk operations
+- Inspect, update, and delete mappings without affecting existing tokens
+
+#### 26. Audit of Pseudonymization
+- Track token operations (Created, Resolved, Expired) without storing originals
+- `AuditingTokenStore` decorator wraps any `ITokenStore`
+- `InMemoryTokenAuditSink` for testing, pluggable `ITokenAuditSink` for production
+
 ### Role-Based Redaction (Core improvement)
 - Different redaction per user role (Admin, Support, Customer)
 - Context-aware masking via `RedactionContext` enum
