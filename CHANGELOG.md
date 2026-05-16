@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Query optimization advisor** (`QueryOptimizationAdvisor`): Analyze query patterns from audit operations, suggest database indexes based on frequency, and generate SQL index creation statements.
 - **Redis token store** (`SensitiveFlow.TokenStore.Redis` package): Distributed pseudonymization token store backed by Redis. Enables token reuse across multiple service instances with optional TTL and automatic expiration. Includes bidirectional mapping (token↔value) with atomic transactions via Lua scripting.
 - **Redis microservice sample** (`Redis.Microservice.Sample`): Demonstrates horizontally-scalable REST API for pseudonymization using centralized Redis. Includes health checks, Swagger documentation, and multi-instance deployment examples.
+- **Structured property redaction** (`StructuredPropertyRedactor`): Redact sensitive keys in structured log scope dictionaries and bag properties. Configurable via `SensitiveLoggingOptions.SensitivePropertyNames`.
+- **Audit trail correlation scope** (`AuditCorrelationScope`): Decorator logger that injects `CorrelationId`, `RequestId`, `TraceId` from `SensitiveFlowCorrelation.Current` into every log scope automatically for request tracing.
+- **Redaction performance metrics** (`RedactionMetricsCollector`): Built-in OpenTelemetry counters and histograms tracking redaction frequency by field/action, messages scanned, and operation duration.
+- **Custom masking rules** (`IMaskingStrategy` + `MaskingStrategyRegistry`): Pluggable masking strategies with built-in implementations (phone, creditcard, ipaddress). Extensible via `SensitiveLoggingOptions.MaskingStrategies`.
+- **Log sampling filter** (`LogSamplingFilter`): Probabilistic sampling of log entries containing sensitive fields to reduce volume in high-throughput scenarios. Configurable rate (0.0–1.0).
 
 ### Changed
 

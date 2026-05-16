@@ -131,10 +131,106 @@ using (logger.BeginScope(new Dictionary<string, object>
 2. **Complex object arguments** — Simple masking strategies; complex redaction requires custom code
 3. **Interpolated strings** — `$"Email: {customer.Email}"` not intercepted (use log template instead)
 
-## Possible Improvements
+## Advanced Features
 
-1. **Structured property redaction** — Support for dictionary/bag properties
-2. **Audit trail correlation** — Inject audit record ID to log scope
-3. **Performance metrics** — Built-in counters for redaction frequency
-4. **Custom masking rules** — Per-property masking strategies (phone: ###-###-XXXX)
-5. **Log sampling** — Reduce volume of sensitive logs in high-throughput scenarios
+### 1. Structured Property Redaction
+
+Redact sensitive keys in structured log scopes and dictionary properties:
+
+```csharp
+var redactor = new StructuredPropertyRedactor(
+    new[] { "ApiKey", "Password" },
+    redactedPlaceholder: "[REDACTED]");
+
+var options = new SensitiveLoggingOptions { StructuredPropertyRedactor = redactor };
+builder.Services.AddSensitiveFlowLogging(opts => opts.StructuredPropertyRedactor = redactor);
+
+// Usage:
+using (logger.BeginScope(new Dictionary<string, object>
+{
+    ["ApiKey"] = "secret-key-123",  // Will be redacted
+    ["UserId"] = "user-456"          // Not redacted
+}))
+{
+    logger.LogInformation("Processing request");
+}
+```
+
+### 2. Audit Trail Correlation
+
+Automatically inject correlation IDs into log scopes from `SensitiveFlowCorrelation.Current`:
+
+```csharp
+public sealed class AuditCorrelationScope : ILogger
+{
+    // Injects AuditCorrelationId, AuditRequestId, AuditTraceId into all log scopes
+}
+
+// Usage:
+var innerLogger = loggerProvider.CreateLogger("MyApp");
+var correlationLogger = new AuditCorrelationScope(innerLogger);
+
+SensitiveFlowCorrelation.Current = new AuditCorrelationSnapshot
+{
+    CorrelationId = Guid.NewGuid()
+};
+
+correlationLogger.LogInformation("Operation started");
+// Log now includes {AuditCorrelationId: ...} in structured properties
+```
+
+### 3. Redaction Performance Metrics
+
+Track redaction operations via OpenTelemetry metrics:
+
+```csharp
+var collector = new RedactionMetricsCollector();
+
+collector.RecordRedaction("Email", "Mask");
+collector.RecordRedaction("Password", "Redact");
+collector.RecordMessageScanned();
+collector.RecordRedactionDuration(1.5);
+
+// Metrics exported:
+// - sensitiveflow_log_redaction_total{field_name, action}
+// - sensitiveflow_log_messages_scanned_total
+// - sensitiveflow_log_redaction_duration_ms histogram
+```
+
+### 4. Custom Masking Rules
+
+Pluggable masking strategies for flexible field masking:
+
+```csharp
+var registry = new MaskingStrategyRegistry();
+
+// Built-in strategies
+registry.GetStrategy("phone")?.Mask("555-1234-5678");      // ***-***-**78
+registry.GetStrategy("creditcard")?.Mask("4532015112830366"); // ****-****-****-0366
+registry.GetStrategy("ipaddress")?.Mask("192.168.1.100");   // ***.***.1.100
+
+// Custom strategy
+registry.Register("custom", new CustomMaskingStrategy());
+var strategy = registry.GetStrategy("custom");
+```
+
+### 5. Log Sampling
+
+Reduce log volume for high-throughput scenarios containing sensitive data:
+
+```csharp
+var sampler = new LogSamplingFilter(samplingRate: 0.1); // Log 10% of sensitive entries
+
+// Non-sensitive logs always logged
+Assert.True(sampler.ShouldLog(hasRedactedFields: false)); // Always true
+
+// Sensitive logs sampled
+Assert.True(sampler.SamplingRate < 1.0);        // Sampling enabled
+Assert.True(sampler.IsEnabled);                 // Sampling active
+
+// Integration with options:
+var options = new SensitiveLoggingOptions 
+{ 
+    SamplingFilter = new LogSamplingFilter(0.5)
+};
+```

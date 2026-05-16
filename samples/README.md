@@ -283,6 +283,38 @@ All samples have been updated to demonstrate preview.4 features:
 - Generate SQL index creation statements
 - Example: `QueryOptimizationAdvisor` in performance monitoring
 
+### Logging Features
+
+#### 11. Structured Property Redaction
+- Redact sensitive keys in log scope dictionaries
+- Configuration via `StructuredPropertyRedactor` in options
+- Prevents API keys, passwords from appearing in logs
+- Example: exclude "ApiKey", "Password" from structured logging
+
+#### 12. Audit Trail Correlation
+- Automatic injection of CorrelationId into log scopes
+- Simplifies request tracing across service boundaries
+- Uses `SensitiveFlowCorrelation.Current` for context
+- Example: `AuditCorrelationScope` wrapping logger instances
+
+#### 13. Redaction Performance Metrics
+- OpenTelemetry counters tracking redaction frequency
+- Histograms for redaction operation duration
+- Built-in collector: `RedactionMetricsCollector`
+- Enables monitoring redaction overhead in production
+
+#### 14. Custom Masking Rules
+- Pluggable `IMaskingStrategy` interface for flexible masking
+- Built-in strategies: phone, creditcard, ipaddress
+- Configurable via `MaskingStrategyRegistry`
+- Extensible for domain-specific masking rules
+
+#### 15. Log Sampling
+- Probabilistic sampling of logs containing sensitive data
+- Reduces log volume in high-throughput scenarios
+- Configured via `LogSamplingFilter` with sampling rate
+- Smart filtering: non-sensitive logs always preserved
+
 ### Role-Based Redaction (Core improvement)
 - Different redaction per user role (Admin, Support, Customer)
 - Context-aware masking via `RedactionContext` enum

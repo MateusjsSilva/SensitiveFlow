@@ -90,6 +90,13 @@ The `release.yml` workflow will automatically build, test (including container t
 - **Performance baselines** (`PerformanceBaselineService`): Regression detection with auto-recommendations
 - **Query optimization** (`QueryOptimizationAdvisor`): Pattern analysis and index recommendations
 
+### Logging Features (New)
+- **Structured property redaction** (`StructuredPropertyRedactor`): Redact sensitive keys in log scope dictionaries
+- **Audit trail correlation** (`AuditCorrelationScope`): Automatic injection of correlation IDs into log scopes
+- **Redaction metrics** (`RedactionMetricsCollector`): OpenTelemetry counters and histograms for redaction tracking
+- **Custom masking** (`IMaskingStrategy`, `MaskingStrategyRegistry`): Pluggable masking with built-in strategies (phone, creditcard, IP)
+- **Log sampling** (`LogSamplingFilter`): Probabilistic sampling to reduce volume of sensitive logs
+
 ### Code Quality Improvements
 - Threading safety: `[Obsolete]` warnings on sync-over-async methods
 - Enhanced documentation for deadlock-prone patterns
