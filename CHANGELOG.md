@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Archive tiering** (`IRetentionArchiveProvider`, `InMemoryRetentionArchiveProvider`): Abstraction for cold storage of archived entities. In-memory reference implementation; production deployments can target S3, Azure Blob, or similar.
 - **Notification templates** (`RetentionNotificationTemplate`, `RetentionNotificationChannel`): Configurable alert templates with placeholder substitution (`{AnonymizedCount}`, `{DeletePendingCount}`, `{RunAt}`). Support for Email, Slack, and Webhook channels.
 - **Retention analytics reporting** (`RetentionReportGenerator`): Generate formatted reports from retention metrics in text, CSV, and JSON formats. Supports trend summaries and detailed execution history exports.
+- **Generic `ILogger<T>` support**: Analyzer SF0001 now correctly detects sensitive data logging on `ILogger<T>` generic type parameters, not just non-generic `ILogger`.
+- **Attribute-based suppression** (`[SensitiveFlowIgnoreAttribute]`): Properties marked with `[SensitiveFlowIgnoreAttribute]` are excluded from all analyzer diagnostics (SF0001, SF0002, SF0006). Enables targeted opt-out for properties intentionally containing sensitive data without masking.
+- **Cross-assembly sensitive data detection**: Analyzers detect `[PersonalData]` and `[SensitiveData]` attributes from referenced assemblies, enabling analysis of shared domain libraries with built-in sensitive data annotations.
+- **Custom masking method recognition**: Analyzer recognizes any method name containing `Mask`, `Redact`, `Anonymize`, `Pseudonymize`, or `Hash` (case-insensitive) as a sanitization call, suppressing SF0001 and SF0002 diagnostics automatically.
 
 ### Changed
 

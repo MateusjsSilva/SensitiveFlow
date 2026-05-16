@@ -203,9 +203,64 @@ In application projects, keep private:
 2. **Minimal API lambdas** — Direct returns from `MapGet`/`MapPost` not detected. Use `Results.Ok(...)`.
 3. **Whole-object serialization** — Passing full entity instances (`Ok(customer)`) not detected. Use response DTOs.
 
-## Possible Improvements
+## Advanced Features
 
-1. **Generic ILogger<T> support** — Complex due to generic type parameter tracking
-2. **Attribute-based exclusion** — Allow `[DoNotAnalyze]` to suppress per-property
-3. **Custom masking method detection** — Allow configurable method name patterns
-4. **Cross-assembly analysis** — Analyze caller chains across projects
+### Generic `ILogger<T>` Support
+The analyzer supports `ILogger<T>` generic type parameters. When you use `ILogger<Sample>`, SF0001 correctly detects logging calls on the generic interface just like it does for non-generic `ILogger`:
+
+```csharp
+public sealed class Sample
+{
+    private readonly ILogger<Sample> _logger;
+
+    public void Execute(Customer customer)
+    {
+        _logger.LogInformation("email {Email}", customer.Email); // SF0001: detected
+        _logger.LogInformation("email {Email}", customer.Email.Mask()); // OK: masked
+    }
+}
+```
+
+### Attribute-Based Exclusion
+Properties marked with `[SensitiveFlowIgnoreAttribute]` are excluded from all sensitive data diagnostics (SF0001, SF0002, SF0006):
+
+```csharp
+public sealed class Customer
+{
+    [PersonalData]
+    [SensitiveFlowIgnore]
+    public string Email { get; set; } // SF0001, SF0002, SF0006 all skipped
+}
+```
+
+### Cross-Assembly Analysis
+Analyzers detect sensitive data attributes from referenced assemblies. If a NuGet library defines:
+
+```csharp
+// Library.cs
+public sealed class Customer
+{
+    [PersonalData]
+    public string Email { get; set; }
+}
+```
+
+Your application code will trigger SF0001/SF0002 when you log or return it directly, even though the attribute definition is in a different assembly.
+
+### Custom Masking Method Detection
+The analyzer recognizes methods whose names contain `Mask`, `Redact`, `Anonymize`, `Pseudonymize`, or `Hash` (case-insensitive) as safe sanitization methods:
+
+```csharp
+public sealed class Sample
+{
+    public void Execute(ILogger logger, Customer customer)
+    {
+        // These all suppress SF0001 (method names contain recognized patterns)
+        logger.LogInformation("email {Email}", customer.Email.Mask());
+        logger.LogInformation("email {Email}", customer.Email.Redact());
+        logger.LogInformation("email {Email}", customer.Email.Anonymize());
+        logger.LogInformation("email {Email}", customer.Email.MaskEmail());
+        logger.LogInformation("email {Email}", customer.Email.Hash());
+    }
+}
+```

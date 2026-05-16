@@ -223,6 +223,10 @@ dotnet run
 | Response redaction | | | ✅ | ✅ | | |
 | Logging redaction | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | JSON serialization | | | ✅ | ✅ | | |
+| Analyzer ILogger<T> support | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Analyzer attribute exclusion | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Analyzer cross-assembly | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Analyzer custom masking methods | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Pseudonymization | | | | | ✅ | ✅ |
 | Custom token store | | | | | ✅ | ✅ |
 | Health checks | | | ✅ | ✅ | ✅ | ✅ |
@@ -322,9 +326,31 @@ All samples have been updated to demonstrate preview.4 features:
 - Configured via `LogSamplingFilter` with sampling rate
 - Smart filtering: non-sensitive logs always preserved
 
+### Analyzer Enhancements
+
+#### 16. Generic `ILogger<T>` Support
+- Analyzer SF0001 now supports `ILogger<T>` generic type parameters
+- Detects logging of sensitive data through generic logger instances
+- No configuration needed—works out of the box with `ILogger<MyClass>`
+
+#### 17. Attribute-Based Suppression
+- Properties marked with `[SensitiveFlowIgnoreAttribute]` are excluded from diagnostics
+- Suppresses SF0001 (logging), SF0002 (responses), and SF0006 (missing redaction)
+- Enables intentional opt-out for special cases where sensitive data bypasses normal flows
+
+#### 18. Cross-Assembly Analysis
+- Analyzers detect `[PersonalData]` and `[SensitiveData]` from referenced assemblies
+- Enables analysis of shared libraries with sensitive data annotations
+- Automatically works when analyzing projects that reference data libraries
+
+#### 19. Custom Masking Method Recognition
+- Built-in recognition of methods containing: `Mask`, `Redact`, `Anonymize`, `Pseudonymize`, `Hash`
+- Case-insensitive matching—`MaskEmail()`, `REDACT()`, `AnonymizePhone()` all recognized
+- Suppresses SF0001 and SF0002 automatically without configuration
+
 ### Retention Enhancements
 
-#### 16. Incremental Scheduling
+#### 20. Incremental Scheduling
 - Track last successful run per policy to avoid reprocessing
 - Thread-safe policy state via `RetentionRunTracker`
 - Reduces redundant data processing in scheduled jobs

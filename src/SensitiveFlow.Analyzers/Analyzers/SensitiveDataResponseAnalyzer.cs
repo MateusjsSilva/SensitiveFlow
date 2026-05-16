@@ -104,4 +104,5 @@ public sealed class SensitiveDataResponseAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
+
 }

@@ -7,7 +7,10 @@ namespace SensitiveFlow.Analyzers.Tests;
 
 internal static class AnalyzerTestHarness
 {
-    public static async Task<ImmutableArray<Diagnostic>> RunAsync(string source, DiagnosticAnalyzer analyzer)
+    public static async Task<ImmutableArray<Diagnostic>> RunAsync(
+        string source,
+        DiagnosticAnalyzer analyzer,
+        Dictionary<string, string>? editorconfig = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
         var references = AppDomain.CurrentDomain
@@ -31,11 +34,67 @@ internal static class AnalyzerTestHarness
             references: references.Distinct(MetadataReferencePathComparer.Instance),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
+        if (editorconfig != null)
+        {
+            var configProvider = new TestAnalyzerConfigOptionsProvider(editorconfig, syntaxTree);
+            var analyzerOptions = new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty, configProvider);
+            var analyzers = compilation.WithAnalyzers(
+                [analyzer],
+                analyzerOptions);
+
+            return await analyzers.GetAnalyzerDiagnosticsAsync();
+        }
+
         var diagnostics = await compilation
             .WithAnalyzers([analyzer])
             .GetAnalyzerDiagnosticsAsync();
 
         return diagnostics;
+    }
+
+    private sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        private readonly Dictionary<string, string> _options;
+        private readonly SyntaxTree _syntaxTree;
+
+        public TestAnalyzerConfigOptionsProvider(Dictionary<string, string> options, SyntaxTree syntaxTree)
+        {
+            _options = options;
+            _syntaxTree = syntaxTree;
+        }
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree)
+        {
+            if (tree == _syntaxTree)
+            {
+                return new TestAnalyzerConfigOptions(_options);
+            }
+
+            return new TestAnalyzerConfigOptions(new Dictionary<string, string>());
+        }
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
+        {
+            return new TestAnalyzerConfigOptions(new Dictionary<string, string>());
+        }
+
+        public override AnalyzerConfigOptions GlobalOptions =>
+            new TestAnalyzerConfigOptions(new Dictionary<string, string>());
+    }
+
+    private sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
+    {
+        private readonly Dictionary<string, string> _options;
+
+        public TestAnalyzerConfigOptions(Dictionary<string, string> options)
+        {
+            _options = options;
+        }
+
+        public override bool TryGetValue(string key, out string value)
+        {
+            return _options.TryGetValue(key, out value!);
+        }
     }
 
     private sealed class MetadataReferencePathComparer : IEqualityComparer<MetadataReference>

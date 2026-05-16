@@ -56,6 +56,12 @@ public sealed class MissingRedactionAttributeAnalyzer : DiagnosticAnalyzer
     {
         var property = (IPropertySymbol)context.Symbol;
 
+        // Check if property is explicitly excluded from analysis
+        if (property.HasSensitiveFlowIgnoreAttribute())
+        {
+            return;
+        }
+
         // Check if property has [PersonalData] or [SensitiveData]
         var hasSensitiveMarker = false;
         string? sensitiveMarkerName = null;
