@@ -25,11 +25,11 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor MissingDataSubjectId = new(
         id: "SF0003",
         title: "Entity with sensitive data must expose a DataSubjectId",
-        messageFormat: "Entity '{0}' has [PersonalData]/[SensitiveData] members but no 'DataSubjectId' (or legacy 'UserId') property — SensitiveDataAuditInterceptor will throw at SaveChanges",
+        messageFormat: "Entity '{0}' has [PersonalData]/[SensitiveData] members but no 'DataSubjectId' (or legacy 'UserId') property — compilation will fail",
         category: "Privacy",
-        defaultSeverity: DiagnosticSeverity.Warning,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "SensitiveDataAuditInterceptor requires a stable subject identifier. Without it, every SaveChanges that touches a sensitive field throws InvalidOperationException at runtime.");
+        description: "SensitiveDataAuditInterceptor requires a stable subject identifier. Compile-time validation enforces this requirement. Add a public DataSubjectId (or UserId for legacy compatibility) property to the entity.");
 
     public static readonly DiagnosticDescriptor PossibleUnannotatedPii = new(
         id: "SF0004",

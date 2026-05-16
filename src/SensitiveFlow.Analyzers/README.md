@@ -42,9 +42,9 @@ return Results.Ok(new CustomerResponse(customer.Email.MaskEmail()));
 **Recognized targets**: `ControllerBase.Ok`, `Results.Ok`, `Results.Json`, `Results.Created`, `Results.CreatedAtRoute`, `TypedResults.*`
 
 ### SF0003 — Entity missing DataSubjectId
-**Severity**: Warning
+**Severity**: Error
 
-Triggers when a class declares members with `[PersonalData]` or `[SensitiveData]` but lacks a public `DataSubjectId` (or `UserId` alias). EF Core interceptor requires this at runtime.
+Triggers when a class declares members with `[PersonalData]` or `[SensitiveData]` but lacks a public `DataSubjectId` (or `UserId` alias). EF Core interceptor requires this at compile-time. Build will fail without it.
 
 **Detected pattern**:
 ```csharp
@@ -109,6 +109,59 @@ public CustomerResponse GetCustomer(string id) { ... }
 public CustomerPublicResponse GetCustomer(string id) { ... }
 ```
 
+### SF0006 — Sensitive data property missing [Redaction] attribute
+**Severity**: Error
+
+Triggers when a property annotated with `[PersonalData]` or `[SensitiveData]` lacks an explicit `[Redaction]` attribute. Without redaction configuration, the property exposes full PII in API responses, logs, and audit trails.
+
+**Detected pattern**:
+```csharp
+public class Customer
+{
+    [PersonalData]
+    public string Email { get; set; }  // SF0006: No [Redaction]
+    
+    [SensitiveData]
+    public string ApiKey { get; set; }  // SF0006: No [Redaction]
+}
+```
+
+**Compliant pattern**:
+```csharp
+public class Customer
+{
+    [PersonalData]
+    [Redaction(
+        ApiResponse = OutputRedactionAction.Mask,
+        Logs = OutputRedactionAction.Redact,
+        Audit = OutputRedactionAction.Mask,
+        Export = OutputRedactionAction.None
+    )]
+    public string Email { get; set; }
+    
+    [SensitiveData]
+    [Redaction(
+        ApiResponse = OutputRedactionAction.Redact,
+        Logs = OutputRedactionAction.Redact,
+        Audit = OutputRedactionAction.Redact
+    )]
+    public string ApiKey { get; set; }
+}
+```
+
+Alternatively, use shorthand attributes:
+```csharp
+[PersonalData]
+[Mask(MaskKind.Email)]
+public string Email { get; set; }
+
+[SensitiveData]
+[Redact]
+public string ApiKey { get; set; }
+```
+
+**Why Error Severity**: Marking data sensitive but not specifying redaction likely indicates an incomplete implementation. It defeats the purpose of annotation — data is flagged as sensitive but has no protection configured.
+
 ## Suppression
 
 The analyzer considers a value safe when it passes through a method whose name contains: `Mask`, `Redact`, `Anonymize`, `Pseudonymize`, `Hash` (case-insensitive).
@@ -124,7 +177,10 @@ dotnet_diagnostic.SF0002.severity = error
 dotnet_diagnostic.SF0003.severity = error
 dotnet_diagnostic.SF0004.severity = suggestion
 dotnet_diagnostic.SF0005.severity = warning
+dotnet_diagnostic.SF0006.severity = error
 ```
+
+Note: SF0003 is now **Error-level** (enforced compile-time), not Warning. Build will fail without DataSubjectId on sensitive entities.
 
 ## Installation
 

@@ -10,9 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Code quality improvements**: Comprehensive codebase review identifying and addressing threading risks, deadlock vulnerabilities, and developer experience gaps across 20+ packages.
+- **`[CompositeDataSubjectId(...)]` attribute**: Support for multi-key entity identification. Enables entities identified by multiple properties (e.g., CustomerId + OrderId) to declare their composite subject identifier. Audit trail keys combine all properties (e.g., `"customerId:123;orderId:456"`).
+- **Role-based redaction contexts**: Three new `RedactionContext` values (`AdminView`, `SupportView`, `CustomerView`) for role-specific data visibility in API responses and logs. Developers can now specify different redaction strategies per user role using extended `[Redaction]` attribute.
 
 ### Changed
 
+- **SF0003 severity elevated to Error**: Entity with sensitive data now **must** declare `DataSubjectId` or `[CompositeDataSubjectId]` at compile-time. Previously a Warning, now a compilation blocker to prevent audit trail gaps.
 - `TokenPseudonymizer.Pseudonymize()` and `TokenPseudonymizer.Reverse()` marked as `[Obsolete]` with detailed migration guidance to async alternatives (`PseudonymizeAsync`, `ReverseAsync`).
   - **Reason**: Sync-over-async pattern using `GetAwaiter().GetResult()` causes deadlocks in ASP.NET Core under high concurrency.
   - **Migration**: Use async methods in all web/async contexts. Sync methods remain functional in console apps and Windows services for backwards compatibility.
