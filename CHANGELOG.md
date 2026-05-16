@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Multi-format audit export** (`IAuditExporter`): Export audit records as CSV or JSON with optional integrity hashing. Supports streaming exports for large datasets and flexibility in output format selection.
 - **Full-text audit search index** (`IAuditSearchIndex`): Query audit records by actor, IP address, or entity type with optional full-text search. Thread-safe in-memory implementation suitable for testing; production deployments can use Elasticsearch or similar.
 - **Anomaly detection & alerting** (`IAuditAlertingPolicy`): Detect suspicious patterns including bulk deletes (>50 records), multiple IPs per subject (>3 unique IPs), and access after deletion. Supports custom detection rules via pluggable detectors.
+- **Custom metrics provider** (`CustomMetricsProvider`): Track domain-specific metrics including sensitive field access, redaction duration, and compliance violations. Integrates with OpenTelemetry for export to Prometheus.
+- **Metric aggregation service** (`MetricAggregationService`): Pre-compute percentiles, min/max/avg statistics, and histograms from raw measurements. Enables local aggregation before sending to observability platforms.
+- **Alert rule templates** (`AlertRuleTemplates`): Six pre-built Prometheus alert rules for common scenarios (high latency, bulk deletes, throughput drop, compliance violations, slow redaction, suspicious access patterns). Exportable as YAML.
+- **Compliance reporting service** (`ComplianceReportService`): Generate three types of automated reports: audit frequency (operations/entities/actors), data subject coverage (audit trail gaps), and retention compliance (deletion tracking).
+- **Performance baseline service** (`PerformanceBaselineService`): Define performance targets, detect regressions with configurable thresholds, and receive context-aware optimization recommendations.
+- **Query optimization advisor** (`QueryOptimizationAdvisor`): Analyze query patterns from audit operations, suggest database indexes based on frequency, and generate SQL index creation statements.
+- **Redis token store** (`SensitiveFlow.TokenStore.Redis` package): Distributed pseudonymization token store backed by Redis. Enables token reuse across multiple service instances with optional TTL and automatic expiration. Includes bidirectional mapping (token↔value) with atomic transactions via Lua scripting.
+- **Redis microservice sample** (`Redis.Microservice.Sample`): Demonstrates horizontally-scalable REST API for pseudonymization using centralized Redis. Includes health checks, Swagger documentation, and multi-instance deployment examples.
 
 ### Changed
 

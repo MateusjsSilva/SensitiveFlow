@@ -73,7 +73,7 @@ The `release.yml` workflow will automatically build, test (including container t
 
 `1.0.0-preview.3` — latest published preview. 
 
-**In Development**: `1.0.0-preview.4` with comprehensive audit improvements and code quality enhancements:
+**In Development**: `1.0.0-preview.4` with comprehensive audit improvements, diagnostics enhancements, and code quality improvements:
 
 ### Audit Features (New)
 - **Async streaming** (`QueryStreamAsync`): Memory-efficient processing of large audit trails (100K+ records)
@@ -82,11 +82,19 @@ The `release.yml` workflow will automatically build, test (including container t
 - **Full-text search** (`IAuditSearchIndex`): Query by actor, IP, entity with optional full-text capabilities
 - **Anomaly detection** (`IAuditAlertingPolicy`): Detect bulk deletes, multiple IPs, suspicious patterns with custom rules
 
+### Diagnostics Features (New)
+- **Custom metrics** (`CustomMetricsProvider`): Domain-specific metrics (sensitive field access, redaction duration, violations)
+- **Metric aggregations** (`MetricAggregationService`): Percentiles, statistics, histogram pre-computation
+- **Alert rule templates** (`AlertRuleTemplates`): 6 pre-built Prometheus alert scenarios (high latency, bulk deletes, etc.)
+- **Compliance reporting** (`ComplianceReportService`): Audit frequency, coverage, and retention compliance reports
+- **Performance baselines** (`PerformanceBaselineService`): Regression detection with auto-recommendations
+- **Query optimization** (`QueryOptimizationAdvisor`): Pattern analysis and index recommendations
+
 ### Code Quality Improvements
 - Threading safety: `[Obsolete]` warnings on sync-over-async methods
 - Enhanced documentation for deadlock-prone patterns
 - Better exception guidance with concrete migration paths
-- Comprehensive test coverage (510+ Core tests, 354+ Audit tests)
+- Comprehensive test coverage (510+ Core tests, 354+ Audit tests, 200+ Diagnostics tests)
 
 ### Core Features (Existing)
 - `[CompositeDataSubjectId(...)]`: Multi-key entity identification
