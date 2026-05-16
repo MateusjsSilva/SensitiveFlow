@@ -94,9 +94,78 @@ settings.Converters.Add(
 // Both filter AND converter apply redaction (independent layers)
 ```
 
-## Possible Improvements
+## Advanced Features
 
-1. **DTO mapping** — Auto-map to non-sensitive DTOs
-2. **Role-based redaction** — Different redaction per user role
-3. **Header control** — Client specifies redaction level
-4. **Performance metrics** — Track redaction frequency
+### DTO Mapping
+Automatically map entities to non-sensitive DTOs to exclude sensitive fields entirely:
+
+```csharp
+builder.Services.AddSensitiveFlowDtoMapping(options =>
+{
+    options.MapEntity<Customer, CustomerDto>();
+    options.MapEntity<User, UserDto>();
+});
+
+var mapper = sp.GetRequiredService<DtoMapper>();
+var dto = mapper.Map(customer); // Returns CustomerDto with only mapped properties
+```
+
+**Components:**
+- `DtoMappingOptions` — Register entity-to-DTO mappings
+- `DtoMapper` — Maps entities using reflection-based property copying
+
+### Role-Based Redaction
+Apply different redaction levels based on user roles:
+
+```csharp
+builder.Services.AddSensitiveFlowRoleBasedRedaction(options =>
+{
+    options.DefaultMode = JsonRedactionMode.Mask;        // Default for all users
+    options.ConfigureRole("admin", JsonRedactionMode.None);  // Admins see full data
+    options.ConfigureRole("support", JsonRedactionMode.Mask); // Support sees masked data
+});
+
+var roleOptions = sp.GetRequiredService<RoleBasedRedactionOptions>();
+var mode = roleOptions.GetModeForRoles(user.Roles);
+```
+
+**Components:**
+- `RoleBasedRedactionOptions` — Configurable role-to-redaction-mode mapping
+- `GetModeForRoles()` — Resolves redaction mode for user's roles (first match wins)
+
+### Header Control
+Allow clients to request specific redaction levels via HTTP headers:
+
+```csharp
+// Client sends: X-Redaction-Level: None (or Mask, Omit)
+var request = context.Request;
+var requestedMode = RedactionLevelHeader.TryExtractFromHeaders(request);
+
+RedactionLevelHeader.StoreInContext(context, requestedMode);
+
+// Later in middleware/filter:
+var mode = RedactionLevelHeader.TryGetFromContext(context);
+```
+
+**Components:**
+- `RedactionLevelHeader.TryExtractFromHeaders()` — Parses `X-Redaction-Level` header
+- `RedactionLevelHeader.StoreInContext()` / `TryGetFromContext()` — Context storage
+
+### Performance Metrics
+Track redaction operation frequency and latency:
+
+```csharp
+var collector = sp.GetRequiredService<RedactionMetricsCollector>();
+
+// Record a redaction operation
+collector.RecordOperation("Email", fieldsAffected: 1, elapsedMilliseconds: 5);
+
+// Query metrics
+var emailMetrics = collector.GetMetric("Email");
+Console.WriteLine($"Total redactions: {collector.TotalOperations}");
+Console.WriteLine($"Avg time per operation: {collector.AverageTimeMs}ms");
+```
+
+**Components:**
+- `RedactionMetricsCollector` — Thread-safe metrics collection
+- `RedactionMetric` — Per-field metrics (count, total time, average time)

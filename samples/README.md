@@ -372,6 +372,30 @@ All samples have been updated to demonstrate preview.4 features:
 
 #### 20. Archive Tiering
 - Abstract storage layer for expired entities
+
+### AspNetCore.EFCore Enhancements
+
+#### 21. DTO Mapping
+- Auto-map entities to non-sensitive DTOs
+- `DtoMappingOptions` for registration
+- `DtoMapper` for reflection-based property copying
+- Example: `CustomerEntity` → `CustomerDto` excluding sensitive fields
+
+#### 22. Role-Based Response Redaction
+- Configure different redaction levels per user role
+- `RoleBasedRedactionOptions` for role registration
+- Example: admins see full data, support sees masked, users see omitted fields
+
+#### 23. Client-Controlled Redaction Level
+- Clients request redaction via `X-Redaction-Level` HTTP header
+- `RedactionLevelHeader` for parsing and storage
+- Example: client sends `X-Redaction-Level: Omit` to exclude sensitive fields
+
+#### 24. Redaction Operation Metrics
+- Track redaction frequency and latency per field
+- `RedactionMetricsCollector` for thread-safe aggregation
+- `RedactionMetric` for per-field statistics
+- Enable performance monitoring and optimization
 - `InMemoryRetentionArchiveProvider` for testing
 - Production: integrate with S3, Azure Blob, or other cold storage
 
