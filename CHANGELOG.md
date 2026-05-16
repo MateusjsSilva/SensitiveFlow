@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Lazy redaction** (`LazyRedactionWrapper<T>`): Defer masking until actual serialization occurs. Beneficial for large object graphs where many properties are never serialized. Reduces unnecessary computation in Newtonsoft.Json scenarios.
 - **Schema stripping for OpenAPI** (`SensitiveDataSchemaFilter`): Standalone utility to identify sensitive properties that would be redacted in a given context. No Swashbuckle dependency—integrate into your own `ISchemaFilter` for documentation.
 - **JSON redaction metrics** (`IJsonRedactionMetricsCollector`, `JsonRedactionMetricsCollector`): OpenTelemetry-backed counters for tracking JSON redaction events, duration, and property serialization. Counters: `sensitiveflow_json_redaction_total`, `sensitiveflow_json_properties_serialized_total`, and `sensitiveflow_json_redaction_duration_ms` histogram.
+- **Incremental scheduling** (`IRetentionRunTracker`, `RetentionRunTracker`): Track last successful retention run per policy key to avoid reprocessing. Thread-safe in-memory implementation using `ConcurrentDictionary` for policy-level run state persistence.
+- **Parallel policy execution** (`ParallelRetentionExecutor`): Execute multiple independent retention batches concurrently via `Task.WhenAll`. Merges execution reports by concatenating entries and aggregating counts.
+- **Retention analytics** (`RetentionAnalyticsCollector`, `RetentionRunRecord`, `RetentionTrendSummary`): Track and analyze retention execution metrics including total runs, anonymized fields, deletion pending counts, duration, and peak runs. Thread-safe analytics collection with trend summarization.
+- **Selective re-anonymization** (`RetentionReAnonymizer`): Re-anonymize entities matching a predicate condition without requiring full retention period expiration. Enables on-demand remediation workflows.
+- **Archive tiering** (`IRetentionArchiveProvider`, `InMemoryRetentionArchiveProvider`): Abstraction for cold storage of archived entities. In-memory reference implementation; production deployments can target S3, Azure Blob, or similar.
+- **Notification templates** (`RetentionNotificationTemplate`, `RetentionNotificationChannel`): Configurable alert templates with placeholder substitution (`{AnonymizedCount}`, `{DeletePendingCount}`, `{RunAt}`). Support for Email, Slack, and Webhook channels.
+- **Retention analytics reporting** (`RetentionReportGenerator`): Generate formatted reports from retention metrics in text, CSV, and JSON formats. Supports trend summaries and detailed execution history exports.
 
 ### Changed
 

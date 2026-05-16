@@ -208,6 +208,13 @@ dotnet run
 | Auditing | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Bulk operations | | ✅ | ✅ | ✅ | | |
 | Retention | | ✅ | ✅ | ✅ | | |
+| Incremental scheduling | | ✅ | ✅ | ✅ | | |
+| Parallel retention | | ✅ | ✅ | ✅ | | |
+| Retention analytics | | ✅ | ✅ | ✅ | | |
+| Re-anonymization | | ✅ | ✅ | ✅ | | |
+| Archive tiering | | ✅ | ✅ | ✅ | | |
+| Retention notifications | | ✅ | ✅ | ✅ | | |
+| Retention reporting | | ✅ | ✅ | ✅ | | |
 | Data export (DSAR) | | ✅ | ✅ | ✅ | | |
 | Right-to-erasure | | ✅ | ✅ | ✅ | | |
 | Async streaming | | | ✅ | ✅ | | |
@@ -314,6 +321,43 @@ All samples have been updated to demonstrate preview.4 features:
 - Reduces log volume in high-throughput scenarios
 - Configured via `LogSamplingFilter` with sampling rate
 - Smart filtering: non-sensitive logs always preserved
+
+### Retention Enhancements
+
+#### 16. Incremental Scheduling
+- Track last successful run per policy to avoid reprocessing
+- Thread-safe policy state via `RetentionRunTracker`
+- Reduces redundant data processing in scheduled jobs
+
+#### 17. Parallel Policy Execution
+- Run multiple retention batches concurrently
+- `ParallelRetentionExecutor` via `Task.WhenAll`
+- Merged execution reports for cross-policy insights
+
+#### 18. Retention Analytics
+- Collect execution metrics: anonymized fields, deletion pending count, duration
+- `RetentionAnalyticsCollector` with trend summarization
+- Track peak runs, averages, and historical trends
+
+#### 19. Selective Re-anonymization
+- Re-anonymize entities matching a condition on-demand
+- `RetentionReAnonymizer` with predicate filtering
+- Enables remediation without waiting for retention expiration
+
+#### 20. Archive Tiering
+- Abstract storage layer for expired entities
+- `InMemoryRetentionArchiveProvider` for testing
+- Production: integrate with S3, Azure Blob, or other cold storage
+
+#### 21. Notification Templates
+- Configurable alert templates with placeholder substitution
+- Support for Email, Slack, and Webhook channels
+- Template.Format(report) fills {AnonymizedCount}, {DeletePendingCount}, {RunAt}
+
+#### 22. Retention Analytics Reporting
+- Generate formatted reports: text, CSV, and JSON
+- `RetentionReportGenerator` for export and analysis
+- Supports detailed execution history and trend summaries
 
 ### Role-Based Redaction (Core improvement)
 - Different redaction per user role (Admin, Support, Customer)

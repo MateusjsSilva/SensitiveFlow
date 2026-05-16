@@ -240,12 +240,110 @@ Condition = c => c.Status == "Inactive" && c.LastLogin < deletionDate
 // Multiple predicates prevent accidental deletion
 ```
 
-## Possible Improvements
+## Advanced Features
 
-1. **Incremental scheduling** — Track last run, don't reprocess
-2. **Parallel policy execution** — Run independent policies concurrently
-3. **Retention analytics** — Report on deletions, trend analysis
-4. **Selective re-anonymization** — Re-run anonymization on new data
-5. **Archive tiering** — Cold storage for archives (S3, Azure Blob)
-6. **Notification templates** — Configurable alerts (email, Slack, webhook)
-7. **Retention analytics reporting** — Generate reports on retention activity
+### Incremental Scheduling
+Track the last successful run per policy to avoid reprocessing the same data:
+```csharp
+var tracker = new RetentionRunTracker();
+var lastRun = tracker.GetLastRunAt("policy1");
+
+if (lastRun == null || DateTimeOffset.UtcNow - lastRun > TimeSpan.FromHours(24))
+{
+    await scheduler.ExecuteAsync();
+    tracker.MarkRanAt("policy1", DateTimeOffset.UtcNow);
+}
+```
+
+### Parallel Policy Execution
+Run multiple independent retention batches concurrently:
+```csharp
+var executor = new ParallelRetentionExecutor();
+var batches = new[]
+{
+    new RetentionBatch(customers, c => ((Customer)c).CreatedAt),
+    new RetentionBatch(orders, o => ((Order)o).CreatedAt)
+};
+
+var report = await executor.ExecuteParallelAsync(batches);
+Console.WriteLine($"Processed {report.Entries.Count} entries in parallel");
+```
+
+### Retention Analytics
+Collect and analyze retention execution metrics:
+```csharp
+var collector = new RetentionAnalyticsCollector();
+
+// Record each run
+collector.RecordRun(report, DateTimeOffset.UtcNow, durationMs: 1250);
+
+// Get execution history
+var history = collector.GetRunHistory();
+
+// Analyze trends
+var summary = collector.GetTrendSummary();
+Console.WriteLine($"Total runs: {summary.TotalRuns}");
+Console.WriteLine($"Total anonymized: {summary.TotalAnonymized}");
+Console.WriteLine($"Average per run: {summary.AverageAnonymizedPerRun}");
+```
+
+### Selective Re-anonymization
+Re-anonymize entities matching a condition without waiting for retention expiration:
+```csharp
+var reAnon = new RetentionReAnonymizer();
+
+// Re-anonymize all customers with a specific attribute
+var result = await reAnon.ReAnonymizeAsync<Customer>(
+    customers,
+    c => c.NeedsReAnonymization == true
+);
+
+Console.WriteLine($"Re-anonymized {result.AnonymizedFieldCount} fields");
+```
+
+### Archive Tiering
+Manage cold storage of archived entities:
+```csharp
+var archive = new InMemoryRetentionArchiveProvider();
+
+// Archive expired entities
+await archive.ArchiveAsync(expiredCustomers, archiveKey: "customers-2024");
+
+// Retrieve when needed
+var archived = await archive.RetrieveAsync("customers-2024");
+
+// List all archives
+var keys = await archive.ListArchiveKeysAsync();
+```
+
+### Notification Templates
+Configure alerts for retention completion events:
+```csharp
+var template = new RetentionNotificationTemplate
+{
+    Subject = "Retention Run Completed",
+    Body = "Anonymized {AnonymizedCount} fields, {DeletePendingCount} entities pending deletion",
+    Channel = RetentionNotificationChannel.Email
+};
+
+var message = template.Format(report);
+```
+
+### Retention Analytics Reporting
+Generate formatted reports from retention metrics:
+```csharp
+var collector = new RetentionAnalyticsCollector();
+// ... record runs ...
+
+var summary = collector.GetTrendSummary();
+
+// Generate text report
+var textReport = RetentionReportGenerator.GenerateTextReport(summary);
+Console.WriteLine(textReport);
+
+// Generate CSV for export
+var csvReport = RetentionReportGenerator.GenerateCsvReport(collector.GetRunHistory());
+
+// Generate JSON for APIs
+var jsonReport = RetentionReportGenerator.GenerateJsonReport(summary);
+
