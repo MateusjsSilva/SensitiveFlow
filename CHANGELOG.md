@@ -37,6 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Data quality checking** (`DataQualityChecker`): Detect orphaned records, missing required fields, and duplicate entries for data integrity validation.
 - **Health alerting integration** (`HealthAlertingPolicy`): Configure alerts for health check failures with webhook, Slack, or PagerDuty notifications.
 - **Audit record age tracking** (`AuditAgeTracker`): Monitor age of oldest audit records and receive recommendations for archival/retention.
+- **Semantic-aware code fix suggestions** (`SemanticAnalysisHelper`): Roslyn code fixes analyze context to suggest better masking methods (email, phone, SSN, etc.).
+- **Batch fix-all functionality** (`BatchFixProvider`): Fix all violations in file/solution scope instead of one-by-one.
+- **Code fix configuration registry** (`CodeFixConfiguration`): Centralized configuration of recognized masking methods and custom patterns.
+- **Incremental source generation tracking** (`IncrementalGenerationTracker`): Track generated types and modifications for faster incremental rebuilds.
+- **Source generator configuration schema** (`CodeGenerationConfigProvider`): Pre-built setup snippets and configuration documentation generator.
+- **Generation performance reporting** (`GenerationPerformanceReporter`): Benchmark metadata extraction and identify bottlenecks.
+- **Thread-safe audit store** (`ThreadSafeAuditStore`): ConcurrentBag-based store for multi-threaded test scenarios.
+- **Audit fixture snapshots** (`AuditFixtureSnapshotManager`): Save/restore audit state between test runs with metadata.
+- **Fluent audit assertions** (`AuditAssertionExtensions`): Intent-revealing test assertions (ShouldHaveAudited, ShouldHaveCreatedEntity, etc.).
 - **Custom masking rules** (`IMaskingStrategy` + `MaskingStrategyRegistry`): Pluggable masking strategies with built-in implementations (phone, creditcard, ipaddress). Extensible via `SensitiveLoggingOptions.MaskingStrategies`.
 - **Log sampling filter** (`LogSamplingFilter`): Probabilistic sampling of log entries containing sensitive fields to reduce volume in high-throughput scenarios. Configurable rate (0.0–1.0).
 - **Conditional redaction by role** (`IRedactionContextResolver`, `ClaimsPrincipalRedactionContextResolver`): Resolve which `RedactionContext` applies during JSON serialization based on current context. Built-in resolver maps `ClaimsPrincipal` roles to context values (`AdminView`, `SupportView`, `CustomerView`). Enables role-based JSON filtering without external dependencies.

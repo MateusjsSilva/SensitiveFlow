@@ -73,8 +73,80 @@ internal static class Customer_SensitiveFlowMetadata
 2. **Dynamic types unsupported** — Only compiled types
 3. **Incremental compilation** — Full build on changes
 
-## Possible Improvements
+## Advanced Features
 
-1. **Incremental generation** — Faster rebuilds
-2. **Configuration schema** — Code snippets for setup
-3. **Performance reports** — Benchmark metadata extraction
+### Incremental Generation for Faster Rebuilds
+Track generated types and only regenerate those that changed:
+
+```csharp
+var tracker = new IncrementalGenerationTracker();
+
+// Register previously generated types
+tracker.RegisterGeneratedType("MyApp.Models.Customer", new GeneratedTypeInfo
+{
+    Namespace = "MyApp.Models",
+    TypeName = "Customer",
+    SensitivePropertyCount = 3
+});
+
+// Mark types as modified
+tracker.MarkAsModified("MyApp.Models.Customer");
+
+// Get only types needing regeneration
+var toRegen = tracker.GetTypesNeedingRegeneration();  // Only modified types
+var stats = tracker.GetStatistics();  // Insights on generation impact
+```
+
+**Components:**
+- `IncrementalGenerationTracker` — Tracks generated types and modifications
+- `GeneratedTypeInfo` — Metadata about a generated type (properties, hash, etc.)
+- `GenerationStatistics` — Build-wide statistics (count, modifications, averages)
+
+### Configuration Schema and Setup Guide
+Auto-generate configuration snippets and setup instructions:
+
+```csharp
+var configProvider = new CodeGenerationConfigProvider();
+
+// Get pre-built setup guide
+Console.WriteLine(configProvider.GetSetupGuide());
+
+// Access specific snippets
+var projectSetup = configProvider.GetSnippet("ProjectSetup");
+var typeAnnotation = configProvider.GetSnippet("TypeAnnotation");
+var metadataUsage = configProvider.GetSnippet("MetadataUsage");
+
+// Add custom snippets
+configProvider.AddSnippet("CustomMasking", @"
+[Redaction(Custom = typeof(MyMaskingStrategy))]
+public class CustomEntity { }");
+```
+
+**Components:**
+- `CodeGenerationConfigProvider` — Centralized configuration documentation
+- Built-in snippets for project setup, type annotation, metadata usage
+- Generates markdown-formatted setup guide
+
+### Performance Reports and Benchmarking
+Track and report source generation performance:
+
+```csharp
+var reporter = new GenerationPerformanceReporter();
+
+// Record operations
+reporter.RecordOperation("Customer", "MetadataGeneration", elapsedMs: 45, linesGenerated: 120);
+reporter.RecordOperation("Order", "MetadataGeneration", elapsedMs: 32, linesGenerated: 95);
+
+// Query metrics
+var slowest = reporter.GetSlowestOperations(5);
+var avgPerOp = reporter.GetAverageTimePerOperation();
+var throughput = reporter.GetThroughput();  // lines/ms
+
+// Generate report
+Console.WriteLine(reporter.GenerateReport());
+```
+
+**Components:**
+- `GenerationPerformanceReporter` — Collects and analyzes generation metrics
+- `GenerationMetric` — Per-operation timing and lines generated
+- Tracks bottlenecks and throughput for optimization

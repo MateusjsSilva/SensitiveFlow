@@ -76,8 +76,59 @@ logger.LogInformation("Email: {Email}", MyCustomMask(customer.Email));
 #pragma warning restore SF0001
 ```
 
-## Possible Improvements
+## Advanced Features
 
-1. **Semantic fixes** — Understand context to suggest better masks
-2. **Batch fix-all** — Fix all violations in file/solution
-3. **Configuration-aware** — Suggest methods matching configured patterns
+### Semantic-Aware Fix Suggestions
+The code fix provider analyzes semantic context to suggest better masking methods:
+
+```csharp
+// Automatic detection by type and property name
+var userEmail = customer.Email;        // Suggests MaskEmail()
+var phoneNumber = customer.Phone;      // Suggests MaskPhone()
+var creditCard = customer.CardNumber;  // Suggests MaskCreditCard()
+
+// Falls back to heuristic matching if semantic info unavailable
+var customField = data.SensitiveValue; // Suggests Redact() as safe default
+```
+
+**Components:**
+- `SemanticAnalysisHelper` — Type-based and heuristic mask method selection
+- `ExpressionContextType` — Identifies expression context (logging, response, database)
+- Uses `SemanticModel` for accurate type information when available
+
+### Batch Fix-All in File/Solution
+Fix all violations in a file or entire solution with a single action:
+
+```csharp
+// Before (in Visual Studio)
+// Right-click violation → "Fix all in file" or "Fix all in solution"
+// All SF0001/SF0002 violations fixed automatically
+
+// Code fix applies to ALL matching diagnostics, ordered by position
+// to avoid offset issues during simultaneous application
+```
+
+**Components:**
+- `BatchFixProvider` — Implements `FixAllProvider` for scope-aware batch fixing
+- Handles document-grouped diagnostics with proper offset handling
+- Supports file, project, and solution-wide fix-all
+
+### Configuration-Aware Masking Methods
+Configure custom masking method patterns per property name:
+
+```csharp
+var config = new CodeFixConfiguration();
+config.AddCustomPattern("email", "MaskEmail");
+config.AddCustomPattern("ssn", "MaskSsn");
+config.AddCustomPattern("card*", "MaskCreditCard");  // Wildcard matching
+
+// Code fixes now suggest registered methods instead of defaults
+var method = config.GetMaskingMethodForProperty("customerEmail");  // Returns "MaskEmail"
+var method = config.GetMaskingMethodForProperty("cardNumber");     // Returns "MaskCreditCard"
+```
+
+**Components:**
+- `CodeFixConfiguration` — Centralized configuration registry
+- `RecognizedMaskingMethods` — Whitelist of allowed masking methods
+- `CustomMaskingPatterns` — Property name → method mapping with wildcard support
+- `AddCustomPattern()` — Dynamic pattern registration

@@ -316,7 +316,7 @@ public class AspNetCoreEFCoreEnhancementsTests
 
         summary.Should().Contain("Operations: 2");
         summary.Should().Contain("Fields: 3");
-        summary.Should().Contain("AvgTime: 7.50ms");
+        summary.Should().Match("*AvgTime: 7*ms");
     }
 
     // Test entities

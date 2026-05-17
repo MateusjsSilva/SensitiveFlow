@@ -80,9 +80,64 @@ builder.Services.AddDbContext<TestAuditDbContext>(options =>
 builder.Services.AddEfCoreAuditStore<TestAuditDbContext>();
 ```
 
-## Possible Improvements
+## Advanced Features
 
-1. **Thread-safe variant** — ConcurrentBag-based store for multi-threaded tests
-2. **Fixture snapshots** — Save/restore audit state between tests
-3. **Assertion helpers** — `ShouldHaveAudited(entity, field)` extensions
-4. **Mock implementations** — Moq/NSubstitute helpers
+### Thread-Safe Audit Store for Multi-Threaded Tests
+Use ConcurrentBag-based store for concurrent test scenarios:
+
+```csharp
+var store = new ThreadSafeAuditStore();
+
+// Multiple threads can add records safely
+Parallel.For(0, 100, i =>
+{
+    store.AddRecord(new AuditRecord { Id = i, Entity = "Order" });
+});
+
+Assert.Equal(100, store.RecordCount);
+var records = store.GetAllRecords();
+```
+
+**Components:**
+- `ThreadSafeAuditStore` — Concurrent implementation using `ConcurrentBag`
+- `IAuditStore` — Generic audit store interface
+- No locking overhead—optimal for multi-threaded workloads
+
+### Fixture Snapshots for State Preservation
+Save and restore audit state between test runs:
+
+```csharp
+var manager = new AuditFixtureSnapshotManager();
+
+// Save current state
+manager.SaveSnapshot("before-update", currentRecords, 
+    new { TestName = "OrderUpdateTest" });
+
+// Run test modifications...
+
+// Later, restore to previous state
+var snapshot = manager.LoadSnapshot("before-update");
+var restoredRecords = snapshot.Restore();
+```
+
+**Components:**
+- `AuditFixtureSnapshot` — Immutable snapshot with metadata
+- `AuditFixtureSnapshotManager` — Save/load/delete snapshots
+
+### Fluent Assertion Helpers
+Readable assertions for audit testing:
+
+```csharp
+auditRecords.ShouldHaveAuditCount(5);
+auditRecords.ShouldHaveCreatedEntity("Customer");
+auditRecords.ShouldHaveUpdatedEntity("Order");
+auditRecords.ShouldHaveDeletedEntity("Invoice");
+auditRecords.ShouldHaveAudited("Customer", "Email", 
+    expectedOldValue: "old@example.com", 
+    expectedNewValue: "new@example.com");
+```
+
+**Components:**
+- `AuditAssertionExtensions` — Fluent assertion methods
+- Supports entity-level and field-level assertions
+- Clear, intent-revealing test code
