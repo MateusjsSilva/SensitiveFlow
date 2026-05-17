@@ -150,10 +150,108 @@ alert: AuditStoreFailing
     summary: "Audit store is unhealthy"
 ```
 
-## Possible Improvements
+## Advanced Features
 
-1. **Policy checks** — Verify retention policies are configured
-2. **Performance metrics** — Report audit latency, throughput
-3. **Data quality checks** — Flag orphaned records, missing fields
-4. **Alerting integration** — PagerDuty, Slack notifications
-5. **Audit age tracking** — Warn if audit records > N days old
+### Retention Policy Validation
+Verify that retention policies are properly configured:
+
+```csharp
+var validator = sp.GetRequiredService<RetentionPolicyValidator>();
+var result = validator.Validate();
+
+if (!result.IsValid)
+{
+    foreach (var issue in result.Issues)
+    {
+        Console.WriteLine($"Policy issue: {issue}");
+    }
+}
+```
+
+**Components:**
+- `RetentionPolicyValidator` — Validates policy configuration
+- `PolicyValidationResult` — Detailed validation results with issues list
+
+### Performance Metrics Reporting
+Track audit latency, throughput, and health check success rates:
+
+```csharp
+var collector = sp.GetRequiredService<HealthCheckPerformanceCollector>();
+
+// Record operations
+collector.RecordHealthCheck("Audit", elapsedMilliseconds: 150, success: true);
+collector.RecordAuditOperation("Read", recordCount: 500, elapsedMilliseconds: 200);
+
+// Query metrics
+var slowChecks = collector.GetSlowChecks(thresholdMs: 1000);
+var throughput = collector.GetAuditThroughputRecordsPerSec();
+var avgLatency = collector.GetAverageLatencyMs();
+```
+
+**Components:**
+- `HealthCheckPerformanceCollector` — Aggregates performance metrics
+- `PerformanceMetric` — Per-check statistics (count, latency, success rate)
+
+### Data Quality Checking
+Detect orphaned records, missing required fields, and duplicates:
+
+```csharp
+var checker = sp.GetRequiredService<DataQualityChecker>();
+
+// Check for missing fields
+var result = await checker.CheckForMissingFieldsAsync(
+    "Customer", 
+    requiredFields: new[] { "DataSubjectId", "Email" }
+);
+
+if (!result.IsHealthy)
+{
+    // Handle quality issues
+}
+```
+
+**Components:**
+- `DataQualityChecker` — Entity-level data validation
+- `DataQualityResult` — Validation results with issue details
+
+### Alerting Integration
+Configure alerts for health check failures with webhook, Slack, or PagerDuty:
+
+```csharp
+builder.Services.AddSensitiveFlowHealthAlerting(options =>
+{
+    options.AddRule("Audit", AlertSeverity.Critical, 
+        webhookUrl: "https://alerts.example.com/webhook");
+    
+    options.AddRule("Retention", AlertSeverity.Warning,
+        slackChannel: "#alerts");
+});
+```
+
+**Components:**
+- `HealthAlertingPolicy` — Rule registry and management
+- `AlertingRule` — Per-check alert configuration (webhook, Slack, PagerDuty)
+- `AlertSeverity` — Alert levels (Info, Warning, Error, Critical)
+
+### Audit Age Tracking
+Monitor audit record age and receive recommendations:
+
+```csharp
+var tracker = sp.GetRequiredService<AuditAgeTracker>();
+tracker.WarningDaysThreshold = 30;
+tracker.CriticalDaysThreshold = 90;
+
+// Analyze oldest record
+var analysis = tracker.Analyze(oldestRecordDate);
+
+if (analysis.Status == AuditAgeStatus.Warning)
+{
+    var recommendations = tracker.GetRecommendations(analysis);
+    // Review recommendations and implement archival
+}
+```
+
+**Components:**
+- `AuditAgeTracker` — Age analysis and recommendations
+- `AuditAgeAnalysis` — Per-category age breakdown with recommendations
+- `AuditAgeStatus` — Health status (Healthy, Warning, Critical)

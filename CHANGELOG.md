@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Role-based response redaction** (`RoleBasedRedactionOptions`): Configure different redaction levels per user role; apply via role-aware middleware or filters.
 - **Client-controlled redaction level** (`RedactionLevelHeader`): Allow clients to request specific redaction levels via `X-Redaction-Level` HTTP header; validate and apply in middleware.
 - **Redaction operation metrics** (`RedactionMetricsCollector`, `RedactionMetric`): Track redaction frequency and latency per field for performance monitoring and optimization.
+- **Retention policy validation** (`RetentionPolicyValidator`): Verify that retention policies are properly configured with no missing or invalid entries.
+- **Health check performance metrics** (`HealthCheckPerformanceCollector`): Track health check latency, throughput, and success rates for observability.
+- **Data quality checking** (`DataQualityChecker`): Detect orphaned records, missing required fields, and duplicate entries for data integrity validation.
+- **Health alerting integration** (`HealthAlertingPolicy`): Configure alerts for health check failures with webhook, Slack, or PagerDuty notifications.
+- **Audit record age tracking** (`AuditAgeTracker`): Monitor age of oldest audit records and receive recommendations for archival/retention.
 - **Custom masking rules** (`IMaskingStrategy` + `MaskingStrategyRegistry`): Pluggable masking strategies with built-in implementations (phone, creditcard, ipaddress). Extensible via `SensitiveLoggingOptions.MaskingStrategies`.
 - **Log sampling filter** (`LogSamplingFilter`): Probabilistic sampling of log entries containing sensitive fields to reduce volume in high-throughput scenarios. Configurable rate (0.0–1.0).
 - **Conditional redaction by role** (`IRedactionContextResolver`, `ClaimsPrincipalRedactionContextResolver`): Resolve which `RedactionContext` applies during JSON serialization based on current context. Built-in resolver maps `ClaimsPrincipal` roles to context values (`AdminView`, `SupportView`, `CustomerView`). Enables role-based JSON filtering without external dependencies.

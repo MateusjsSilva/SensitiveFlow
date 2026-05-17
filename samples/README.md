@@ -396,6 +396,33 @@ All samples have been updated to demonstrate preview.4 features:
 - `RedactionMetricsCollector` for thread-safe aggregation
 - `RedactionMetric` for per-field statistics
 - Enable performance monitoring and optimization
+
+### HealthChecks Enhancements
+
+#### 25. Retention Policy Validation
+- Verify policies are properly configured
+- `RetentionPolicyValidator` for configuration audit
+- Detect missing or invalid policy entries
+
+#### 26. Health Check Performance Metrics
+- Track health check latency and throughput
+- `HealthCheckPerformanceCollector` for aggregation
+- Monitor audit operation performance
+
+#### 27. Data Quality Checking
+- Detect orphaned records and missing fields
+- `DataQualityChecker` for entity validation
+- Support for duplicate detection
+
+#### 28. Health Alerting Integration
+- Configure alerts for health check failures
+- Support for webhook, Slack, PagerDuty
+- Severity-based routing (Info, Warning, Error, Critical)
+
+#### 29. Audit Record Age Tracking
+- Monitor oldest audit record age
+- `AuditAgeTracker` with configurable thresholds
+- Automated recommendations for archival
 - `InMemoryRetentionArchiveProvider` for testing
 - Production: integrate with S3, Azure Blob, or other cold storage
 
